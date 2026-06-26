@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>КМБ Video Chat — Wireframes · Screen Inventory · v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-page: #FAFAFA;
+  --bg-surface: #FFFFFF;
+  --bg-soft: #F3F4F6;
+  --bg-emphasis: #111827;
+  --border-subtle: #E5E7EB;
+  --border-default: #D1D5DB;
+  --border-strong: #9CA3AF;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
+  --text-faint: #9CA3AF;
+  --accent: #4F46E5;
+  --accent-soft: #EEF2FF;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: var(--font-ui); background: var(--bg-page); color: var(--text-primary); font-size: 14px; -webkit-font-smoothing: antialiased; line-height: 1.5; }
+
+.doc-header { background: var(--bg-emphasis); color: #fff; padding: 28px 40px 22px; }
+.doc-header h1 { margin: 0 0 6px; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+.doc-header h1 .dot { color: #93C5FD; }
+.doc-header .sub { font-family: var(--font-mono); font-size: 11.5px; color: #9CA3AF; letter-spacing: 0.02em; }
+.doc-header .meta { display: flex; flex-wrap: wrap; gap: 18px; font-family: var(--font-mono); font-size: 11.5px; color: #9CA3AF; margin-top: 14px; }
+.doc-header .meta span::before { content: '● '; color: #93C5FD; margin-right: 3px; }
+
+.role-tabs { display: flex; gap: 2px; background: var(--bg-emphasis); padding: 0 40px; border-bottom: 1px solid #1F2937; }
+.role-tab { background: transparent; border: 0; color: #9CA3AF; padding: 12px 22px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 0.01em; }
+.role-tab:hover { color: #fff; }
+.role-tab.active { color: #fff; border-bottom-color: #93C5FD; }
+.role-tab .count { display: inline-block; background: #1F2937; color: #93C5FD; font-family: var(--font-mono); font-size: 10.5px; padding: 2px 7px; border-radius: 99px; margin-left: 8px; font-weight: 500; }
+
+.role-pane { display: none; padding: 30px 40px 60px; }
+.role-pane.active { display: block; }
+.role-intro { max-width: 940px; margin-bottom: 22px; }
+.role-intro h2 { margin: 0 0 6px; font-size: 19px; font-weight: 700; }
+.role-intro p { margin: 0; font-size: 14px; color: var(--text-secondary); }
+
+/* overview */
+.overview-wrap { padding: 30px 40px 60px; max-width: 1500px; margin: 0 auto; }
+.overview-header h2 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
+.overview-header p { margin: 0 0 6px; font-size: 14px; color: var(--text-secondary); max-width: 980px; }
+.overview-totals { display: flex; gap: 12px; margin-bottom: 18px; }
+.overview-total-card { flex: 1; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px 14px; }
+.overview-total-card .v { font-size: 22px; font-weight: 800; }
+.overview-total-card .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 3px; }
+.overview-role-panel { background: #FAFAFA; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px 24px; margin-bottom: 18px; }
+.overview-role-panel h3 { margin: 0 0 14px; font-size: 18px; font-weight: 800; }
+.overview-section-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.overview-section-card { background: #fff; border: 1px dashed #BEBEBE; border-radius: 8px; padding: 12px 14px; }
+.overview-section-card h4 { margin: 0 0 10px; font-size: 13px; font-weight: 700; }
+.overview-pills { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.overview-pill { display: block; padding: 9px 11px; border-radius: 5px; font-size: 11.5px; line-height: 1.3; cursor: pointer; background: #fff; border: 1px solid var(--border-default); color: var(--text-primary); transition: transform 0.08s ease, box-shadow 0.08s ease; }
+.overview-pill:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); border-color: var(--border-strong); }
+.overview-pill:active { transform: translateY(0); }
+.overview-pill:focus { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.overview-pill-name { font-weight: 700; }
+.overview-pill-id { font-family: var(--font-mono); font-size: 10px; opacity: 0.7; margin-left: 4px; }
+
+/* wireframe sections */
+.wf-section { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 22px 24px; margin-bottom: 22px; }
+.wf-section-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.wf-id-pill { font-family: var(--font-mono); font-size: 12px; background: #111; color: #fff; padding: 3px 9px; border-radius: 4px; font-weight: 600; }
+.wf-title { margin: 0; font-size: 17px; font-weight: 700; flex: 1; min-width: 220px; }
+.wf-meta-row { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin: 4px 0 14px; }
+.wf-desc { font-size: 13.5px; color: var(--text-secondary); margin: 0 0 16px; max-width: 920px; }
+
+/* B&W browser frame */
+.bw-frame { border: 1px solid #111; border-radius: 6px; overflow: hidden; background: #fff; max-width: 100%; }
+.bw-chrome { background: #F3F4F6; border-bottom: 1px solid #111; padding: 6px 10px; display: flex; align-items: center; gap: 10px; }
+.bw-chrome .dots { display: flex; gap: 5px; }
+.bw-chrome .dots i { width: 9px; height: 9px; border-radius: 50%; background: #fff; border: 1px solid #111; display: inline-block; }
+.bw-chrome .url { flex: 1; height: 18px; background: #fff; border: 1px solid #111; border-radius: 3px; display: flex; align-items: center; padding: 0 8px; font-family: var(--font-mono); font-size: 10.5px; color: #444; }
+.bw-chrome .meta-pill { font-family: var(--font-mono); font-size: 9.5px; color: #444; text-transform: uppercase; letter-spacing: 0.06em; border: 1px solid #111; padding: 1px 6px; border-radius: 3px; background: #fff; }
+.bw-body { background: #fff; color: #111; position: relative; }
+
+/* centered card / message screens */
+.bw-prelogin { min-height: 580px; background: repeating-linear-gradient(45deg, #fafafa 0 22px, #f3f3f3 22px 23px); display: flex; align-items: center; justify-content: center; padding: 40px; position: relative; }
+.bw-card { background: #fff; border: 1px solid #111; border-radius: 6px; padding: 30px 36px; width: 100%; max-width: 560px; }
+.bw-card-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.bw-card-logo .logo-mark { width: 28px; height: 28px; border: 1px solid #111; background: #111; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 11px; border-radius: 5px; }
+.bw-card-logo .logo-text { font-weight: 800; font-size: 13px; letter-spacing: 0.04em; }
+.bw-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+
+/* top-right theme + language (present on every app screen per FR-20/28/29) */
+.tr-controls { position: absolute; top: 12px; right: 14px; display: flex; gap: 6px; z-index: 4; }
+.tr-controls .tc { border: 1px solid #111; background: #fff; border-radius: 4px; padding: 3px 8px; font-size: 10.5px; font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 4px; }
+
+/* primitives */
+.b-input { border: 1px solid #111; background: #fff; padding: 9px 11px; font-size: 13px; border-radius: 3px; color: #111; display: flex; align-items: center; gap: 8px; }
+.b-input.full { width: 100%; }
+.b-input .ph { color: #888; }
+.b-btn-primary { background: #111; color: #fff; padding: 10px 16px; border-radius: 4px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #111; }
+.b-btn-secondary { background: #fff; color: #111; padding: 9px 14px; border: 1px solid #111; border-radius: 4px; font-size: 12.5px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.b-btn-block { width: 100%; }
+.b-btn-disabled { opacity: 0.4; }
+.b-fieldset { margin-bottom: 14px; }
+.b-fieldset .b-label { display: block; font-size: 11px; color: #444; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.b-help { font-size: 11.5px; color: #666; margin-top: 4px; }
+.b-help.err { color: #991B1B; }
+.b-link { color: #111; text-decoration: underline; font-size: 12px; }
+.toggle-row { display: flex; gap: 10px; margin: 8px 0 16px; }
+.toggle-pill { border: 1px solid #111; border-radius: 99px; padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; }
+.toggle-pill.off { opacity: 0.45; text-decoration: line-through; }
+.preview-box { border: 1px solid #111; border-radius: 6px; height: 240px; background: repeating-linear-gradient(45deg,#fafafa 0 12px,#efefef 12px 13px); display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 6px; }
+.preview-box .face { width: 64px; height: 64px; border: 1px solid #111; border-radius: 50%; }
+.preview-box.off .face { border-style: dashed; }
+.preview-box .self-tag { position: absolute; left: 8px; bottom: 8px; background: #111; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-family: var(--font-mono); }
+
+/* call screen */
+.call-screen { display: flex; flex-direction: column; min-height: 600px; background: #fff; }
+.call-topbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #111; }
+.call-topbar .spacer { flex: 1; }
+.call-topbar .tc { border: 1px solid #111; background: #fff; border-radius: 4px; padding: 3px 8px; font-size: 10.5px; font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 4px; }
+.call-area { flex: 1; display: flex; }
+.call-grid { flex: 1; display: grid; gap: 8px; padding: 12px; align-content: center; }
+.call-grid.g1 { grid-template-columns: 1fr; }
+.call-grid.g2 { grid-template-columns: 1fr 1fr; }
+.call-grid.g3 { grid-template-columns: 1fr 1fr; }
+.call-grid.g3 .vtile:nth-child(3) { grid-column: 1 / -1; width: 60%; justify-self: center; }
+.call-grid.g4 { grid-template-columns: 1fr 1fr; }
+.vtile { border: 1px solid #111; border-radius: 5px; position: relative; min-height: 200px; background: repeating-linear-gradient(45deg,#fafafa 0 10px,#f0f0f0 10px 11px); display: flex; align-items: center; justify-content: center; }
+.vtile .face { width: 56px; height: 56px; border: 1px solid #111; border-radius: 50%; }
+.vtile.cam-off { background: #f3f4f6; }
+.vtile.cam-off .face { border-style: dashed; }
+.vtile .name { position: absolute; left: 6px; bottom: 6px; background: #111; color: #fff; font-size: 9.5px; padding: 1px 6px; border-radius: 3px; font-family: var(--font-mono); }
+.vtile .mute { position: absolute; right: 6px; bottom: 6px; width: 17px; height: 17px; border: 1px solid #111; border-radius: 50%; background: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+.call-waiting { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #555; font-family: var(--font-mono); pointer-events: none; }
+.call-controls { display: flex; align-items: center; padding: 10px 12px; border-top: 1px solid #111; gap: 10px; }
+.call-controls .center { flex: 1; display: flex; justify-content: center; gap: 14px; }
+.call-controls .right { display: flex; gap: 8px; align-items: center; }
+.cbtn { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; border: 1px solid #111; border-radius: 8px; background: #fff; padding: 7px 12px; font-size: 10px; min-width: 66px; position: relative; }
+.cbtn .ci { font-size: 16px; line-height: 1; }
+.cbtn.off::after { content: ''; position: absolute; top: 7px; left: 50%; width: 1px; height: 20px; background: #111; transform: translateX(-50%) rotate(45deg); }
+.cbtn.end { background: #111; color: #fff; }
+.cbtn .tip { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; white-space: nowrap; font-family: var(--font-mono); }
+.copy-btn { border: 1px solid #111; background: #fff; border-radius: 4px; padding: 7px 11px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px; }
+.chat-btn { width: 38px; height: 38px; border: 1px solid #111; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; position: relative; }
+.chat-btn .unread { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: #111; }
+
+/* chat panel */
+.chat-panel { width: 320px; border-left: 1px solid #111; display: flex; flex-direction: column; }
+.chat-head { padding: 8px 10px; border-bottom: 1px solid #111; font-weight: 700; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+.chat-head .x { font-size: 13px; }
+.chat-msgs { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 9px; overflow: hidden; }
+.msg .m-meta { font-size: 9.5px; color: #666; font-family: var(--font-mono); margin-bottom: 2px; }
+.msg .m-text { font-size: 11.5px; border: 1px solid #111; border-radius: 6px; padding: 5px 7px; display: inline-block; max-width: 100%; }
+.msg-img { width: 86px; height: 56px; border: 1px solid #111; border-radius: 4px; background: repeating-linear-gradient(45deg,#fafafa 0 8px,#eee 8px 9px); display: flex; align-items: center; justify-content: center; font-size: 9px; color: #888; font-family: var(--font-mono); }
+.file-chip { border: 1px solid #111; border-radius: 5px; padding: 5px 8px; font-size: 10.5px; display: inline-flex; gap: 8px; align-items: center; }
+.file-chip .dl { border: 1px solid #111; border-radius: 3px; padding: 0 4px; font-size: 9px; }
+.chat-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #777; font-size: 11.5px; font-family: var(--font-mono); }
+.chat-input { border-top: 1px solid #111; padding: 8px; display: flex; gap: 6px; align-items: center; }
+.chat-input .attach { width: 26px; height: 26px; border: 1px solid #111; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.chat-input .box { flex: 1; border: 1px solid #111; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #888; }
+.chat-input .send { border: 1px solid #111; background: #111; color: #fff; border-radius: 4px; padding: 6px 10px; font-size: 11px; flex-shrink: 0; }
+.chat-staged { display: flex; gap: 6px; padding: 0 8px 8px; flex-wrap: wrap; }
+.staged-chip { border: 1px solid #111; border-radius: 4px; padding: 3px 6px; font-size: 10px; display: inline-flex; gap: 6px; align-items: center; }
+.staged-chip .rm { font-size: 10px; }
+
+/* screen share */
+.share-wrap { flex: 1; display: flex; flex-direction: column; padding: 12px; gap: 8px; }
+.share-main { flex: 1; border: 1px solid #111; border-radius: 6px; min-height: 360px; display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg,#f7f7f7 0 12px,#efefef 12px 13px); color: #555; font-family: var(--font-mono); font-size: 12px; position: relative; }
+.share-stop { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); border: 1px solid #111; background: #fff; border-radius: 4px; padding: 6px 12px; font-size: 12px; }
+.share-strip { display: flex; gap: 8px; }
+.share-strip .vtile { width: 170px; min-height: 104px; }
+
+/* message / status screens */
+.msg-screen { min-height: 480px; display: flex; align-items: center; justify-content: center; padding: 40px; background: repeating-linear-gradient(45deg,#fafafa 0 22px,#f3f3f3 22px 23px); position: relative; }
+.msg-box { text-align: center; background: #fff; border: 1px solid #111; border-radius: 6px; padding: 32px 38px; max-width: 460px; }
+.msg-box .ico { font-size: 26px; margin-bottom: 8px; }
+.msg-box h3 { margin: 0 0 10px; font-size: 16px; }
+.msg-box p { margin: 0 0 14px; font-size: 12.5px; color: #555; }
+
+/* reconnect overlay */
+.overlay-dim { position: absolute; inset: 0; background: rgba(17,17,17,0.45); display: flex; align-items: center; justify-content: center; }
+.overlay-box { background: #fff; border: 1px solid #111; border-radius: 6px; padding: 18px 22px; text-align: center; max-width: 320px; }
+.overlay-box h3 { margin: 0 0 6px; font-size: 14px; }
+.overlay-box .count { font-family: var(--font-mono); font-size: 13px; margin-top: 6px; }
+
+/* states & rules notes */
+.wf-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.wf-note-col { border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px 14px; background: var(--bg-page); }
+.wf-note-col h6 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); }
+.wf-note-col ul { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--text-secondary); }
+.wf-note-col ul li { margin: 3px 0; }
+.wf-note-col code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-soft); padding: 1px 5px; border-radius: 3px; color: #444; }
+
+.doc-foot { background: var(--bg-emphasis); color: #9CA3AF; font-family: var(--font-mono); font-size: 11px; padding: 16px 40px; display: flex; justify-content: space-between; letter-spacing: 0.02em; }
+
+@media (max-width: 1100px) {
+  .overview-totals { flex-wrap: wrap; }
+  .wf-notes { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>КМБ Video Chat<span class="dot"> · </span>Wireframes · Screen Inventory</h1>
+  <div class="sub">For review before wireframe production · v1.0 · June 2026</div>
+  <div class="meta">
+    <span>Source of truth: prd-kmb-video-chat.md (v2.0)</span>
+    <span>Reference: prd-videochat-starter-kit.md</span>
+    <span>Desktop only (≥1024px)</span>
+    <span>Confidential · Fora Soft</span>
+  </div>
+</header>
+
+<nav class="role-tabs">
+  <button class="role-tab active" data-role="overview">Overview</button>
+  <button class="role-tab" data-role="host">Host <span class="count">6</span></button>
+  <button class="role-tab" data-role="guest">Guest <span class="count">6</span></button>
+  <button class="role-tab" data-role="system">System &amp; Links <span class="count">4</span></button>
+</nav>
+
+<!-- ============================ OVERVIEW ============================ -->
+<section class="role-pane active" data-role="overview">
+  <div class="overview-wrap">
+    <div class="overview-header">
+      <h2>Overview</h2>
+      <p>Every screen defined in the PRD, grouped by role. Each pill is one screen. <strong>Click any pill to jump straight to that wireframe.</strong></p>
+    </div>
+
+    <div class="overview-totals">
+      <div class="overview-total-card"><div class="k">Total screens</div><div class="v">16</div></div>
+    </div>
+
+    <!-- HOST -->
+    <div class="overview-role-panel">
+      <h3>Host <span style="font-weight:500;color:var(--text-muted);font-size:13px;margin-left:4px">— 6 screens</span></h3>
+      <div class="overview-section-grid">
+        <div class="overview-section-card">
+          <h4>Entry</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-H1" role="button" tabindex="0"><span class="overview-pill-name">Landing — Start a call</span><span class="overview-pill-id">H1</span></div>
+            <div class="overview-pill" data-target="wf-H2" role="button" tabindex="0"><span class="overview-pill-name">Pre-join (host)</span><span class="overview-pill-id">H2</span></div>
+          </div>
+        </div>
+        <div class="overview-section-card">
+          <h4>In the call</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-H3" role="button" tabindex="0"><span class="overview-pill-name">In-call (host) — video grid</span><span class="overview-pill-id">H3</span></div>
+            <div class="overview-pill" data-target="wf-H4" role="button" tabindex="0"><span class="overview-pill-name">In-call — chat panel</span><span class="overview-pill-id">H4</span></div>
+            <div class="overview-pill" data-target="wf-H5" role="button" tabindex="0"><span class="overview-pill-name">In-call — screen sharing</span><span class="overview-pill-id">H5</span></div>
+          </div>
+        </div>
+        <div class="overview-section-card">
+          <h4>Host controls</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-H6" role="button" tabindex="0"><span class="overview-pill-name">Remove a guest</span><span class="overview-pill-id">H6</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUEST -->
+    <div class="overview-role-panel">
+      <h3>Guest <span style="font-weight:500;color:var(--text-muted);font-size:13px;margin-left:4px">— 6 screens</span></h3>
+      <div class="overview-section-grid">
+        <div class="overview-section-card">
+          <h4>Entry</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-G1" role="button" tabindex="0"><span class="overview-pill-name">Pre-join (guest)</span><span class="overview-pill-id">G1</span></div>
+          </div>
+        </div>
+        <div class="overview-section-card">
+          <h4>In the call</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-G2" role="button" tabindex="0"><span class="overview-pill-name">In-call (guest) — video grid</span><span class="overview-pill-id">G2</span></div>
+          </div>
+        </div>
+        <div class="overview-section-card">
+          <h4>Leaving &amp; end states</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-G3" role="button" tabindex="0"><span class="overview-pill-name">You have left the call</span><span class="overview-pill-id">G3</span></div>
+            <div class="overview-pill" data-target="wf-G4" role="button" tabindex="0"><span class="overview-pill-name">Removed by the host</span><span class="overview-pill-id">G4</span></div>
+            <div class="overview-pill" data-target="wf-G5" role="button" tabindex="0"><span class="overview-pill-name">Host ended the call</span><span class="overview-pill-id">G5</span></div>
+            <div class="overview-pill" data-target="wf-G6" role="button" tabindex="0"><span class="overview-pill-name">Host disconnected — reconnecting</span><span class="overview-pill-id">G6</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYSTEM -->
+    <div class="overview-role-panel">
+      <h3>System &amp; Links <span style="font-weight:500;color:var(--text-muted);font-size:13px;margin-left:4px">— 4 screens</span></h3>
+      <div class="overview-section-grid">
+        <div class="overview-section-card">
+          <h4>Link &amp; access states</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-S1" role="button" tabindex="0"><span class="overview-pill-name">This call is full</span><span class="overview-pill-id">S1</span></div>
+            <div class="overview-pill" data-target="wf-S2" role="button" tabindex="0"><span class="overview-pill-name">This call has ended</span><span class="overview-pill-id">S2</span></div>
+            <div class="overview-pill" data-target="wf-S3" role="button" tabindex="0"><span class="overview-pill-name">This call was not found</span><span class="overview-pill-id">S3</span></div>
+          </div>
+        </div>
+        <div class="overview-section-card">
+          <h4>Browser</h4>
+          <div class="overview-pills">
+            <div class="overview-pill" data-target="wf-S4" role="button" tabindex="0"><span class="overview-pill-name">Unsupported browser</span><span class="overview-pill-id">S4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ HOST ============================ -->
+<section class="role-pane" data-role="host">
+  <div class="role-intro">
+    <h2>Host</h2>
+    <p>The person who starts the call from the landing page, invites others with the participant link, and owns the room: copy link, share screen, remove a guest, end the call. Theme (Dark default / Light) and language (EN default / RU) toggles sit top-right on every screen.</p>
+  </div>
+
+  <!-- H1 -->
+  <section class="wf-section" id="wf-H1">
+    <div class="wf-section-head"><span class="wf-id-pill">H1</span><h4 class="wf-title">Landing — Start a call</h4></div>
+    <div class="wf-meta-row">PRD: FR-30, US-17, US-1</div>
+    <p class="wf-desc">The app's root screen. App name/logo, one-line tagline, a single "Start a call" button, plus theme and language controls. No other navigation. Clicking "Start a call" creates a room and sends the host to the pre-join screen (H2).</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/</div><div class="meta-pill">Wireframe</div></div>
+      <div class="bw-body bw-prelogin">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="bw-card" style="text-align:center">
+          <div class="bw-card-logo" style="justify-content:center"><div class="logo-mark">KMB</div><div class="logo-text">КМБ VIDEO CHAT</div></div>
+          <h2 style="margin-top:16px">Group video calls for up to four people. No sign-up required.</h2>
+          <div class="b-btn-primary b-btn-block" style="margin-top:14px">Start a call</div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Elements (PRD-only)</h6><ul><li>App name / logo + tagline</li><li>Single <strong>Start a call</strong> button</li><li>Theme toggle (Dark default) + language selector (EN default), top-right</li></ul></div>
+      <div class="wf-note-col"><h6>States &amp; messages</h6><ul><li>Room creation fails → inline: <code>Unable to start a call right now. Please try again.</code> (button stays enabled)</li><li>Unsupported browser → see S4 message shown here</li></ul></div>
+    </div>
+  </section>
+
+  <!-- H2 -->
+  <section class="wf-section" id="wf-H2">
+    <div class="wf-section-head"><span class="wf-id-pill">H2</span><h4 class="wf-title">Pre-join (host)</h4></div>
+    <div class="wf-meta-row">PRD: FR-10, FR-11, FR-12, US-2, US-3</div>
+    <p class="wf-desc">Mirrored self-preview, camera and microphone toggles (both on by default), a name field, the "Enter call" button, and the host-only "Copy link" button. Browser permission is requested on load; the user can enter even if a device is denied.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">Wireframe</div></div>
+      <div class="bw-body bw-prelogin">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="bw-card">
+          <div class="bw-card-logo"><div class="logo-mark">KMB</div><div class="logo-text">КМБ VIDEO CHAT</div></div>
+          <div class="preview-box"><div class="face"></div><span class="self-tag">Preview (mirrored)</span></div>
+          <div class="toggle-row"><span class="toggle-pill">◉ Camera on</span><span class="toggle-pill">🎙 Mic on</span></div>
+          <div class="b-fieldset"><label class="b-label">Your name</label><div class="b-input full"><span class="ph">Ann</span></div><div class="b-help">2–30 characters. Letters, numbers, spaces, hyphens and apostrophes.</div></div>
+          <div style="display:flex;gap:10px;align-items:center"><div class="b-btn-primary" style="flex:1">Enter call →</div><div class="copy-btn">⧉ Copy link</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Permission states</h6><ul><li>Camera denied → preview shows avatar, camera toggle off + disabled: <code>Camera access was denied. You can enable it in your browser settings.</code></li><li>Mic denied → mic toggle off + disabled: <code>Microphone access was denied…</code></li><li>Both denied → avatar + both off, combined message; user can still enter</li></ul></div>
+      <div class="wf-note-col"><h6>Name + link rules</h6><ul><li>Empty/whitespace on Enter → <code>Please enter your name</code></li><li>&lt; 2 chars → <code>Name must be 2–30 characters</code>; bad chars → letters/numbers/spaces/hyphens/apostrophes only</li><li>Copy link → copies participant URL, <code>Link copied!</code> (2s); clipboard blocked → show URL as selectable text</li><li>Copy link is host-only (hidden for guests)</li></ul></div>
+    </div>
+  </section>
+
+  <!-- H3 -->
+  <section class="wf-section" id="wf-H3">
+    <div class="wf-section-head"><span class="wf-id-pill">H3</span><h4 class="wf-title">In-call (host) — video grid</h4></div>
+    <div class="wf-meta-row">PRD: FR-13–15, FR-17–21, US-5, US-6, US-7</div>
+    <p class="wf-desc">The grid adapts to the participant count (1 / 2 / 3 / 4). Own tile is mirrored and labelled "(You)". Bottom-centre controls: microphone, camera, screen share, and the host's red "End call". Host also has "Copy link" and the chat button (bottom-right). Camera-off tiles show an avatar; mic-off tiles show a mute icon.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">4 / 4 · 2×2</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area">
+            <div class="call-grid g4">
+              <div class="vtile"><div class="face"></div><span class="name">Ann (You)</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Boris</span><span class="mute">⊘</span></div>
+              <div class="vtile cam-off"><div class="face"></div><span class="name">Chen</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Dmitry</span></div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center">
+              <span class="cbtn"><span class="ci">🎙</span>Mic</span>
+              <span class="cbtn"><span class="ci">◉</span>Camera</span>
+              <span class="cbtn"><span class="ci">🖥</span>Share screen</span>
+              <span class="cbtn end"><span class="ci">⏻</span>End call</span>
+            </div>
+            <div class="right">
+              <span class="copy-btn">⧉ Copy link</span>
+              <span class="chat-btn">💬<span class="unread"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700">State — host alone (empty state)</div>
+    <div class="bw-frame" style="margin-top:8px">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">1 / 4 · waiting</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area" style="position:relative">
+            <div class="call-grid g1"><div class="vtile"><div class="face"></div><span class="name">Ann (You)</span></div></div>
+            <div class="call-waiting">Waiting for someone to join…</div>
+          </div>
+          <div class="call-controls">
+            <div class="center"><span class="cbtn"><span class="ci">🎙</span>Mic</span><span class="cbtn"><span class="ci">◉</span>Camera</span><span class="cbtn"><span class="ci">🖥</span>Share screen</span><span class="cbtn end"><span class="ci">⏻</span>End call</span></div>
+            <div class="right"><span class="copy-btn">⧉ Copy link</span><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Layout by count</h6><ul><li>1 → one tile fills area + "Waiting for someone to join…" notice</li><li>2 → left / right; 3 → two top + one centred bottom; 4 → 2×2</li><li>Own tile mirrored, labelled <code>&lt;name&gt; (You)</code></li></ul></div>
+      <div class="wf-note-col"><h6>Controls &amp; states</h6><ul><li>Mic/camera toggles flip icon to a struck-through "off"; device error → inline above bar, auto-dismiss 4s</li><li>Denied device → toggle off + disabled all session</li><li>End call (red) = ends room for everyone; tooltips on hover for mic / camera / share / end</li><li>Can't reach the call service → <code>Unable to connect to the call service. Please check your internet connection and try again.</code></li></ul></div>
+    </div>
+  </section>
+
+  <!-- H4 -->
+  <section class="wf-section" id="wf-H4">
+    <div class="wf-section-head"><span class="wf-id-pill">H4</span><h4 class="wf-title">In-call — chat panel</h4></div>
+    <div class="wf-meta-row">PRD: FR-22–27, US-9, US-10 · chat panel is the same for both roles; only the bottom controls differ by role</div>
+    <p class="wf-desc">Opening the chat (bottom-right button) slides a panel in on the right; the video area shrinks so nothing is overlapped. Messages show sender name + HH:MM. Attachments: images render as thumbnails (click opens a full-size overlay viewer), files as a chip with name, size, and download (click downloads). Input row has attach (paperclip), text field, and Send.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">Chat open</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area">
+            <div class="call-grid g3">
+              <div class="vtile"><div class="face"></div><span class="name">Ann (You)</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Boris</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Chen</span><span class="mute">⊘</span></div>
+            </div>
+            <div class="chat-panel">
+              <div class="chat-head"><span>Chat</span><span class="x">✕</span></div>
+              <div class="chat-msgs">
+                <div class="msg"><div class="m-meta">Boris · 14:02</div><div class="m-text">Sharing the deck now</div></div>
+                <div class="msg"><div class="m-meta">Boris · 14:02</div><div class="file-chip">📄 plan.pdf · 1.2 MB <span class="dl">↓</span></div></div>
+                <div class="msg"><div class="m-meta">Chen · 14:03</div><div class="msg-img">image</div></div>
+                <div class="msg"><div class="m-meta">Ann (You) · 14:04</div><div class="m-text">Got it</div></div>
+              </div>
+              <div class="chat-staged"><span class="staged-chip">🖼 photo.png <span class="rm">✕</span></span></div>
+              <div class="chat-input"><span class="attach">📎</span><span class="box">Type a message…</span><span class="send">Send</span></div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center"><span class="cbtn"><span class="ci">🎙</span>Mic</span><span class="cbtn"><span class="ci">◉</span>Camera</span><span class="cbtn"><span class="ci">🖥</span>Share screen</span><span class="cbtn end"><span class="ci">⏻</span>End call</span></div>
+            <div class="right"><span class="copy-btn">⧉ Copy link</span><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="wf-desc" style="margin-top:18px">Image viewer (lightbox) — clicking a chat image thumbnail opens it full-size in an overlay above the whole UI. The background (chat + video) is dimmed with a semi-transparent layer (not fully black) and the call keeps running behind it. Close with the ✕, the Esc key, or a click on the dimmed background. View-only — there is no download button inside the overlay.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">Image viewer</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area" style="position:relative">
+            <div class="call-grid g3">
+              <div class="vtile"><div class="face"></div><span class="name">Ann (You)</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Boris</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Chen</span></div>
+            </div>
+            <div class="overlay-dim">
+              <div style="position:relative;background:repeating-linear-gradient(45deg,#f7f7f7 0 12px,#efefef 12px 13px);border:1px solid #111;border-radius:6px;width:60%;max-width:420px;min-height:240px;display:flex;align-items:center;justify-content:center;color:#555;font-family:var(--font-mono);font-size:12px">
+                photo.png — full size
+                <span title="Close (Esc / click outside)" style="position:absolute;top:-12px;right:-12px;width:26px;height:26px;border:1px solid #111;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px">✕</span>
+              </div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center"><span class="cbtn"><span class="ci">🎙</span>Mic</span><span class="cbtn"><span class="ci">◉</span>Camera</span><span class="cbtn"><span class="ci">🖥</span>Share screen</span><span class="cbtn end"><span class="ci">⏻</span>End call</span></div>
+            <div class="right"><span class="copy-btn">⧉ Copy link</span><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Chat rules</h6><ul><li>New joiner sees history accrued while the room has been alive; cleared when the room ends</li><li>Send on click or Enter; enabled when there is text or ≥1 attachment; max 1000 chars (counter appears at 900)</li><li>Hidden panel + new message → unread dot on chat button; cleared on open</li><li>Sending in progress → message shows <code>Sending…</code> until delivered; on failure → <code>Not delivered</code>, text/attachments kept to resend</li></ul></div>
+      <div class="wf-note-col"><h6>Attachments &amp; empty state</h6><ul><li>Images: PNG/JPEG/GIF/WebP — thumbnail; click opens a full-size overlay (dimmed bg, not fully black; close via ✕ / Esc / click outside; view only). Animated GIF/WebP are still in the chat and animate only in the overlay</li><li>Files: PDF/DOC/DOCX/XLS/XLSX/TXT/ZIP — chip (name + size + download); click downloads via browser, no in-app preview</li><li>≤ 10 MB/file, ≤ 5/message. Errors: <code>Unsupported file type.</code> / <code>File exceeds 10 MB.</code> / <code>You can attach up to 5 files per message.</code></li><li>No messages yet → <code>No messages yet.</code></li></ul></div>
+    </div>
+  </section>
+
+  <!-- H5 -->
+  <section class="wf-section" id="wf-H5">
+    <div class="wf-section-head"><span class="wf-id-pill">H5</span><h4 class="wf-title">In-call — screen sharing</h4></div>
+    <div class="wf-meta-row">PRD: FR-16, US-8 · any participant, one at a time</div>
+    <p class="wf-desc">Any participant can share, one share at a time. While active, the shared content is the large main area for everyone — including the sharer, who sees their own shared content there too — and all participant videos become a thumbnail strip. The sharer's camera keeps running (two streams: screen + camera), so their camera tile stays in the strip with everyone else's. The main area is labelled — others see «&lt;name&gt; is sharing their screen», the sharer sees «You are sharing your screen»; every thumbnail keeps its name label and camera-off / mute indicators. The sharer gets a "Stop sharing" control; everyone else's "Share screen" button is disabled.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">Sharing</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area">
+            <div class="share-wrap">
+              <div class="share-main">You are sharing your screen<span class="share-stop">⬚ Stop sharing</span></div>
+              <div class="share-strip">
+                <div class="vtile"><div class="face"></div><span class="name">Ann (You)</span></div>
+                <div class="vtile"><div class="face"></div><span class="name">Boris</span></div>
+                <div class="vtile cam-off"><div class="face"></div><span class="name">Chen</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center"><span class="cbtn"><span class="ci">🎙</span>Mic</span><span class="cbtn"><span class="ci">◉</span>Camera</span><span class="cbtn"><span class="ci">🖥</span>Share screen</span><span class="cbtn end"><span class="ci">⏻</span>End call</span></div>
+            <div class="right"><span class="copy-btn">⧉ Copy link</span><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Rules</h6><ul><li>One active share at a time; others' control disabled with tooltip <code>Someone is already sharing their screen</code></li><li>Concurrent attempts → first registered by server wins; the other is rejected</li><li>Sharer leaves / is removed / host grace begins → share ends, layout returns to grid</li></ul></div>
+      <div class="wf-note-col"><h6>Streams &amp; labels</h6><ul><li>Shared content fills the main area for <strong>everyone, incl. the sharer</strong>; main area labelled <code>&lt;name&gt; is sharing their screen</code> (<code>You are sharing your screen</code> for the sharer)</li><li>Shared screen shown in full (<code>contain</code>) — never cropped; neutral margins if proportions differ. (Tiles use <code>cover</code>; the shared screen uses <code>contain</code>.)</li><li>Sharer's camera keeps transmitting → 2 streams (screen + camera); their camera tile stays in the strip</li><li>Every thumbnail keeps its name label + camera-off / mute icons, in grid order (host → guests by join order)</li></ul></div>
+      <div class="wf-note-col"><h6>States</h6><ul><li>Prompt cancelled / capture denied → inline above bar: <code>Unable to share your screen. Please check your browser permissions.</code> (4s)</li><li>System / tab audio is not captured (out of scope)</li><li>Bottom controls follow the viewer's role (guest: Leave, no Copy link / End)</li></ul></div>
+    </div>
+  </section>
+
+  <!-- H6 -->
+  <section class="wf-section" id="wf-H6">
+    <div class="wf-section-head"><span class="wf-id-pill">H6</span><h4 class="wf-title">Remove a guest (host)</h4></div>
+    <div class="wf-meta-row">PRD: FR-6, US-13</div>
+    <p class="wf-desc">The host sees a "Remove" control on each guest's tile (revealed on hover or keyboard focus). Activating it opens a confirmation dialog — "Remove &lt;name&gt; from the call?" with a red "Remove" and a "Cancel" — and the guest is disconnected only after the host confirms. On confirm the slot is freed and the removed guest sees screen G4; "Cancel" closes the dialog with no change. Removal does not block them from rejoining via the link.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…?host=••••</div><div class="meta-pill">Host · remove</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area" style="position:relative">
+            <div class="call-grid g3">
+              <div class="vtile"><div class="face"></div><span class="name">Ann (You)</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Boris</span><span class="mute" style="left:6px;right:auto;width:auto;border-radius:4px;padding:0 5px">✕ Remove</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Chen</span></div>
+            </div>
+            <div class="overlay-dim">
+              <div class="overlay-box"><h3>Remove Boris from the call?</h3><div style="display:flex;gap:8px;justify-content:center;margin-top:12px"><span class="cbtn end" style="padding:6px 14px">Remove</span><span class="cbtn" style="padding:6px 14px">Cancel</span></div></div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center"><span class="cbtn"><span class="ci">🎙</span>Mic</span><span class="cbtn"><span class="ci">◉</span>Camera</span><span class="cbtn"><span class="ci">🖥</span>Share screen</span><span class="cbtn end"><span class="ci">⏻</span>End call</span></div>
+            <div class="right"><span class="copy-btn">⧉ Copy link</span><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Behaviour</h6><ul><li>"Remove" shown only to the host, on each guest's tile (revealed on hover/focus; tooltip <code>Remove this guest</code>)</li><li>Click "Remove" → confirmation dialog <code>Remove &lt;name&gt; from the call?</code> with red "Remove" + "Cancel"</li><li>Guest removed only after confirm; "Cancel" closes the dialog, nothing changes</li><li>Target guest leaves/disconnects while dialog open → dialog auto-closes, nothing to remove</li><li>On confirm: guest disconnected; grid re-arranges; slot freed</li></ul></div>
+      <div class="wf-note-col"><h6>Result for the guest</h6><ul><li>Guest sees G4: <code>You were removed from the call by the host.</code> + "Back to home"</li><li>Guest may rejoin via the link (no rejoin block)</li></ul></div>
+    </div>
+  </section>
+</section>
+
+<!-- ============================ GUEST ============================ -->
+<section class="role-pane" data-role="guest">
+  <div class="role-intro">
+    <h2>Guest</h2>
+    <p>Anyone who opens the participant link. They join by entering a name, take part in the call (camera, mic, screen share, chat), and can leave at any time. Guests never see "Copy link", "End call", or "Remove". The chat panel (H4) and screen-sharing (H5) layouts are the same for guests — only the bottom controls differ (guest: Leave, no Copy link and no End call).</p>
+  </div>
+
+  <!-- G1 -->
+  <section class="wf-section" id="wf-G1">
+    <div class="wf-section-head"><span class="wf-id-pill">G1</span><h4 class="wf-title">Pre-join (guest)</h4></div>
+    <div class="wf-meta-row">PRD: FR-10–12, US-2, US-4</div>
+    <p class="wf-desc">Same preview, camera/microphone toggles, name field and permission handling as the host pre-join — but the entry button reads "Join" and there is no "Copy link". Reached by opening a valid participant link when the call has a free slot.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Wireframe</div></div>
+      <div class="bw-body bw-prelogin">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="bw-card">
+          <div class="bw-card-logo"><div class="logo-mark">KMB</div><div class="logo-text">КМБ VIDEO CHAT</div></div>
+          <div class="preview-box"><div class="face"></div><span class="self-tag">Preview (mirrored)</span></div>
+          <div class="toggle-row"><span class="toggle-pill">◉ Camera on</span><span class="toggle-pill">🎙 Mic on</span></div>
+          <div class="b-fieldset"><label class="b-label">Your name</label><div class="b-input full"><span class="ph">Boris</span></div><div class="b-help">2–30 characters. Letters, numbers, spaces, hyphens and apostrophes.</div></div>
+          <div class="b-btn-primary b-btn-block">Join →</div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Same as host pre-join</h6><ul><li>Mirrored preview; camera/mic on by default; permission-denied handling identical to H2</li><li>Name validation identical to H2</li></ul></div>
+      <div class="wf-note-col"><h6>Differences &amp; entry blocks</h6><ul><li>Button is <strong>Join</strong>; no "Copy link"</li><li>Link full on open → S1; ended → S2; invalid → S3</li><li>Room fills before Join click → S1 (full) on entry</li></ul></div>
+    </div>
+  </section>
+
+  <!-- G2 -->
+  <section class="wf-section" id="wf-G2">
+    <div class="wf-section-head"><span class="wf-id-pill">G2</span><h4 class="wf-title">In-call (guest) — video grid</h4></div>
+    <div class="wf-meta-row">PRD: FR-13–18, FR-19 (Leave), FR-22, US-5–7, US-9</div>
+    <p class="wf-desc">Identical grid and chat to the host view, but the controls bar ends with "Leave" (not "End call"), and there is no "Copy link" and no "Remove". Leaving frees the slot without affecting the rest of the call.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">2 / 4 · L / R</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area">
+            <div class="call-grid g2">
+              <div class="vtile"><div class="face"></div><span class="name">Boris (You)</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Ann</span></div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center">
+              <span class="cbtn"><span class="ci">🎙</span>Mic</span>
+              <span class="cbtn off"><span class="ci">◉</span>Camera</span>
+              <span class="cbtn"><span class="ci">🖥</span>Share screen</span>
+              <span class="cbtn"><span class="ci">⎋</span>Leave</span>
+            </div>
+            <div class="right"><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Guest controls</h6><ul><li>Mic, camera, screen share, and <strong>Leave</strong> (no End call / Copy link / Remove)</li><li>Same camera-off avatar and mic-off icon behaviour as host</li></ul></div>
+      <div class="wf-note-col"><h6>Leaving</h6><ul><li>Leave → screen G3 (You have left) with "Rejoin"; the rest of the call is unaffected, slot freed</li><li>Unexpected disconnect = treated as leaving; no grace period for guests</li></ul></div>
+    </div>
+  </section>
+
+  <!-- G3 -->
+  <section class="wf-section" id="wf-G3">
+    <div class="wf-section-head"><span class="wf-id-pill">G3</span><h4 class="wf-title">You have left the call</h4></div>
+    <div class="wf-meta-row">PRD: FR-19, US-11</div>
+    <p class="wf-desc">Shown after a guest clicks "Leave". Offers "Rejoin", which returns to the pre-join screen for the same room.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Left</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">⎋</div><h3>You have left the call.</h3><div class="b-btn-primary">Rejoin</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- G4 -->
+  <section class="wf-section" id="wf-G4">
+    <div class="wf-section-head"><span class="wf-id-pill">G4</span><h4 class="wf-title">Removed by the host</h4></div>
+    <div class="wf-meta-row">PRD: FR-6, US-13</div>
+    <p class="wf-desc">Shown when the host removes the guest. Removal does not block rejoining the same link while the room is alive.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Removed</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">⊘</div><h3>You were removed from the call by the host.</h3><div class="b-btn-primary">Back to home</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- G5 -->
+  <section class="wf-section" id="wf-G5">
+    <div class="wf-section-head"><span class="wf-id-pill">G5</span><h4 class="wf-title">Host ended the call</h4></div>
+    <div class="wf-meta-row">PRD: FR-3, US-12</div>
+    <p class="wf-desc">Shown to every guest when the host clicks "End call". The room is destroyed and the participant link becomes inactive (later visits show S2).</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Ended by host</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">■</div><h3>The host has ended the call.</h3><div class="b-btn-primary">Back to home</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- G6 -->
+  <section class="wf-section" id="wf-G6">
+    <div class="wf-section-head"><span class="wf-id-pill">G6</span><h4 class="wf-title">Host disconnected — reconnecting</h4></div>
+    <div class="wf-meta-row">PRD: FR-4, US-14</div>
+    <p class="wf-desc">If the host drops unexpectedly, the room enters a 60-second grace period. Guests see an overlay with a live countdown over the call. If the host returns, the call resumes; if 60s pass, the room ends.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Grace · 60s</div></div>
+      <div class="bw-body">
+        <div class="call-screen">
+          <div class="call-topbar"><span class="spacer"></span><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+          <div class="call-area" style="position:relative">
+            <div class="call-grid g2">
+              <div class="vtile"><div class="face"></div><span class="name">Boris (You)</span></div>
+              <div class="vtile"><div class="face"></div><span class="name">Chen</span></div>
+            </div>
+            <div class="overlay-dim">
+              <div class="overlay-box"><h3>The host lost connection.</h3><div style="font-size:12px;color:#555">Waiting for them to return…</div><div class="count">Reconnecting… 47s</div></div>
+            </div>
+          </div>
+          <div class="call-controls">
+            <div class="center"><span class="cbtn"><span class="ci">🎙</span>Mic</span><span class="cbtn"><span class="ci">◉</span>Camera</span><span class="cbtn"><span class="ci">🖥</span>Share screen</span><span class="cbtn"><span class="ci">⎋</span>Leave</span></div>
+            <div class="right"><span class="chat-btn">💬</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-notes">
+      <div class="wf-note-col"><h6>Countdown</h6><ul><li>Overlay: <code>The host lost connection. Waiting for them to return…</code> + <code>Reconnecting… 47s</code> (updates every second)</li></ul></div>
+      <div class="wf-note-col"><h6>Outcomes</h6><ul><li>Host returns within 60s → call resumes, overlay clears</li><li>60s elapse → room ends; guest sees <code>The host has disconnected and the call has ended.</code> + "Back to home"</li></ul></div>
+    </div>
+  </section>
+</section>
+
+<!-- ============================ SYSTEM ============================ -->
+<section class="role-pane" data-role="system">
+  <div class="role-intro">
+    <h2>System &amp; Links</h2>
+    <p>Full-screen states triggered by the participant link or the browser. Each carries the exact PRD message and a single action.</p>
+  </div>
+
+  <!-- S1 -->
+  <section class="wf-section" id="wf-S1">
+    <div class="wf-section-head"><span class="wf-id-pill">S1</span><h4 class="wf-title">This call is full</h4></div>
+    <div class="wf-meta-row">PRD: FR-2, US-4</div>
+    <p class="wf-desc">Shown when a guest opens a link to a call that already has 4 participants (or that fills before they click the entry button).</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Full</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">₍</div><h3>This call is full.</h3><p>Only four participants can join at a time.</p><div class="b-btn-primary">Back to home</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S2 -->
+  <section class="wf-section" id="wf-S2">
+    <div class="wf-section-head"><span class="wf-id-pill">S2</span><h4 class="wf-title">This call has ended</h4></div>
+    <div class="wf-meta-row">PRD: FR-3, FR-4, US-4</div>
+    <p class="wf-desc">Shown for a participant link whose room has been destroyed (host ended it, or the host grace period expired).</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/3f9a…</div><div class="meta-pill">Ended</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">■</div><h3>This call has ended.</h3><div class="b-btn-primary">Start a new call</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S3 -->
+  <section class="wf-section" id="wf-S3">
+    <div class="wf-section-head"><span class="wf-id-pill">S3</span><h4 class="wf-title">This call was not found</h4></div>
+    <div class="wf-meta-row">PRD: FR-7, US-4</div>
+    <p class="wf-desc">Shown for a link that matches no current or previous room, or has an invalid format (also covers an invalid host token).</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/r/????</div><div class="meta-pill">Not found</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">⚠</div><h3>This call was not found.</h3><p>The link may be incorrect or expired.</p><div class="b-btn-primary">Start a new call</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S4 -->
+  <section class="wf-section" id="wf-S4">
+    <div class="wf-section-head"><span class="wf-id-pill">S4</span><h4 class="wf-title">Unsupported browser</h4></div>
+    <div class="wf-meta-row">PRD: FR-31</div>
+    <p class="wf-desc">Shown on the first screen the user opens (landing, or pre-join when arriving via a participant link) when the browser is outside the supported list.</p>
+    <div class="bw-frame">
+      <div class="bw-chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">kmb-videochat.app/</div><div class="meta-pill">Unsupported</div></div>
+      <div class="bw-body msg-screen">
+        <div class="tr-controls"><span class="tc">◐ Dark</span><span class="tc">EN ▾</span></div>
+        <div class="msg-box"><div class="ico">⚠</div><h3>Your browser may not support video calls.</h3><p>Please use the latest version of Chrome, Firefox, Safari, or Edge.</p></div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<footer class="doc-foot">
+  <div>КМБ Video Chat · Wireframes · Screen Inventory · v1.0 · June 2026</div>
+  <div>Built from prd-kmb-video-chat.md v2.0 · Desktop only · Not for production</div>
+</footer>
+
+<script>
+(function(){
+  // Overview pill click — jump to the target wireframe
+  function navigateToWireframe(wfId){
+    var target = document.getElementById(wfId);
+    if (!target) return;
+    var rolePane = target.closest('.role-pane');
+    if (!rolePane) return;
+    var roleKey = rolePane.dataset.role;
+    document.querySelectorAll('.role-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.role === roleKey); });
+    document.querySelectorAll('.role-pane').forEach(function(p){ p.classList.toggle('active', p.dataset.role === roleKey); });
+    setTimeout(function(){
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.style.transition = 'background-color 0.4s ease';
+      var orig = target.style.backgroundColor;
+      target.style.backgroundColor = 'rgba(255, 244, 153, 0.5)';
+      setTimeout(function(){ target.style.backgroundColor = orig; }, 900);
+    }, 60);
+  }
+  document.querySelectorAll('.overview-pill').forEach(function(pill){
+    pill.addEventListener('click', function(){ if (pill.dataset.target) navigateToWireframe(pill.dataset.target); });
+    pill.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (pill.dataset.target) navigateToWireframe(pill.dataset.target); }
+    });
+  });
+  document.querySelectorAll('.role-tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      var key = t.dataset.role;
+      document.querySelectorAll('.role-tab').forEach(function(x){ x.classList.toggle('active', x === t); });
+      document.querySelectorAll('.role-pane').forEach(function(p){ p.classList.toggle('active', p.dataset.role === key); });
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

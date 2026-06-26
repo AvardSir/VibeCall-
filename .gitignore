@@ -1,0 +1,7 @@
+node_modules/
+backend/node_modules/
+backend/dist/
+backend/.storage/
+backend/.env
+.superpowers/
+*.log

@@ -1,0 +1,321 @@
+# КМБ Video Chat — Technical Implementation Spec
+
+- **Version:** 1.0
+- **Date:** 2026-06-26
+- **Status:** Approved for planning
+- **Source of truth:** `prd-kmb-video-chat.md` (v2.0) and `KMB_VideoChat_Wireframes_with_Overview.html` (v1.0, 16 screens)
+- **Scope:** Desktop only (≥1024px). Group video calls, up to 4 participants, no sign-up.
+
+---
+
+## 1. Overview
+
+КМБ Video Chat is a no-sign-up group video calling web app for up to 4 participants per
+room. One person is the **host** (creates the room, owns it) and the others are **guests**
+(join via a shared participant link). The app supports camera/mic, screen sharing (one at a
+time), text chat with image/file attachments, dark/light theming, and EN/RU localization.
+
+This document specifies the **technical implementation**: architecture, components,
+interfaces, data models, and behaviors needed to build the 16 screens and states defined in
+the wireframes.
+
+### 1.1 Technology decisions
+
+| Concern | Decision |
+| --- | --- |
+| Media transport | Self-hosted **LiveKit** server (SFU). Local deployment. |
+| Frontend | **React + TypeScript + Vite**, LiveKit Components React SDK, Tailwind CSS, react-i18next |
+| Backend | Single **Node + TypeScript** service (control plane) |
+| Realtime chat / presence | **Socket.IO** (backend-owned) |
+| Token generation | LiveKit server SDK `AccessToken` helper (no hand-rolled JWT) |
+| Attachment storage | Local disk on the backend, room-scoped folders |
+| Room state | In-memory registry on the backend (authoritative) |
+
+### 1.2 Non-goals
+
+- Mobile / responsive layouts below 1024px.
+- Recording, transcription, or persistence of calls or chat beyond a room's lifetime.
+- More than 4 participants per room; waiting rooms; user accounts.
+- System / tab audio capture during screen share (out of scope per PRD).
+
+---
+
+## 2. System architecture
+
+Three cooperating processes:
+
+```
+┌─────────────┐   REST: rooms, tokens, host actions     ┌──────────────────┐
+│   Frontend  │ ──────────────────────────────────────▶ │  Node/TS backend │
+│ React+Vite  │   Socket.IO: chat, presence, grace      │  (control plane) │
+│ LiveKit SDK │ ◀══════════════════════════════════════▶ │                  │
+└─────┬───────┘                                           └────────┬─────────┘
+      │  WebRTC media + screen share (SFU)                         │ Server API
+      ▼                                                   webhooks │ + tokens
+┌───────────────────────────────────────────────────────────────┐ │
+│                  Local LiveKit server (SFU)                     │◀┘
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- **Frontend** renders all 16 screens, connects to LiveKit with a backend-issued token,
+  renders the adaptive video grid, and runs chat over a Socket.IO connection to the backend.
+- **Backend** is the authority for room lifecycle, host/guest roles, the host-reconnect
+  grace timer, chat relay + history, and attachment storage. Media never passes through it.
+- **LiveKit** carries all media (camera, microphone, and screen share as a second track).
+
+### 2.1 Trust & roles
+
+- A **host** is identified by a host token issued only to the room creator. Host tokens carry
+  LiveKit `roomAdmin` grants; the backend also records the host's participant identity in the
+  room registry. Only the host can remove guests, end the call, and see "Copy link".
+- A **guest** receives a standard publish/subscribe token. Guests cannot perform host actions;
+  the backend rejects any host action whose caller identity is not the recorded host.
+- All authority is enforced **server-side**. The frontend hides host-only controls for guests,
+  but the backend is the source of truth and re-validates every host action.
+
+---
+
+## 3. Backend service
+
+A single Node + TypeScript service. Suggested internal modules:
+
+| Module | Responsibility |
+| --- | --- |
+| `tokens` | Generate LiveKit access tokens via `AccessToken` (room name, identity, grants) |
+| `rooms` | In-memory room registry: lifecycle, participant tracking, 4-person cap, host identity |
+| `hostActions` | `removeGuest`, `endCall` via LiveKit `RoomServiceClient` |
+| `grace` | Host-reconnect 60s countdown, driven by LiveKit webhooks + timers |
+| `chat` | Socket.IO chat relay, per-room in-memory history, unread tracking |
+| `attachments` | Upload validation + local disk storage + download serving + cleanup |
+| `webhooks` | LiveKit webhook receiver (participant joined/left, room finished) |
+
+### 3.1 Room registry (in-memory)
+
+```ts
+type RoomState = {
+  roomName: string;              // LiveKit room name, e.g. "r_3f9a..."
+  hostIdentity: string;          // participant identity of the host
+  hostToken: string;             // opaque secret embedded in the host link
+  status: 'active' | 'grace' | 'ended';
+  participants: Map<string, Participant>; // identity -> participant
+  createdAt: number;
+  graceTimer?: NodeJS.Timeout;   // active only during host-reconnect grace
+  graceEndsAt?: number;
+  chatHistory: ChatMessage[];    // cleared when room ends
+};
+
+type Participant = {
+  identity: string;
+  displayName: string;
+  role: 'host' | 'guest';
+  joinedAt: number;
+};
+```
+
+Rooms are created on host "Start a call", and removed from the registry when the room ends
+(host ends call, or host grace expires). Capacity is **4 total** including the host.
+
+### 3.2 REST API
+
+| Method & path | Auth | Purpose | Returns |
+| --- | --- | --- | --- |
+| `POST /rooms` | none | Host starts a call. Create LiveKit room + registry entry. | `{ roomName, hostToken, participantUrl }` |
+| `GET /rooms/:roomName` | none | Validate a link before pre-join. | `{ status }` → drives S1/S2/S3 |
+| `POST /rooms/:roomName/join` | name + optional hostToken | Issue a LiveKit token for host or guest; re-check capacity/status. | `{ accessToken, livekitUrl, role }` or error code |
+| `POST /rooms/:roomName/remove` | hostToken + targetIdentity | Remove a guest (LiveKit `removeParticipant`). | `200` / error |
+| `POST /rooms/:roomName/end` | hostToken | End the call for everyone (LiveKit `deleteRoom`). | `200` |
+| `POST /rooms/:roomName/attachments` | room membership | Upload 1 file; validate type/size; store on disk. | `{ fileId, name, size, mime, url, kind }` |
+| `GET /attachments/:roomName/:fileId` | room membership | Download / serve an attachment. | file bytes |
+
+**Join validation outcomes** (map to system screens):
+- Room not in registry / bad format / invalid host token → `NOT_FOUND` → **S3**.
+- Room `status === 'ended'` → `ENDED` → **S2**.
+- Room at 4 participants → `FULL` → **S1**.
+- Otherwise → issue token, role = `host` if valid hostToken else `guest`.
+
+### 3.3 Host-reconnect grace (60s)
+
+1. LiveKit fires `participant_left` webhook. Backend checks if the leaver is the host.
+2. If host left **unexpectedly** (not via `endCall`): set room `status = 'grace'`, record
+   `graceEndsAt = now + 60s`, start a 1s broadcast over Socket.IO of remaining seconds.
+3. Guests render the **G6** overlay with the live countdown.
+4. If the host reconnects within 60s (re-join with hostToken): cancel timer, `status = 'active'`,
+   broadcast `grace_cancelled`, guests clear the overlay.
+5. If 60s elapse: call `endCall` logic → room ends → guests routed to the "host disconnected"
+   end state (S2 on subsequent visits).
+
+Guests have **no grace period** — an unexpected guest disconnect is treated as leaving and the
+slot is freed (G2 behavior).
+
+### 3.4 Chat (Socket.IO)
+
+Backend owns chat fully. Per-room namespace/room keyed by `roomName`.
+
+**Server → client events:** `chat_history` (on join), `chat_message`, `message_status`
+(`sending` → `delivered` / `failed`), `unread_update`, `grace_tick`, `grace_cancelled`,
+`room_ended`, `participant_update`.
+
+**Client → server events:** `send_message` (text + attachment metadata), `mark_read`,
+`join_chat` (identity, role).
+
+```ts
+type ChatMessage = {
+  id: string;
+  roomName: string;
+  senderIdentity: string;
+  senderName: string;
+  sentAt: number;            // epoch ms; rendered as HH:MM
+  text?: string;             // max 1000 chars
+  attachments: Attachment[]; // up to 5
+};
+
+type Attachment = {
+  fileId: string;
+  name: string;
+  size: number;              // bytes, <= 10MB
+  mime: string;
+  kind: 'image' | 'file';    // image => lightbox; file => download chip
+  url: string;               // backend download URL
+};
+```
+
+Chat rules (from PRD/wireframes):
+- History accrued while the room is alive; new joiners receive `chat_history`. Cleared on room end.
+- Send enabled when there is text **or** ≥1 attachment. Max 1000 chars; counter appears at 900.
+- Hidden panel + new message → unread dot on chat button; cleared on open.
+- In-flight message shows `Sending…`; on failure `Not delivered`, text + attachments retained for resend.
+- Empty state: `No messages yet.`
+
+### 3.5 Attachments (local disk)
+
+- **Allowed types:** images `PNG/JPEG/GIF/WebP`; files `PDF/DOC/DOCX/XLS/XLSX/TXT/ZIP`.
+- **Limits:** ≤10 MB per file; ≤5 files per message.
+- **Storage layout:** `<storage-root>/<roomName>/<fileId>__<sanitized-name>`.
+- **Serving:** images → thumbnail in chat, click opens full-size lightbox overlay (view only,
+  no download in overlay; animated GIF/WebP animate only in the overlay). Files → chip with
+  name + size + download; click downloads via browser, no in-app preview.
+- **Cleanup:** the room folder is deleted when the room ends.
+- **Errors:** `Unsupported file type.` / `File exceeds 10 MB.` / `You can attach up to 5 files per message.`
+
+---
+
+## 4. Frontend
+
+React + TypeScript + Vite. LiveKit Components React SDK for media; custom layout components
+for the bespoke grid, screen-share view, and overlays.
+
+### 4.1 Cross-cutting
+
+- **Theme:** Dark (default) / Light toggle, top-right on every screen. Tailwind `dark:` variants.
+- **Language:** EN (default) / RU selector, top-right on every screen. react-i18next; all PRD
+  strings (including the exact error/status messages) live in translation resources.
+- **Desktop only:** target ≥1024px.
+
+### 4.2 Routes / screens
+
+| Screen | Route / state | Notes |
+| --- | --- | --- |
+| H1 Landing | `/` | "Start a call" → `POST /rooms` → pre-join |
+| H2 Pre-join (host) | `/r/:room?host=…` (pre-join) | Preview, cam/mic toggles, name, Enter call, Copy link |
+| H3 In-call (host) | in-call state | Adaptive grid, controls + End call, Copy link, chat |
+| H4 Chat panel | in-call sub-state | Same panel for both roles; slides in, video area shrinks |
+| H5 Screen sharing | in-call sub-state | Shared content main area, tiles in strip |
+| H6 Remove a guest | in-call dialog | Hover/focus "Remove" on guest tile → confirm dialog |
+| G1 Pre-join (guest) | `/r/:room` (pre-join) | Button reads "Join"; no Copy link |
+| G2 In-call (guest) | in-call state | Controls end with "Leave"; no Copy link / End / Remove |
+| G3 Left the call | end state | "Rejoin" → pre-join for same room |
+| G4 Removed by host | end state | "Back to home" |
+| G5 Host ended call | end state | "Back to home" |
+| G6 Host reconnecting | in-call overlay | 60s live countdown |
+| S1 Call full | end state | "Back to home" |
+| S2 Call ended | end state | "Start a new call" |
+| S3 Not found | end state | "Start a new call" |
+| S4 Unsupported browser | first-screen guard | Capability check on landing / pre-join |
+
+### 4.3 Video grid
+
+Adaptive layout by participant count: 1 (full + "Waiting for someone to join…"), 2 (left/right),
+3 (two top + one centered bottom), 4 (2×2). Own tile is **mirrored** and labelled `<name> (You)`.
+Camera-off tiles show an avatar; mic-off tiles show a mute icon. Built on LiveKit track
+subscriptions; the grid CSS mirrors the wireframe layouts.
+
+### 4.4 Screen share
+
+- Any participant can share; **one active share at a time** (server arbitrates — first
+  registered wins, others get `Someone is already sharing their screen`).
+- While active: shared content fills the main area for **everyone including the sharer**
+  (rendered `contain`, never cropped); all videos move to a thumbnail strip (rendered `cover`).
+- Sharer keeps their camera on → two outgoing tracks (screen + camera); their camera tile
+  stays in the strip.
+- Main area label: `<name> is sharing their screen` (others) / `You are sharing your screen`
+  (sharer). Sharer gets "Stop sharing"; everyone else's "Share screen" is disabled.
+- Capture denied / cancelled → inline `Unable to share your screen. Please check your browser permissions.` (4s).
+- Sharer leaves / removed / host grace begins → share ends, layout returns to grid.
+
+### 4.5 Controls
+
+- **Host:** Mic, Camera, Share screen, **End call** (red, ends room for all), plus Copy link and chat button.
+- **Guest:** Mic, Camera, Share screen, **Leave** (no End call / Copy link / Remove).
+- Mic/camera toggles flip to a struck-through "off" icon; device error shows inline above the bar, auto-dismiss 4s. A denied device disables its toggle for the whole session.
+
+---
+
+## 5. Key flows
+
+1. **Host starts a call:** H1 → `POST /rooms` → `{ roomName, hostToken, participantUrl }` → H2
+   pre-join → `POST /rooms/:room/join` (with hostToken) → LiveKit token → connect → H3.
+2. **Guest joins:** open link → `GET /rooms/:room` → if OK, G1 pre-join → `POST .../join` → token → G2.
+   Blocked outcomes → S1 (full) / S2 (ended) / S3 (not found).
+3. **Chat with file:** upload to `POST .../attachments` → backend stores on disk, returns metadata →
+   client `send_message` over Socket.IO → backend relays + appends to history.
+4. **Host removes guest:** hover guest tile → "Remove" → confirm dialog → `POST .../remove` →
+   LiveKit `removeParticipant` → grid re-arranges; removed guest sees G4 (may rejoin).
+5. **Host ends call:** `POST .../end` → LiveKit `deleteRoom` → all disconnected → guests see G5;
+   link now resolves to S2.
+6. **Host drops:** webhook `participant_left` (host) → grace 60s → G6 countdown → reconnect resumes,
+   else room ends.
+
+---
+
+## 6. Error & status messages (exact strings)
+
+These must appear verbatim (localized EN/RU):
+
+- Room creation failed: `Unable to start a call right now. Please try again.`
+- Can't reach call service: `Unable to connect to the call service. Please check your internet connection and try again.`
+- Camera denied: `Camera access was denied. You can enable it in your browser settings.`
+- Mic denied: `Microphone access was denied…`
+- Name empty: `Please enter your name`
+- Name length: `Name must be 2–30 characters` (letters, numbers, spaces, hyphens, apostrophes only)
+- Link copied: `Link copied!` (2s)
+- Share denied: `Unable to share your screen. Please check your browser permissions.`
+- Share busy: `Someone is already sharing their screen`
+- Attachments: `Unsupported file type.` / `File exceeds 10 MB.` / `You can attach up to 5 files per message.`
+- Chat empty: `No messages yet.`
+- G4: `You were removed from the call by the host.`
+- G5: `The host has ended the call.`
+- G6 overlay: `The host lost connection. Waiting for them to return…` + `Reconnecting… <n>s`
+- Host disconnect timeout: `The host has disconnected and the call has ended.`
+- S1: `This call is full.` + `Only four participants can join at a time.`
+- S2: `This call has ended.`
+- S3: `This call was not found.` + `The link may be incorrect or expired.`
+- S4: `Your browser may not support video calls.` + `Please use the latest version of Chrome, Firefox, Safari, or Edge.`
+
+---
+
+## 7. Validation rules
+
+- **Name:** 2–30 characters; allowed: letters, numbers, spaces, hyphens, apostrophes.
+- **Capacity:** 4 participants total (host + 3 guests).
+- **Chat text:** ≤1000 chars; counter at 900.
+- **Attachments:** ≤10 MB/file, ≤5/message, allowed types per §3.5.
+- **Host grace:** exactly 60 seconds.
+
+---
+
+## 8. Open implementation notes
+
+- LiveKit is run locally; the backend needs its API key/secret and URL via environment config.
+- Browser support check (S4) runs before the first interactive screen (landing or guest pre-join).
+- Pre-join requests camera/mic permission on load; the user can enter even if a device is denied.
+- Copy link: copies the participant URL; if clipboard is blocked, show the URL as selectable text.
