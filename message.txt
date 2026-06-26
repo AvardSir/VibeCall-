@@ -1,0 +1,127 @@
+# aura-web
+
+
+
+## Project Configuration
+
+- **Jira Project Key**: `AURA`
+- **GitLab Repository**: `forasoft/aura-web`
+
+- **Main Branch**: `develop`
+
+## Language
+
+All documentation, comments, commit messages, and code artifacts MUST be in **English**.
+
+## Tech Stack
+
+- **Backend**: Fastify 5, TypeBox, Mongoose 9, pino (Node.js 22)
+- **Socket**: Socket.IO 4, JWT auth, pino (Node.js 22)
+- **Database**: MongoDB 7
+- **Message Broker**: RabbitMQ (amqplib)
+- **Infra**: Docker Compose, Traefik
+
+## Project Structure
+
+```
+services/
+  core/               Fastify API server
+  socket/             Socket.IO real-time server
+deploy/
+  local/              Local docker-compose (example + overrides)
+  staging/            Staging docker-compose (per-branch)
+pipelines/            GitLab CI/CD pipeline configs
+tools/                Helper scripts
+```
+
+## Commands
+
+```bash
+# Local (Docker Compose)
+make up               # Start all services
+make down             # Stop all services
+make restart          # Restart all services
+make logs             # Follow logs
+make ps               # Show running services
+make build            # Rebuild images
+
+# Per-service (inside services/core or services/socket)
+npm run dev           # Development (tsx watch)
+npm start             # Production (tsx)
+npm run lint          # ESLint
+npm run lint:fix      # ESLint autofix
+npm run typecheck     # TypeScript check (tsc --noEmit)
+```
+
+## AI Workflow Commands
+
+| Command | When to use |
+|---------|-------------|
+| `/prd [file.csv]` | Generate a PRD from requirements list |
+| `/start-task AURA-123` | Starting any ticket — loads context, creates branch, generates plan, implements step-by-step |
+| `/quick-task AURA-123` | Fast-track small tickets — no plan, direct implementation, optional ship |
+| `/resume-task` | Resume a paused task from first incomplete step |
+| `/spec AURA-123` | Before coding a complex ticket — generates a reviewable spec |
+| `/review` | Standalone deep quality + security review |
+| `/test [file]` | Generate or review tests for current changes |
+| `/rework-task [AURA-123] [mr\|qa]` | After MR rejection or QA bugs — gather feedback, implement fixes |
+| `/abort-task [AURA-123]` | Abandon a task — delete branch, remove plan, transition Jira back to Plan |
+| `/hotfix [AURA-123]` | Urgent production fix — branch from main, implement, push, create MR |
+| `/revert <MR\|commit>` | Revert a merged commit or MR — create revert branch, create MR |
+| `/finish-task` | Full review, create MR, update Jira, archive plan, update architecture |
+| `/pipeline [create\|debug\|edit]` | CI/CD pipeline design, review, edit, or debugging |
+
+**Quick flow**: `/quick-task` → implement → review → `ship`
+
+**Standard flow**: `/start-task` → plan approved → step-by-step implementation → `/finish-task`
+
+**Interrupted flow**: `/start-task` → implement some steps → `stop` → `/resume-task` → continue → `/finish-task`
+
+**Complex task flow**: `/start-task` → plan approved → `/spec` → review spec → implementation → `/finish-task`
+
+**Rework flow**: MR rejected → `/rework-task` → gather feedback → implement fixes → `/finish-task`
+
+**Abort flow**: `/abort-task` → clean up branch, plan, Jira
+
+**Hotfix flow**: `/hotfix` → implement → `ship` → MR targeting main
+
+**Revert flow**: `/revert` → confirm → `ship` → revert MR
+
+## Architecture
+
+### Request Flow
+```
+Client → Core (Fastify API) → Services → Repositories → MongoDB
+```
+
+### Real-time Flow
+```
+Client ↔ Socket (Socket.IO) ↔ RabbitMQ ↔ Core
+```
+
+## Rules (auto-loaded)
+
+Detailed rules in `.claude/rules/` — loaded automatically (path-scoped where applicable).
+
+## Sibling Repositories
+
+@.claude/siblings.md
+
+## Critical Rules
+
+### NEVER
+- Create/modify/delete Jira issues without explicit user confirmation — always show the planned action and ask first
+- Use `any` in TypeScript — use `unknown` + type guards
+- Use `// eslint-disable` — `noInlineConfig: true` enforced
+- Add `Co-Authored-By` to commits
+- Use `console.log` — use the app logger (pino)
+- Commit directly to `develop`
+- Expose secrets or API keys in code — use environment variables
+
+### ALWAYS
+- TypeBox schemas for all API validation
+- `toDto()` before returning any document
+- `ApiError` for all error handling
+- Co-located tests (`*.test.ts` next to source)
+- Atomic commits — one commit per task
+- Pinned exact versions in package.json (no `^` or `~`) — install with `npm i <pkg> -E`
