@@ -23,7 +23,15 @@
       "Bash(git -C /c/claudeProj fetch origin)",
       "Bash(echo \"---exit: $?---\")",
       "Bash(git -C /c/claudeProj remote set-url origin git@s2.git.fora-soft.com:forasoft/kmb/kmb-lashin.git)",
-      "Bash(git -C /c/claudeProj remote set-url origin https://s2.git.fora-soft.com/forasoft/kmb/kmb-lashin.git)"
+      "Bash(git -C /c/claudeProj remote set-url origin https://s2.git.fora-soft.com/forasoft/kmb/kmb-lashin.git)",
+      "Bash(git -C /c/claudeProj branch -r)",
+      "Bash(git -C /c/claudeProj log --oneline --all --decorate -10)",
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)",
+      "Bash(GCM_INTERACTIVE=always git -c credential.interactive=always fetch origin)",
+      "Bash(glab --version)",
+      "PowerShell(winget install *)",
+      "PowerShell(glab *)"
     ]
   }
 }
