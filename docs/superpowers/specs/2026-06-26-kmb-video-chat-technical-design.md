@@ -70,6 +70,15 @@ Three cooperating processes:
   room registry. Only the host can remove guests, end the call, and see "Copy link".
 - A **guest** receives a standard publish/subscribe token. Guests cannot perform host actions;
   the backend rejects any host action whose caller identity is not the recorded host.
+- **Participant identity** equals the participant's display name, which must be **unique within a
+  room** (case-insensitive). A second person attempting an already-used name is rejected with
+  `NAME_TAKEN`, so identities never collide. Host actions (e.g. remove) target a participant by
+  this identity, which the frontend reads from the join response and from LiveKit participant
+  objects. The host is authenticated by the host token (not by name), so on reconnect the host
+  re-takes its own slot even while that name is momentarily reserved during grace.
+- Each participant also receives an opaque **`memberToken`** at `/join`, recorded in the room
+  registry. It proves room membership for attachment upload/download (see §3.5) — uploads to a room
+  and downloads from it are rejected without a valid member token.
 - All authority is enforced **server-side**. The frontend hides host-only controls for guests,
   but the backend is the source of truth and re-validates every host action.
 
@@ -85,7 +94,7 @@ A single Node + TypeScript service. Suggested internal modules:
 | `rooms` | In-memory room registry: lifecycle, participant tracking, 4-person cap, host identity |
 | `hostActions` | `removeGuest`, `endCall` via LiveKit `RoomServiceClient` |
 | `grace` | Host-reconnect 60s countdown, driven by LiveKit webhooks + timers |
-| `chat` | Socket.IO chat relay, per-room in-memory history, unread tracking |
+| `chat` | Socket.IO chat relay + per-room in-memory history (unread badge is client-derived — see §3.4) |
 | `attachments` | Upload validation + local disk storage + download serving + cleanup |
 | `webhooks` | LiveKit webhook receiver (participant joined/left, room finished) |
 
@@ -102,6 +111,7 @@ type RoomState = {
   graceTimer?: NodeJS.Timeout;   // active only during host-reconnect grace
   graceEndsAt?: number;
   chatHistory: ChatMessage[];    // cleared when room ends
+  activeSharerId: string | null; // identity of the current screen sharer, or null (see §3.6)
 };
 
 type Participant = {
@@ -109,6 +119,7 @@ type Participant = {
   displayName: string;
   role: 'host' | 'guest';
   joinedAt: number;
+  memberToken: string;       // opaque per-participant secret; proves room membership for attachments
 };
 ```
 
@@ -121,16 +132,18 @@ Rooms are created on host "Start a call", and removed from the registry when the
 | --- | --- | --- | --- |
 | `POST /rooms` | none | Host starts a call. Create LiveKit room + registry entry. | `{ roomName, hostToken, participantUrl }` |
 | `GET /rooms/:roomName` | none | Validate a link before pre-join. | `{ status }` → drives S1/S2/S3 |
-| `POST /rooms/:roomName/join` | name + optional hostToken | Issue a LiveKit token for host or guest; re-check capacity/status. | `{ accessToken, livekitUrl, role }` or error code |
+| `POST /rooms/:roomName/join` | name + optional hostToken | Issue a LiveKit token for host or guest; re-check capacity/status. | `{ accessToken, livekitUrl, role, identity, memberToken }` or error code |
 | `POST /rooms/:roomName/remove` | hostToken + targetIdentity | Remove a guest (LiveKit `removeParticipant`). | `200` / error |
 | `POST /rooms/:roomName/end` | hostToken | End the call for everyone (LiveKit `deleteRoom`). | `200` |
-| `POST /rooms/:roomName/attachments` | room membership | Upload 1 file; validate type/size; store on disk. | `{ fileId, name, size, mime, url, kind }` |
-| `GET /attachments/:roomName/:fileId` | room membership | Download / serve an attachment. | file bytes |
+| `POST /rooms/:roomName/attachments` | memberToken (`x-member-token` header) | Upload 1 file; validate type/size; store on disk. | `{ fileId, name, size, mime, url, kind }` |
+| `GET /attachments/:roomName/:fileId/:name` | memberToken (`?token=` query) | Download / serve an attachment. | file bytes |
 
 **Join validation outcomes** (map to system screens):
 - Room not in registry / bad format / invalid host token → `NOT_FOUND` → **S3**.
 - Room `status === 'ended'` → `ENDED` → **S2**.
 - Room at 4 participants → `FULL` → **S1**.
+- Display name already in use in this room (case-insensitive) → `NAME_TAKEN` → inline error on the
+  pre-join screen; the user re-enters a different name. (Host reconnect is exempt — see §2.1.)
 - Otherwise → issue token, role = `host` if valid hostToken else `guest`.
 
 ### 3.3 Host-reconnect grace (60s)
@@ -147,16 +160,31 @@ Rooms are created on host "Start a call", and removed from the registry when the
 Guests have **no grace period** — an unexpected guest disconnect is treated as leaving and the
 slot is freed (G2 behavior).
 
+**Presence authority.** LiveKit webhooks are authoritative for who is actually in the room. On
+`participant_left` the backend frees that participant's slot in the registry, so capacity always
+reflects reality. The one exception is the host during grace: when the host leaves an **active**
+room the backend keeps the host's slot **reserved** (does not remove them) for the 60s window, so
+a fourth guest cannot take the host's place before they reconnect. When grace expires the room
+ends and all slots are cleared; when the host returns, their reserved slot becomes active again.
+
 ### 3.4 Chat (Socket.IO)
 
 Backend owns chat fully. Per-room namespace/room keyed by `roomName`.
 
-**Server → client events:** `chat_history` (on join), `chat_message`, `message_status`
-(`sending` → `delivered` / `failed`), `unread_update`, `grace_tick`, `grace_cancelled`,
-`room_ended`, `participant_update`.
+**Server → client events:** `chat_history` (on join), `chat_message`, `message_failed`
+(`{ code }`, to the sender only), `grace_tick`, `grace_cancelled`, `room_ended`,
+`share_granted`, `share_denied`, `share_state` (see §3.6).
 
-**Client → server events:** `send_message` (text + attachment metadata), `mark_read`,
-`join_chat` (identity, role).
+**Client → server events:** `send_message` (text + attachment metadata),
+`join_chat` (identity, role), `claim_share`, `release_share` (see §3.6).
+
+> **Client-derived UI state (no server events).** The unread badge, the `Sending…`/delivered
+> message status, and the participant roster are computed on the client — not pushed by the
+> backend. The unread count comes from `chat_message` arriving while the panel is closed (reset on
+> open); `Sending…` is the optimistic local state shown until the server echoes the message back
+> via `chat_message` (failure arrives as `message_failed`); the roster is derived from LiveKit
+> participant events (§4.3). This keeps per-client UI state on the client (see rule
+> `30-state-store.md`) and the server authoritative only for relay, history, and lifecycle.
 
 ```ts
 type ChatMessage = {
@@ -194,8 +222,35 @@ Chat rules (from PRD/wireframes):
 - **Serving:** images → thumbnail in chat, click opens full-size lightbox overlay (view only,
   no download in overlay; animated GIF/WebP animate only in the overlay). Files → chip with
   name + size + download; click downloads via browser, no in-app preview.
+- **Access:** both endpoints require the caller's `memberToken` (issued at `/join`) — the
+  `x-member-token` header on upload, the `?token=` query param on download (so a native `<img>` or
+  `<a download>` can carry it). Non-members get `403 FORBIDDEN`. Stored URLs are tokenless; each
+  client appends its own token when fetching.
 - **Cleanup:** the room folder is deleted when the room ends.
 - **Errors:** `Unsupported file type.` / `File exceeds 10 MB.` / `You can attach up to 5 files per message.`
+
+### 3.6 Screen-share arbitration
+
+LiveKit does not enforce a single screen-share, so the backend arbitrates the "one share at a
+time" rule (spec §4.4) over Socket.IO. Each room holds `activeSharerId: string | null`.
+
+- **`claim_share` `{ roomName }`** — client requests to start sharing. Server:
+  - if no active share (or the caller already holds it) → set `activeSharerId = caller`, reply
+    `share_granted` to the caller, broadcast `share_state { activeSharerId }` to the room;
+  - if someone else is sharing → reply `share_denied { reason: 'busy' }` (→ UI string
+    `Someone is already sharing their screen`).
+- **`release_share` `{ roomName }`** — client stops sharing. If the caller is the active sharer,
+  clear `activeSharerId` and broadcast `share_state { activeSharerId: null }`.
+- **`share_state { activeSharerId }`** — authoritative broadcast; clients enable/disable the
+  "Share screen" button and pick the layout from it.
+
+**Involuntary reset.** The share is also freed without a `release_share`:
+- the sharer leaves or is removed → their LiveKit `participant_left` clears the share if they held
+  it, then broadcasts `share_state { null }`;
+- the host drops into grace → any active share is force-cleared (the G6 overlay replaces the view
+  on clients), and the room end / host-timeout clears it as part of ending the room.
+
+Only a participant of an `active` room can claim; claims against an ended room are rejected.
 
 ---
 
@@ -241,8 +296,9 @@ subscriptions; the grid CSS mirrors the wireframe layouts.
 
 ### 4.4 Screen share
 
-- Any participant can share; **one active share at a time** (server arbitrates — first
-  registered wins, others get `Someone is already sharing their screen`).
+- Any participant can share; **one active share at a time** (the backend arbitrates over
+  Socket.IO — see §3.6: the first to `claim_share` wins, others get `share_denied { busy }` →
+  `Someone is already sharing their screen`).
 - While active: shared content fills the main area for **everyone including the sharer**
   (rendered `contain`, never cropped); all videos move to a thumbnail strip (rendered `cover`).
 - Sharer keeps their camera on → two outgoing tracks (screen + camera); their camera tile
@@ -287,6 +343,7 @@ These must appear verbatim (localized EN/RU):
 - Mic denied: `Microphone access was denied…`
 - Name empty: `Please enter your name`
 - Name length: `Name must be 2–30 characters` (letters, numbers, spaces, hyphens, apostrophes only)
+- Name already taken: `That name is already taken in this call.` *(new string — not in the original wireframes; confirm exact EN/RU wording with design before locking it in.)*
 - Link copied: `Link copied!` (2s)
 - Share denied: `Unable to share your screen. Please check your browser permissions.`
 - Share busy: `Someone is already sharing their screen`
@@ -306,6 +363,8 @@ These must appear verbatim (localized EN/RU):
 ## 7. Validation rules
 
 - **Name:** 2–30 characters; allowed: letters, numbers, spaces, hyphens, apostrophes.
+- **Name uniqueness:** a display name must be unique within a room (case-insensitive); duplicates
+  are rejected with `NAME_TAKEN`. The host is exempt on reconnect (authenticated by host token).
 - **Capacity:** 4 participants total (host + 3 guests).
 - **Chat text:** ≤1000 chars; counter at 900.
 - **Attachments:** ≤10 MB/file, ≤5/message, allowed types per §3.5.
@@ -319,3 +378,16 @@ These must appear verbatim (localized EN/RU):
 - Browser support check (S4) runs before the first interactive screen (landing or guest pre-join).
 - Pre-join requests camera/mic permission on load; the user can enter even if a device is denied.
 - Copy link: copies the participant URL; if clipboard is blocked, show the URL as selectable text.
+- Participant links use `PUBLIC_BASE_URL` (falls back to `CORS_ORIGIN`) as their base, kept separate
+  from the CORS allow-list so the two can differ in production.
+- **In-memory state, by design.** The room registry, chat history, and grace timers live only in
+  the backend process: a restart ends all active calls and clears chat/attachment state. This is
+  acceptable for the ephemeral, no-sign-up scope; clients treat a dropped backend connection as the
+  call ending. (A single process also means no horizontal scaling — out of scope.)
+- **Idle-room reaping.** A timer (~every 60s) forgets rooms that can't be returned to: empty rooms
+  never joined within ~10 min, and ended rooms after ~1 h (link revisits resolve to S2 until then).
+  This bounds memory against repeated `POST /rooms` on the unauthenticated endpoint.
+- **Upload MIME is client-supplied.** Attachment type is classified from the request
+  `Content-Type`, which a client can spoof. For this scope it is accepted (uploads are member-gated,
+  room-scoped, and deleted on room end). Hardening if needed: verify file signatures (magic bytes)
+  and/or cross-check the file extension against the allow-list.

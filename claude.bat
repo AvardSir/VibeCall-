@@ -1,5 +1,5 @@
 @echo off
-REM Launch Claude Code in the folder where this .bat file is located
-set ANTHROPIC_API_KEY=sk-ant-ВСТАВЬ_СВОЙ_КЛЮЧ_СЮДА
+REM Launch Claude Code in the folder where this .bat file is located.
+REM Authentication is handled by `claude login` — do NOT put an API key here.
 cd /d "%~dp0"
 claude %*
