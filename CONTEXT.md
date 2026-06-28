@@ -52,6 +52,26 @@ requirements**, do not over-engineer.
    `docs/superpowers/plans/2026-06-26-kmb-video-chat-backend.md`
    — 12 TDD tasks. The **frontend plan has not been written yet.**
 
+## Review & hardening pass (2026-06-28)
+
+Reviewed spec + plan + rules + tooling and applied fixes (no implementation started). Decisions:
+
+- **Security/cleanup:** removed the API key from `claude.bat` (auth via `claude login`); deleted the
+  junk `stuffNotNesert=y/` folder and the stray `message.txt` (an unrelated `aura-web` config).
+- **Presence:** LiveKit webhooks are authoritative — a guest leaving frees the slot; the host slot
+  is reserved during the 60s grace (spec §3.3).
+- **Names:** display name doubles as identity and must be **unique per room** (case-insensitive,
+  `NAME_TAKEN`); host exempt on reconnect (spec §2.1).
+- **Screen share:** backend arbitrates "one share at a time" over Socket.IO
+  (`claim_share`/`release_share`/`share_state`); freed on sharer leave / host grace (new spec §3.6).
+- **Chat events:** simplified §3.4 to what the server actually sends; unread badge,
+  `Sending…`/delivered, and roster are client-derived.
+- **Attachments:** upload/download gated by a per-participant `memberToken` issued at `/join`.
+- **Hardening:** idle-room reaper (bounds memory), separate `PUBLIC_BASE_URL`, documented
+  in-memory/restart and client-supplied-MIME limitations (spec §8).
+- **Rules compliance:** added a `logger` module (no `console.log`), ESLint + `lint`/`typecheck`
+  scripts, Node 22; updated `.claude/rules/50-backend.md` to the flat `src/*.ts` module layout.
+
 ## Current state of the repo
 
 - Git initialized; on branch `feat/kmb-backend` (initial commit `056a7ea`).
