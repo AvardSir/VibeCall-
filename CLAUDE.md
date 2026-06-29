@@ -83,7 +83,7 @@ working in its area:
 | `00-project-base.md` | Stack, core principles, naming, layout — the base the rest derive from |
 | `10-typescript.md` | Type/interface naming (PascalCase, no `I`), strictness, imports |
 | `20-frontend-structure.md` | Feature-based folders, component & hook conventions |
-| `30-state-store.md` | Zustand: one store per domain, actions-in-store, selector subscriptions |
+| `30-state-store.md` | Zustand: one store per concern (not per domain), actions-in-store, selector subscriptions |
 | `40-styling-and-i18n.md` | Tailwind theming (`dark:`), react-i18next, no hardcoded strings |
 | `50-backend.md` | Node/TS module split, logger, env config, errors, Socket.IO |
 | `60-testing.md` | Co-located tests, what to test, deterministic mocks |
@@ -104,6 +104,6 @@ working in its area:
 ### ALWAYS
 - `PascalCase` types/interfaces with no `I`-prefix; string-literal unions over `enum`
 - Feature-based frontend layout; logic in hooks/stores, components stay presentational
-- One Zustand store per domain; actions live in the store; subscribe to narrow slices
+- One Zustand store per concern (not per domain — no god stores); actions live in the store; subscribe to narrow slices
 - Theme via Tailwind `dark:` variants (Dark default); UI text via react-i18next (EN/RU)
 - Keep `tsc --noEmit` and ESLint clean; co-locate tests (`*.test.ts` next to source)
