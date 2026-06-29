@@ -23,13 +23,13 @@ export default tseslint.config(
       'no-console': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
-      'boundaries/element-types': ['error', {
+      'boundaries/dependencies': ['error', {
         default: 'disallow',
         rules: [
-          { from: 'app', allow: ['feature', 'shared', 'stores'] },
-          { from: 'feature', allow: ['shared', 'stores'] },
-          { from: 'shared', allow: ['shared'] },
-          { from: 'stores', allow: ['shared'] },
+          { from: { type: 'app' }, allow: { to: { type: ['feature', 'shared', 'stores'] } } },
+          { from: { type: 'feature' }, allow: { to: { type: ['shared', 'stores'] } } },
+          { from: { type: 'shared' }, allow: { to: { type: 'shared' } } },
+          { from: { type: 'stores' }, allow: { to: { type: 'shared' } } },
         ],
       }],
     },
