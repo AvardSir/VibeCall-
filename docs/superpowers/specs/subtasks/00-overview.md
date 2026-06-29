@@ -52,8 +52,8 @@ having something to ship (#1–#3).
 ## Cross-cutting (applies to every subtask)
 
 - Engineering conventions in `.claude/rules/` apply throughout (TypeScript strictness, feature-based
-  frontend, one Zustand store per domain, Tailwind `dark:` theming, react-i18next — **no hardcoded
-  user-facing strings**, co-located tests).
+  frontend, one Zustand store per concern (not per domain — `30-state-store.md`), Tailwind `dark:`
+  theming, react-i18next — **no hardcoded user-facing strings**, co-located tests).
 - All user-facing text is taken **verbatim** from the PRD (§6 / user stories) and the wireframes and
   stored as i18n resources (EN default / RU).
 - Each subtask spec ends with a **forward-compatibility note** mapping its deferrals onto the master
