@@ -1,0 +1,23 @@
+import { loadConfig } from './config.js';
+import { createLivekitAdmin } from './livekitAdmin.js';
+import { createTokenMinter } from './livekitTokens.js';
+import { createApp } from './app.js';
+import { logger } from './logger.js';
+
+async function main(): Promise<void> {
+  const config = loadConfig(process.env);
+  const admin = createLivekitAdmin(config);
+  const minter = createTokenMinter(config);
+
+  await admin.ensureRoom();
+
+  const app = createApp({ config, admin, minter });
+  app.listen(config.port, () => {
+    logger.info({ port: config.port, room: config.fixedRoomName }, 'control plane listening');
+  });
+}
+
+main().catch((err: unknown) => {
+  logger.error({ err }, 'fatal startup error');
+  process.exitCode = 1;
+});
