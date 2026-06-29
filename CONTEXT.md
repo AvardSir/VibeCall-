@@ -114,6 +114,16 @@ the wireframes and our specs; applied fixes (no implementation started):
   1/2/3/4 grid, chat behavior. **Subtask 4 (CI/deploy)** is explicitly out of PRD scope — no conflict.
 - Updated `CLAUDE.md` source-of-truth list and removed the "PRD not in repo" note.
 
+## Frontend architecture decision (2026-06-29)
+
+Considered **Feature-Sliced Design (FSD)** + its `steiger` linter for the frontend; **rejected** as
+overkill for this app size (conflicts with the `00-project-base.md` "straightforward over clever"
+principle, and `steiger` would add friction during incremental implementation). **Chosen
+(option A):** keep the lightweight **feature-based** layout (`features/*` + `shared/*` + `stores/`)
+and enforce layer boundaries with **`eslint-plugin-boundaries`** as part of `npm run lint` — no
+separate architecture linter. Documented in `.claude/rules/20-frontend-structure.md`; subtask specs
+1–3 already use this layout, so no spec changes were needed.
+
 ## Current state of the repo
 
 - Git initialized; on branch `feat/kmb-backend` (initial commit `056a7ea`).
