@@ -1,0 +1,20 @@
+{
+  "name": "kmb-video-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "No-sign-up group video calling — root dev orchestrator (LiveKit + backend + frontend)",
+  "scripts": {
+    "dev": "concurrently -k -n livekit,backend,frontend -c magenta,blue,green \"npm:dev:livekit\" \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:app": "concurrently -k -n backend,frontend -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:livekit": "docker run --rm -p 7880:7880 -p 7881:7881 -p 7882:7882/udp livekit/livekit-server --dev --bind 0.0.0.0",
+    "dev:backend": "wait-on -t 180000 tcp:127.0.0.1:7880 && cd backend && npm run dev",
+    "dev:frontend": "wait-on -t 180000 tcp:127.0.0.1:3000 && cd frontend && npm run dev",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "npm --prefix backend test && npm --prefix frontend test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "wait-on": "^8.0.1"
+  }
+}

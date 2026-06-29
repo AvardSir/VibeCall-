@@ -1,3 +1,5 @@
+// Load backend/.env into process.env before any config is read (no-op if absent, e.g. in prod).
+import 'dotenv/config';
 import { loadConfig } from './config.js';
 import { createLivekitAdmin } from './livekitAdmin.js';
 import { createTokenMinter } from './livekitTokens.js';
