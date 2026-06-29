@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
@@ -29,15 +30,18 @@ export function CallShell({
   const isMicOn = useMediaStore((s) => s.isMicOn);
   const isCamOn = useMediaStore((s) => s.isCamOn);
 
-  function handleError(error: Error): void {
-    // LiveKit rejects the surplus participant from the maxParticipants backstop → S1.
-    if (/full|exceeds|maximum|capacity/i.test(error.message)) {
-      onRoomFull();
-      return;
-    }
-    setPhase('failed');
-    onConnectError();
-  }
+  const handleError = useCallback(
+    (error: Error): void => {
+      // LiveKit rejects the surplus participant from the maxParticipants backstop → S1.
+      if (/full|exceeds|maximum|capacity/i.test(error.message)) {
+        onRoomFull();
+        return;
+      }
+      setPhase('failed');
+      onConnectError();
+    },
+    [onRoomFull, onConnectError, setPhase],
+  );
 
   return (
     <LiveKitRoom

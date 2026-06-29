@@ -12,4 +12,8 @@ describe('AppError', () => {
   it('maps INVALID_NAME to 400', () => {
     expect(httpStatusForCode('INVALID_NAME')).toBe(400);
   });
+
+  it('maps INTERNAL to 500', () => {
+    expect(httpStatusForCode('INTERNAL')).toBe(500);
+  });
 });

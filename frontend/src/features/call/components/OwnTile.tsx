@@ -14,7 +14,7 @@ export function OwnTile({ displayName }: OwnTileProps): JSX.Element {
     (ref) => ref.participant.identity === localParticipant.identity,
   );
   const cameraRef = cameraTracks[0];
-  const showVideo = cameraRef !== undefined && !cameraRef.publication?.isMuted;
+  const showVideo = cameraRef?.publication != null && !cameraRef.publication.isMuted;
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">

@@ -13,6 +13,8 @@ export function useDevicePermissions(): DevicePermissions {
   const micPermission = useMediaStore((s) => s.micPermission);
   const setCameraPermission = useMediaStore((s) => s.setCameraPermission);
   const setMicPermission = useMediaStore((s) => s.setMicPermission);
+  const setCamOn = useMediaStore((s) => s.setCamOn);
+  const setMicOn = useMediaStore((s) => s.setMicOn);
 
   useEffect(() => {
     let active = true;
@@ -34,13 +36,15 @@ export function useDevicePermissions(): DevicePermissions {
         if (!active) return;
         setCameraPermission('denied');
         setMicPermission('denied');
+        setCamOn(false);
+        setMicOn(false);
       });
 
     return () => {
       active = false;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [setCameraPermission, setMicPermission]);
+  }, [setCameraPermission, setMicPermission, setCamOn, setMicOn]);
 
   return { previewStream, cameraPermission, micPermission };
 }
