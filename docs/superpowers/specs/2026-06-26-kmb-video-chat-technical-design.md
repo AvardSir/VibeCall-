@@ -68,20 +68,23 @@ Three cooperating processes:
 - A **host** is identified by a host token issued only to the room creator. Host tokens carry
   LiveKit `roomAdmin` grants; the backend also records the host's participant identity in the
   room registry. Only the host can remove guests, end the call, and see "Copy link".
-- **Host token is never placed in the URL.** `POST /rooms` returns the `hostToken` in the response
-  body; the host client stores it in `sessionStorage` and navigates to the **clean** `/r/:room`
-  (no `?host=` query). The app reads the token from `sessionStorage` to authenticate host actions,
-  so it survives a page reload but is **not** exposed in the address bar (which a participant can
-  reveal while screen sharing) or in browser history. The wireframe's `?host=••••` is illustrative;
-  no PRD functional requirement mandates the URL placement. Guests open the tokenless `/r/:room`.
+- **Host token is carried in the host URL** (PRD FR-1, US-1, Assumption 8). `POST /rooms` returns a
+  host URL containing the secret token (≥128 bits of entropy, NFR-6); the host's browser address bar
+  and history are the only way to reclaim the host role after an unexpected disconnect (US-14 /
+  §3.3). Guests open the tokenless participant URL. *(Known trade-off: a host URL visible during
+  screen share or in shared history can leak the token; the PRD accepts this as part of the
+  link-based model — see PRD R4/R5. An earlier draft of this spec stored the token in
+  `sessionStorage` to avoid the leak, but the PRD mandates the URL placement and the grace-period
+  reconnect depends on it, so the URL model is authoritative.)*
 - A **guest** receives a standard publish/subscribe token. Guests cannot perform host actions;
   the backend rejects any host action whose caller identity is not the recorded host.
-- **Participant identity** equals the participant's display name, which must be **unique within a
-  room** (case-insensitive). A second person attempting an already-used name is rejected with
-  `NAME_TAKEN`, so identities never collide. Host actions (e.g. remove) target a participant by
-  this identity, which the frontend reads from the join response and from LiveKit participant
-  objects. The host is authenticated by the host token (not by name), so on reconnect the host
-  re-takes its own slot even while that name is momentarily reserved during grace.
+- **Participant identity** is a **server-generated unique id** (e.g. `p_…`), distinct from the
+  **display name**. Per the PRD, **duplicate display names are allowed** (Assumption 10, §6); the
+  local user is distinguished by the `(You)` suffix, never by name uniqueness. The display name is
+  attached to the LiveKit participant (its `name`) for labelling. Host actions (e.g. remove) target
+  a participant by **identity**, which the frontend reads from the join response and from LiveKit
+  participant objects. The host is authenticated by the host token (not by name), so on reconnect
+  the host re-takes its own reserved slot during grace.
 - Each participant also receives an opaque **`memberToken`** at `/join`, recorded in the room
   registry. It proves room membership for attachment upload/download (see §3.5) — uploads to a room
   and downloads from it are rejected without a valid member token.
@@ -110,7 +113,7 @@ A single Node + TypeScript service. Suggested internal modules:
 type RoomState = {
   roomName: string;              // LiveKit room name, e.g. "r_3f9a..."
   hostIdentity: string;          // participant identity of the host
-  hostToken: string;             // opaque secret returned to the host client (stored client-side in sessionStorage)
+  hostToken: string;             // opaque secret embedded in the host URL (PRD FR-1; ≥128-bit entropy, NFR-6)
   status: 'active' | 'grace' | 'ending' | 'ended';  // 'ending' set before deleteRoom on intentional End call (see §3.3)
   participants: Map<string, Participant>; // identity -> participant
   createdAt: number;
@@ -136,9 +139,9 @@ Rooms are created on host "Start a call", and removed from the registry when the
 
 | Method & path | Auth | Purpose | Returns |
 | --- | --- | --- | --- |
-| `POST /rooms` | none (per-IP rate-limited) | Host starts a call. Create LiveKit room + registry entry. `hostToken` is returned in the body for the client to store in `sessionStorage` (not embedded in any URL); `participantUrl` is the tokenless guest link. | `{ roomName, hostToken, participantUrl }` |
+| `POST /rooms` | none (per-IP rate-limited) | Host starts a call. Create LiveKit room + registry entry. Returns the **host URL** (token embedded, PRD FR-1) and the tokenless `participantUrl`. | `{ roomName, hostUrl, participantUrl }` |
 | `GET /rooms/:roomName` | none | Validate a link before pre-join. | `{ status }` → drives S1/S2/S3 |
-| `POST /rooms/:roomName/join` | name + optional hostToken | Issue a LiveKit token for host or guest; re-check capacity/status. | `{ accessToken, livekitUrl, role, identity, memberToken }` or error code |
+| `POST /rooms/:roomName/join` | name + optional hostToken | Issue a LiveKit token for host or guest; re-check capacity/status. | `{ accessToken, livekitUrl, role, identity, displayName, memberToken }` or error code |
 | `POST /rooms/:roomName/remove` | hostToken + targetIdentity | Remove a guest (LiveKit `removeParticipant`). | `200` / error |
 | `POST /rooms/:roomName/end` | hostToken | End the call for everyone (LiveKit `deleteRoom`). | `200` |
 | `POST /rooms/:roomName/attachments` | memberToken (`x-member-token` header) | Upload 1 file; validate type/size; store on disk. | `{ fileId, name, size, mime, url, kind }` |
@@ -148,8 +151,8 @@ Rooms are created on host "Start a call", and removed from the registry when the
 - Room not in registry / bad format / invalid host token → `NOT_FOUND` → **S3**.
 - Room `status === 'ended'` → `ENDED` → **S2**.
 - Room at 4 participants → `FULL` → **S1**.
-- Display name already in use in this room (case-insensitive) → `NAME_TAKEN` → inline error on the
-  pre-join screen; the user re-enters a different name. (Host reconnect is exempt — see §2.1.)
+- Display name is validated (2–30, allowed chars; PRD §6) but **need not be unique** — duplicates are
+  allowed (PRD Assumption 10). An invalid name → `INVALID_NAME` → inline error on the pre-join screen.
 - Otherwise → issue token, role = `host` if valid hostToken else `guest`.
 
 ### 3.3 Host-reconnect grace (60s)
@@ -287,8 +290,8 @@ for the bespoke grid, screen-share view, and overlays.
 
 | Screen | Route / state | Notes |
 | --- | --- | --- |
-| H1 Landing | `/` | "Start a call" → `POST /rooms` → store `hostToken` in `sessionStorage` → pre-join |
-| H2 Pre-join (host) | `/r/:room` (pre-join; host via stored token) | Preview, cam/mic toggles, name, Enter call, Copy link |
+| H1 Landing | `/` | "Start a call" → `POST /rooms` → navigate to the **host URL** (token in the address bar) → pre-join |
+| H2 Pre-join (host) | `/r/:room` (pre-join; host via host-URL token) | Preview, cam/mic toggles, name, Enter call, Copy link |
 | H3 In-call (host) | in-call state | Adaptive grid, controls + End call, Copy link, chat |
 | H4 Chat panel | in-call sub-state | Same panel for both roles; slides in, video area shrinks |
 | H5 Screen sharing | in-call sub-state | Shared content main area, tiles in strip |
@@ -308,8 +311,9 @@ for the bespoke grid, screen-share view, and overlays.
 
 Adaptive layout by participant count: 1 (full + "Waiting for someone to join…"), 2 (left/right),
 3 (two top + one centered bottom), 4 (2×2). Own tile is **mirrored** and labelled `<name> (You)`.
-Camera-off tiles show an avatar; mic-off tiles show a mute icon. Built on LiveKit track
-subscriptions; the grid CSS mirrors the wireframe layouts.
+Camera-off tiles show the participant's **mic-state icon centered above their name** (no avatar —
+PRD FR-14); when the camera is on and the mic is off, a mute icon appears in the tile corner. Built
+on LiveKit track subscriptions; the grid CSS mirrors the wireframe layouts.
 
 ### 4.4 Screen share
 
@@ -347,9 +351,9 @@ states that necessarily occur at runtime and that the wireframes did not enumera
 
 ## 5. Key flows
 
-1. **Host starts a call:** H1 → `POST /rooms` → `{ roomName, hostToken, participantUrl }` → store
-   `hostToken` in `sessionStorage`, navigate to the clean `/r/:room` → H2 pre-join →
-   `POST /rooms/:room/join` (hostToken from `sessionStorage`) → LiveKit token → connect → H3.
+1. **Host starts a call:** H1 → `POST /rooms` → `{ roomName, hostUrl, participantUrl }` → navigate to
+   the **host URL** (token in the address bar) → H2 pre-join → `POST /rooms/:room/join` (hostToken
+   read from the host URL) → LiveKit token → connect → H3.
 2. **Guest joins:** open link → `GET /rooms/:room` → if OK, G1 pre-join → `POST .../join` → token → G2.
    Blocked outcomes → S1 (full) / S2 (ended) / S3 (not found).
 3. **Chat with file:** upload to `POST .../attachments` → backend stores on disk, returns metadata →
@@ -372,12 +376,13 @@ These must appear verbatim (localized EN/RU):
 - Can't reach call service: `Unable to connect to the call service. Please check your internet connection and try again.`
 - Camera denied: `Camera access was denied. You can enable it in your browser settings.`
 - Mic denied: `Microphone access was denied. You can enable it in your browser settings.`
+- Both denied: `Camera and microphone access was denied. You can enable them in your browser settings.`
 - Connecting (after Enter/Join): `Connecting…`  *(transient state — §4.6)*
 - Awaiting device permission (pre-join): `Allow camera and microphone access to continue.`  *(transient state — §4.6)*
 - Reconnecting (own connection dropped): `Reconnecting…`  *(transient state — §4.6; distinct from the G6 host-grace overlay)*
 - Name empty: `Please enter your name`
-- Name length: `Name must be 2–30 characters` (letters, numbers, spaces, hyphens, apostrophes only)
-- Name already taken: `That name is already taken in this call.` *(new string — not in the original wireframes; confirm exact EN/RU wording with design before locking it in.)*
+- Name length: `Name must be 2–30 characters`
+- Name illegal chars: `Name can contain only letters, numbers, spaces, hyphens and apostrophes` (PRD §6)
 - Link copied: `Link copied!` (2s)
 - Share denied: `Unable to share your screen. Please check your browser permissions.`
 - Share busy: `Someone is already sharing their screen`
@@ -396,9 +401,10 @@ These must appear verbatim (localized EN/RU):
 
 ## 7. Validation rules
 
-- **Name:** 2–30 characters; allowed: letters, numbers, spaces, hyphens, apostrophes.
-- **Name uniqueness:** a display name must be unique within a room (case-insensitive); duplicates
-  are rejected with `NAME_TAKEN`. The host is exempt on reconnect (authenticated by host token).
+- **Name:** 2–30 characters; allowed: Unicode letters, digits, spaces, hyphens, apostrophes
+  (`^[\p{L}\p{N} '\-]{2,30}$`); trimmed before validation; capped at 30.
+- **Duplicate names allowed** — no uniqueness check (PRD Assumption 10). Identity is a separate
+  server-generated id; the `(You)` suffix distinguishes the local user.
 - **Capacity:** 4 participants total (host + 3 guests).
 - **Chat text:** ≤1000 chars; counter at 900.
 - **Attachments:** ≤10 MB/file, ≤5/message, allowed types per §3.5.

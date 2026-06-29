@@ -5,9 +5,10 @@
 - **Relation:** This is a *delivery breakdown* of the master technical design
   (`docs/superpowers/specs/2026-06-26-kmb-video-chat-technical-design.md`). Every subtask spec is a
   **forward-compatible strict subset** of the master spec — it never contradicts it, only defers
-  parts of it. The master spec and the wireframes
-  (`KMB_VideoChat_Wireframes_with_Overview.html`) remain the binding source of truth, including the
-  verbatim UI strings (master §6).
+  parts of it. The **PRD** (`prd-kmb-video-chat.md` v2.0) and the wireframes
+  (`KMB_VideoChat_Wireframes_with_Overview.html`) are the binding source of truth for product
+  behavior and verbatim UI strings; the technical design is reconciled to them (see the 2026-06-29
+  PRD reconciliation in `CONTEXT.md`).
 
 ## Purpose
 
@@ -53,7 +54,7 @@ having something to ship (#1–#3).
 - Engineering conventions in `.claude/rules/` apply throughout (TypeScript strictness, feature-based
   frontend, one Zustand store per domain, Tailwind `dark:` theming, react-i18next — **no hardcoded
   user-facing strings**, co-located tests).
-- All user-facing text is taken **verbatim** from master §6 / the wireframes and stored as i18n
-  resources (EN default / RU).
+- All user-facing text is taken **verbatim** from the PRD (§6 / user stories) and the wireframes and
+  stored as i18n resources (EN default / RU).
 - Each subtask spec ends with a **forward-compatibility note** mapping its deferrals onto the master
   spec, so later subtasks slot in without rework.
