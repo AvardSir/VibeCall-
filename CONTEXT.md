@@ -72,6 +72,27 @@ Reviewed spec + plan + rules + tooling and applied fixes (no implementation star
 - **Rules compliance:** added a `logger` module (no `console.log`), ESLint + `lint`/`typecheck`
   scripts, Node 22; updated `.claude/rules/50-backend.md` to the flat `src/*.ts` module layout.
 
+## Spec review & decisions (2026-06-29)
+
+Reviewed spec + wireframes against the PRD-first constraint (PRD/wireframes are binding — not
+changed). User chose these additions, all of which are *outside* the PRD (it doesn't dictate them).
+Folded into the technical-design spec; no implementation started:
+
+- **Host token out of the URL** → returned by `POST /rooms`, stored client-side in `sessionStorage`;
+  host navigates the clean `/r/:room`. Reason: the wireframe's `?host=` would leak the token during
+  screen share and into history; no FR mandates URL placement (spec §2.1, §4.2, §5.1).
+- **Three transient states added** (not new PRD screens): `Connecting…`, awaiting device permission,
+  and self-reconnect overlay (distinct from G6 host-grace). Minimal spinner + line; strings added to
+  §6 (spec new §4.6).
+- **Backend hardening — all four:** verify LiveKit webhook signatures (`WebhookReceiver`);
+  intentional-end flag (`status='ending'` before `deleteRoom`, so a normal End call can't trip the
+  60s grace); orphaned-attachment sweep on startup; per-IP rate-limit on `POST /rooms`
+  (spec §3.1, §3.2, §3.3, §3.5, §8).
+- **Completed** the truncated `Microphone access was denied…` string in §6.
+
+Not changed (already decided / PRD-bound): chat over Socket.IO (server-owned, confirmed earlier);
+`That name is already taken` wording still flagged "confirm with design".
+
 ## Current state of the repo
 
 - Git initialized; on branch `feat/kmb-backend` (initial commit `056a7ea`).
