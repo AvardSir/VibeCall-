@@ -1,6 +1,8 @@
 import type { en } from './en';
 
-export const ru: typeof en = {
+type Translations = { [N in keyof typeof en]: { [K in keyof (typeof en)[N]]: string } };
+
+export const ru: Translations = {
   common: {
     appName: 'kmb-video-chat',
     connecting: 'Подключение…',
