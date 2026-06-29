@@ -25,6 +25,23 @@ frontend/src/
 Each feature folder owns its `components/`, `hooks/`, and local `types.ts`. A feature may import
 from `shared/` but **not** from another feature's internals — share via `shared/`.
 
+## Enforcing boundaries (lint)
+
+This lightweight, feature-based layering is the chosen architecture — **Feature-Sliced Design (FSD)
+and its `steiger` linter are intentionally not used** (overkill for an app this size; see
+`00-project-base.md` "straightforward over clever"). The boundaries above are enforced as part of
+`npm run lint` via **`eslint-plugin-boundaries`** (no separate architecture tool). Element types and
+allowed imports:
+
+- `app` (`App.tsx`, `main.tsx`) → may import `features`, `shared`, `stores`.
+- `feature` (`features/*`) → may import `shared` and `stores`; **may not** import another feature,
+  nor reach into a feature's internals (import only its public entry, e.g. `features/chat`).
+- `shared` (`shared/*`) → may import only `shared`.
+- `stores` (`stores/*`) → may import `shared` (UI state only; no feature imports).
+
+Lighter fallback if the plugin is unwanted: `no-restricted-imports` patterns banning
+`features/*/**` cross-imports. Keep these rules in the frontend ESLint flat config.
+
 ## Components
 
 - One component per file; file name matches the component (`VideoTile.tsx` → `VideoTile`).
