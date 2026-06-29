@@ -21,7 +21,7 @@ each subtask gets its own spec file in this folder and, later, its own implement
 | --- | --- | --- | --- |
 | 1 | User can join room | One fixed room, server-side cap of 4, "This call is full" screen, otherwise admission into the call with the participant's **own** media | `01-join-room.md` |
 | 2 | User can use text chat | Socket.IO chat: history on join, input + Send, every participant sees a new message | `02-text-chat.md` |
-| 3 | User can use videochat | See **and hear other** participants (remote track render + audio), laid out in a **2×2 grid** | `03-videochat.md` *(later)* |
+| 3 | User can use videochat | See **and hear other** participants (remote track render + audio), laid out in a **2×2 grid** | `03-videochat.md` |
 | 4 | Configure CI and deploy | `docker-compose.yml`, CI pipeline, deploy to the demo server | `04-ci-deploy.md` *(later)* |
 
 ## Boundaries (where one subtask ends and the next begins)
