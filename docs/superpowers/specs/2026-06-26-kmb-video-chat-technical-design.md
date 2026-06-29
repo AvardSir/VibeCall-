@@ -226,8 +226,10 @@ type Attachment = {
 
 Chat rules (from PRD/wireframes):
 - History accrued while the room is alive; new joiners receive `chat_history`. Cleared on room end.
-- Send enabled when there is text **or** ≥1 attachment. Max 1000 chars; counter appears at 900.
+- Send enabled when there is text **or** ≥1 attachment. Max 1000 chars; a counter appears at 900
+  showing the **remaining** characters (counts down from 100).
 - Hidden panel + new message → unread dot on chat button; cleared on open.
+- The chat panel **open/hidden state is local to each participant** — never broadcast (FR-22, Assumption 6).
 - In-flight message shows `Sending…`; on failure `Not delivered`, text + attachments retained for resend.
 - Empty state: `No messages yet.`
 
@@ -282,15 +284,21 @@ for the bespoke grid, screen-share view, and overlays.
 ### 4.1 Cross-cutting
 
 - **Theme:** Dark (default) / Light toggle, top-right on every screen. Tailwind `dark:` variants.
+  **Persisted within the browser session** (FR-28): read on load, written on toggle to
+  `sessionStorage`; survives reloads but **resets to Dark on a new browser session** (absent → Dark).
+  Both themes must meet **WCAG 2.1 AA** text-contrast (NFR-5).
 - **Language:** EN (default) / RU selector, top-right on every screen. react-i18next; all PRD
-  strings (including the exact error/status messages) live in translation resources.
-- **Desktop only:** target ≥1024px.
+  strings (including the exact error/status messages) live in translation resources (NFR-4).
+  **Persisted within the browser session** like the theme (FR-29): survives reloads, **resets to EN
+  on a new browser session**. Switching language never rewrites already-sent chat messages — message
+  content is not translated (US-16).
+- **Desktop only:** target ≥1024px; **no horizontal scrolling at any supported width** (NFR-1).
 
 ### 4.2 Routes / screens
 
 | Screen | Route / state | Notes |
 | --- | --- | --- |
-| H1 Landing | `/` | "Start a call" → `POST /rooms` → navigate to the **host URL** (token in the address bar) → pre-join |
+| H1 Landing | `/` | App name/logo, tagline (§6), single **"Start a call"** button, theme + language top-right, **no other navigation** (FR-30). "Start a call" → `POST /rooms` → navigate to the **host URL** (token in the address bar) → pre-join |
 | H2 Pre-join (host) | `/r/:room` (pre-join; host via host-URL token) | Preview, cam/mic toggles, name, Enter call, Copy link |
 | H3 In-call (host) | in-call state | Adaptive grid, controls + End call, Copy link, chat |
 | H4 Chat panel | in-call sub-state | Same panel for both roles; slides in, video area shrinks |
@@ -328,12 +336,15 @@ on LiveKit track subscriptions; the grid CSS mirrors the wireframe layouts.
   (sharer). Sharer gets "Stop sharing"; everyone else's "Share screen" is disabled.
 - Capture denied / cancelled → inline `Unable to share your screen. Please check your browser permissions.` (4s).
 - Sharer leaves / removed / host grace begins → share ends, layout returns to grid.
+- If the **host is alone** and sharing, the `Waiting for someone to join…` notice stays visible over the share layout (PRD §7).
 
 ### 4.5 Controls
 
 - **Host:** Mic, Camera, Share screen, **End call** (red, ends room for all), plus Copy link and chat button.
 - **Guest:** Mic, Camera, Share screen, **Leave** (no End call / Copy link / Remove).
-- Mic/camera toggles flip to a struck-through "off" icon; device error shows inline above the bar, auto-dismiss 4s. A denied device disables its toggle for the whole session.
+- **Layout (FR-21):** controls sit in a horizontal bar **bottom-center**; the chat button is **bottom-right**; "Copy link" (host only) is within reach of the bar; theme + language are **top-right**. Controls stay **visible for the entire call — no auto-hide**. The **End call** button is red and separated from adjacent controls by **≥24px** (FR-19).
+- Mic/camera toggles flip to a struck-through "off" icon; a denied device disables its toggle for the whole session. If a device cannot be (re)acquired on toggle, the toggle reverts and an inline message appears above the bar (auto-dismiss 4s): `Unable to access camera. Please check your device or browser settings.` / `Unable to access microphone. Please check your device or browser settings.` (FR-17/18).
+- **Tooltips (FR-20):** every control shows a state-aware tooltip on hover/focus — verbatim texts in §6.
 
 ### 4.6 Transient states (additions, not among the 16 PRD screens)
 
@@ -346,6 +357,17 @@ states that necessarily occur at runtime and that the wireframes did not enumera
 | **Connecting…** | After "Enter call" / "Join", while the LiveKit connection + token exchange complete, before the grid appears | Spinner over the pre-join card with `Connecting…`; on failure, the existing `Unable to connect to the call service…` (§6) |
 | **Awaiting device permission** | On pre-join load, while the browser's camera/mic permission prompt is open | Preview area shows `Allow camera and microphone access to continue.`; resolves to the live preview (granted) or the existing per-device denied messages (§6) |
 | **Reconnecting (self)** | The **local** participant's own connection drops and LiveKit is auto-reconnecting (distinct from G6, which is the *host* dropping) | Non-blocking overlay `Reconnecting…`; clears on resume, or routes to the call-service error if it cannot recover |
+
+### 4.7 Accessibility (NFR-2, NFR-3)
+
+- All interactive controls (buttons, toggles, language selector, attach control) are
+  **keyboard-operable** (Tab to focus, Enter/Space to activate) with **visible focus indicators**
+  meeting WCAG 2.1 AA contrast.
+- Every **icon-only** button (camera, microphone, screen share, end/leave, chat, attach, theme)
+  carries an **`aria-label`** describing its action and current state — the §6 tooltip texts (FR-20)
+  seed these labels.
+- The image lightbox (§3.5) **moves focus into the overlay** on open and **returns focus to the
+  originating thumbnail** on close; its close button has an accessible label (FR-27).
 
 ---
 
@@ -377,6 +399,8 @@ These must appear verbatim (localized EN/RU):
 - Camera denied: `Camera access was denied. You can enable it in your browser settings.`
 - Mic denied: `Microphone access was denied. You can enable it in your browser settings.`
 - Both denied: `Camera and microphone access was denied. You can enable them in your browser settings.`
+- Camera re-acquire failed (in-call): `Unable to access camera. Please check your device or browser settings.` (FR-17)
+- Mic re-acquire failed (in-call): `Unable to access microphone. Please check your device or browser settings.` (FR-18)
 - Connecting (after Enter/Join): `Connecting…`  *(transient state — §4.6)*
 - Awaiting device permission (pre-join): `Allow camera and microphone access to continue.`  *(transient state — §4.6)*
 - Reconnecting (own connection dropped): `Reconnecting…`  *(transient state — §4.6; distinct from the G6 host-grace overlay)*
@@ -384,18 +408,23 @@ These must appear verbatim (localized EN/RU):
 - Name length: `Name must be 2–30 characters`
 - Name illegal chars: `Name can contain only letters, numbers, spaces, hyphens and apostrophes` (PRD §6)
 - Link copied: `Link copied!` (2s)
+- Copy link failed (clipboard blocked): `Unable to copy. Please copy the link from the address shown below:` (then the participant URL as selectable text)
 - Share denied: `Unable to share your screen. Please check your browser permissions.`
 - Share busy: `Someone is already sharing their screen`
 - Attachments: `Unsupported file type.` / `File exceeds 10 MB.` / `You can attach up to 5 files per message.`
 - Chat empty: `No messages yet.`
+- G3 (left the call): `You have left the call.` + `Rejoin` button
 - G4: `You were removed from the call by the host.`
 - G5: `The host has ended the call.`
-- G6 overlay: `The host lost connection. Waiting for them to return…` + `Reconnecting… <n>s`
+- G6 overlay: `The host lost connection. Waiting for them to return...` + `Reconnecting... <n>s` *(PRD uses the literal three-dot form here; the transient `Connecting…`/`Reconnecting…` above use the `…` glyph and are our own strings, not PRD-mandated)*
 - Host disconnect timeout: `The host has disconnected and the call has ended.`
+- H6 remove-guest dialog: `Remove <name> from the call?` + buttons `Remove` (red) / `Cancel`
 - S1: `This call is full.` + `Only four participants can join at a time.`
 - S2: `This call has ended.`
 - S3: `This call was not found.` + `The link may be incorrect or expired.`
 - S4: `Your browser may not support video calls.` + `Please use the latest version of Chrome, Firefox, Safari, or Edge.`
+- Landing tagline (FR-30): `Group video calls for up to four people. No sign-up required.`
+- Control tooltips (FR-20), state-keyed: camera on → `Turn camera off`; camera off → `Turn camera on`; mic on → `Mute microphone`; mic off → `Unmute microphone`; screen share idle → `Share your screen`; screen share active (own) → `Stop sharing`; screen share blocked → `Someone is already sharing their screen`; host end → `End the call for everyone`; guest leave → `Leave the call`; remove guest → `Remove this guest`.
 
 ---
 
@@ -406,7 +435,7 @@ These must appear verbatim (localized EN/RU):
 - **Duplicate names allowed** — no uniqueness check (PRD Assumption 10). Identity is a separate
   server-generated id; the `(You)` suffix distinguishes the local user.
 - **Capacity:** 4 participants total (host + 3 guests).
-- **Chat text:** ≤1000 chars; counter at 900.
+- **Chat text:** ≤1000 chars; counter at 900 showing the remaining characters.
 - **Attachments:** ≤10 MB/file, ≤5/message, allowed types per §3.5.
 - **Host grace:** exactly 60 seconds.
 
@@ -415,7 +444,7 @@ These must appear verbatim (localized EN/RU):
 ## 8. Open implementation notes
 
 - LiveKit is run locally; the backend needs its API key/secret and URL via environment config.
-- Browser support check (S4) runs before the first interactive screen (landing or guest pre-join).
+- Browser support check (S4) runs before the first interactive screen (landing or guest pre-join). Supported: the latest 2 major versions of Chrome, Firefox, Safari, Edge on desktop (FR-31).
 - Pre-join requests camera/mic permission on load; the user can enter even if a device is denied.
 - Copy link: copies the participant URL; if clipboard is blocked, show the URL as selectable text.
 - Participant links use `PUBLIC_BASE_URL` (falls back to `CORS_ORIGIN`) as their base, kept separate
@@ -436,3 +465,21 @@ These must appear verbatim (localized EN/RU):
   `Content-Type`, which a client can spoof. For this scope it is accepted (uploads are member-gated,
   room-scoped, and deleted on room end). Hardening if needed: verify file signatures (magic bytes)
   and/or cross-check the file extension against the allow-list.
+
+---
+
+## 9. Non-functional & security requirements (PRD §8)
+
+- **Transport (NFR-9):** all client↔server traffic (REST + Socket.IO) runs over **HTTPS/WSS**; media
+  uses the browser real-time stack's default encryption. HTTPS is required in deployed environments
+  (localhost exempt for dev).
+- **Link entropy:** the **host token** (NFR-6) and the **participant room id** (NFR-7) are each
+  cryptographically random with **≥128 bits** of entropy, to prevent guessing / enumeration.
+- **Quality degradation (NFR-13):** under low bandwidth / packet loss the call **continues at reduced
+  quality rather than disconnecting** (LiveKit adaptive stream / dynacast); no user-facing message is
+  shown for degradation.
+- **No persistence (NFR-10):** chat, attachments, and names are discarded when the room ends; only a
+  minimal "room ended" marker (no participant content) remains to serve S2. Theme/language live only
+  in the browser session.
+- **Accessibility (NFR-2/3):** keyboard operability, visible AA-contrast focus, and aria-labels on
+  icon-only controls — see §4.7.
