@@ -3,6 +3,7 @@ export const en = {
     appName: 'kmb-video-chat',
     connecting: 'Connecting…',
     connectError: 'Unable to connect to the call service. Please check your internet connection and try again.',
+    retry: 'Try again',
   },
   prejoin: {
     nameLabel: 'Your name',

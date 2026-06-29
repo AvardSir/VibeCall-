@@ -17,11 +17,13 @@ describe('useDevicePermissions', () => {
     expect(useMediaStore.getState().micPermission).toBe('granted');
   });
 
-  it('marks permissions denied on NotAllowedError', async () => {
+  it('marks permissions denied on NotAllowedError and turns off devices', async () => {
     const err = Object.assign(new Error('denied'), { name: 'NotAllowedError' });
     vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn().mockRejectedValue(err) } });
     renderHook(() => useDevicePermissions());
     await waitFor(() => expect(useMediaStore.getState().cameraPermission).toBe('denied'));
     expect(useMediaStore.getState().micPermission).toBe('denied');
+    expect(useMediaStore.getState().isCamOn).toBe(false);
+    expect(useMediaStore.getState().isMicOn).toBe(false);
   });
 });

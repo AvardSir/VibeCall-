@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import './shared/i18n';
 
@@ -8,8 +8,13 @@ vi.mock('./shared/lib/apiClient', () => ({
   getRoomStatus: (...a: unknown[]) => getRoomStatus(...a),
   joinRoom: (...a: unknown[]) => joinRoom(...a),
 }));
+
+let onConnectErrorCallback: (() => void) | null = null;
 vi.mock('./features/call', () => ({
-  CallShell: () => <div>in-call-shell</div>,
+  CallShell: ({ onConnectError }: { onConnectError: () => void }) => {
+    onConnectErrorCallback = onConnectError;
+    return <div>in-call-shell</div>;
+  },
   ConnectingScreen: () => <div>connecting</div>,
 }));
 
@@ -17,7 +22,10 @@ beforeEach(() => {
   vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }) } });
   getRoomStatus.mockReset();
   joinRoom.mockReset();
+  onConnectErrorCallback = null;
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 import { App } from './App';
 
@@ -55,5 +63,26 @@ describe('App routing', () => {
     fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Ann' } });
     fireEvent.click(screen.getByRole('button', { name: /enter call/i }));
     await waitFor(() => expect(screen.getByText('in-call-shell')).toBeInTheDocument());
+  });
+
+  it('renders connect-error view when onConnectError is called', async () => {
+    getRoomStatus.mockResolvedValue('available');
+    joinRoom.mockResolvedValue({
+      ok: true,
+      data: { accessToken: 'jwt', livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann' },
+    });
+    render(<App />);
+    await waitFor(() => screen.getByLabelText(/your name/i));
+    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Ann' } });
+    fireEvent.click(screen.getByRole('button', { name: /enter call/i }));
+    await waitFor(() => expect(screen.getByText('in-call-shell')).toBeInTheDocument());
+    // Simulate LiveKit onConnectError callback
+    expect(onConnectErrorCallback).not.toBeNull();
+    onConnectErrorCallback!();
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Unable to connect to the call service/i),
+      ).toBeInTheDocument(),
+    );
   });
 });

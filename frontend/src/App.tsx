@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import { getRoomStatus, joinRoom } from './shared/lib/apiClient';
 import type { JoinResponse } from './shared/types';
 import { PreJoinScreen } from './features/prejoin';
-import { CallFullScreen } from './features/room-states';
+import { CallFullScreen, ConnectErrorScreen } from './features/room-states';
 import { CallShell, ConnectingScreen } from './features/call';
 import { useConnectionStore } from './stores/useConnectionStore';
 import { useMediaStore } from './stores/useMediaStore';
@@ -68,6 +68,7 @@ export function App(): JSX.Element {
 
   if (view === 'loading' || view === 'connecting') return <ConnectingScreen />;
   if (view === 'full') return <CallFullScreen onBackToHome={recheckCapacity} />;
+  if (view === 'connect-error') return <ConnectErrorScreen onRetry={recheckCapacity} />;
   if (view === 'in-call' && session) {
     return (
       <CallShell

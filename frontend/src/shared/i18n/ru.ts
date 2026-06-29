@@ -7,6 +7,7 @@ export const ru: Translations = {
     appName: 'kmb-video-chat',
     connecting: 'Подключение…',
     connectError: 'Не удалось подключиться к сервису звонков. Проверьте подключение к интернету и попробуйте снова.',
+    retry: 'Попробовать снова',
   },
   prejoin: {
     nameLabel: 'Ваше имя',
