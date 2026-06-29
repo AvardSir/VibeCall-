@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "livekit-server-sdk": "^2.15.5",
     "pino": "^10.3.1",
