@@ -16,10 +16,10 @@ Features: camera/mic, screen sharing (one sharer at a time), text chat with imag
 attachments, dark/light theming, EN/RU localization. **Desktop only (≥1024px).**
 
 Source materials in this repo:
-- `KMB_VideoChat_Wireframes_with_Overview (1) (1).html` — wireframe inventory, 16 screens
+- `prd-kmb-video-chat.md` (v2.0) — the product requirements (binding for behavior).
+- `KMB_VideoChat_Wireframes_with_Overview.html` — wireframe inventory, 16 screens
   (Host H1–H6, Guest G1–G6, System S1–S4).
-- The wireframes reference a PRD (`prd-kmb-video-chat.md v2.0`) and a
-  `prd-videochat-starter-kit.md` that are **not present** in this folder.
+- (A `prd-videochat-starter-kit.md` is referenced by the wireframes but is not in this folder.)
 
 ## Current goal
 
@@ -92,6 +92,27 @@ Folded into the technical-design spec; no implementation started:
 
 Not changed (already decided / PRD-bound): chat over Socket.IO (server-owned, confirmed earlier);
 `That name is already taken` wording still flagged "confirm with design".
+
+## PRD found & reconciliation (2026-06-29)
+
+The PRD (`prd-kmb-video-chat.md` v2.0) was located and added to the repo. Cross-checked it against
+the wireframes and our specs; applied fixes (no implementation started):
+
+- **PRD ↔ wireframes:** consistent except **camera-off** — the PRD changelog supersedes the
+  wireframe's "avatar" with a **mic-state icon + name centered (no avatar)** (US-5, FR-13/14).
+- **Reconciled our specs to the PRD** (PRD wins where the technical design had diverged):
+  - **Names are NOT unique** — duplicates allowed (PRD Assumption 10); identity is a separate
+    server-generated id, `(You)` distinguishes the local user. Removed `NAME_TAKEN` / "That name is
+    already taken". (master §2.1/§3.2/§6/§7, subtasks 1–2)
+  - **Host token lives in the host URL** (PRD FR-1, US-1, Assumption 8), not `sessionStorage`; the
+    leak concern is kept as a documented trade-off. (master §2.1/§3.2/§4.2/§5.1)
+  - **Camera-off** → mic-state icon + name, no avatar. (master §4.3, subtask 3)
+  - String fixes: illegal-name-chars wording, combined camera+mic-denied message; Unicode name
+    regex `^[\p{L}\p{N} '\-]{2,30}$`.
+- **Confirmed already-PRD-specified** (our brainstorm choices matched the PRD): pre-join with
+  preview/toggles, capacity check on open + at entry, "This call is full." string, adaptive
+  1/2/3/4 grid, chat behavior. **Subtask 4 (CI/deploy)** is explicitly out of PRD scope — no conflict.
+- Updated `CLAUDE.md` source-of-truth list and removed the "PRD not in repo" note.
 
 ## Current state of the repo
 
