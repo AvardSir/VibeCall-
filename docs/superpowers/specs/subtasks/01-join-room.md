@@ -5,8 +5,11 @@
 - **Status:** Approved for planning
 - **Parent:** `docs/superpowers/specs/2026-06-26-kmb-video-chat-technical-design.md` (master spec)
 - **Decomposition:** `docs/superpowers/specs/subtasks/00-overview.md`
+- **Product source (binding):** `prd-kmb-video-chat.md` (v2.0) + `KMB_VideoChat_Wireframes_with_Overview.html`.
+  "PRD §X" / "FR-N" / "US-N" point at the PRD; "master §X" at the technical design.
 - **Nature:** A **forward-compatible strict subset** of the master spec. It defers — never
-  contradicts — the rest. Section references like "master §3.2" point at the master spec.
+  contradicts — the rest. Where the master spec itself diverged from the now-available PRD, this
+  subtask follows the **PRD** (see §7, §9).
 
 ---
 
@@ -95,12 +98,16 @@ registry + webhooks (master §3.1, §3.3) tighten this when host/grace arrive �
 | Method & path | Auth | Purpose | Returns |
 | --- | --- | --- | --- |
 | `GET /rooms/:roomName` | none | Capacity check before pre-join. | `{ status: 'available' \| 'full' }` |
-| `POST /rooms/:roomName/join` | name in body | Re-check capacity + name uniqueness; mint a guest token. | `{ accessToken, livekitUrl, role: 'guest', identity }` or an error code |
+| `POST /rooms/:roomName/join` | name in body | Re-check capacity; validate the name; mint a guest token. | `{ accessToken, livekitUrl, role: 'guest', identity, displayName }` or an error code |
 
 - `GET` response `status` is the **capacity-relevant subset** of the master's availability check;
   `'available'` ⇒ pre-join, `'full'` ⇒ `S1`. (`'ended'`/`'not_found'` are added with later subtasks.)
 - `join` response is a **subset** of master §3.2 (`memberToken` is omitted — it belongs to
-  attachments, deferred). `identity === displayName` (master §2.1).
+  attachments, deferred). **`identity` is a server-generated unique id** (e.g. `p_<random>`) and
+  `displayName` is the validated name — they are **separate**. The PRD allows **duplicate display
+  names** (PRD Assumption 10, §6); the local user is distinguished by the `(You)` suffix, so identity
+  must not be derived from the name. (This corrects the master spec's earlier "identity = display
+  name, unique per room" model — see §9.)
 
 **`join` validation outcomes:**
 
@@ -108,8 +115,11 @@ registry + webhooks (master §3.1, §3.3) tighten this when host/grace arrive �
 | --- | --- | --- |
 | Room at 4 participants | `FULL` | `S1` |
 | Name empty / wrong length / illegal chars | `INVALID_NAME` | inline error on pre-join |
-| Name already present in the room (case-insensitive vs `listParticipants` identities) | `NAME_TAKEN` | inline error on pre-join |
 | Otherwise | — | issue guest token, connect |
+
+> **No name-uniqueness check** (PRD Assumption 10). Duplicate display names are allowed; the backend
+> assigns each participant a unique `identity` independent of the name, so two people named "Ann"
+> coexist — each labelled "Ann", the local one "Ann (You)".
 
 - Validate the inbound payload at the boundary before acting. Return typed errors with a stable
   `code`; map to HTTP status + client error code at the edge (no internal message leakage).
@@ -125,8 +135,8 @@ React SDK for media.
 
 | Screen | Feature | Contents |
 | --- | --- | --- |
-| **Pre-join** | `features/prejoin` | Mirrored local camera **preview**; camera/mic **toggles** (on by default); **name** field with help text "2–30 characters. Letters, numbers, spaces, hyphens and apostrophes."; **"Enter call →"**. Device-permission handling (see §6). No "Copy link", no host controls. |
-| **In-call shell** | `features/call` | Establishes the LiveKit room context and renders the participant's **own** tile (mirrored, `<name> (You)`); controls bar: mic toggle, camera toggle, **Leave**. The container is ready to host remote tiles + the 2×2 grid (Subtask 3) but renders none of them here. |
+| **Pre-join** | `features/prejoin` | Mirrored local camera **preview**; camera/mic **toggles** (on by default); **name** field with help text "2–30 characters. Letters, numbers, spaces, hyphens and apostrophes."; **"Enter call →"**. Camera off/denied → the **mic-state icon centered on a dark background** (no avatar, and **no name** in the preview — PRD FR-11). Device-permission handling (see §6). No "Copy link", no host controls. |
+| **In-call shell** | `features/call` | Establishes the LiveKit room context and renders the participant's **own** tile (mirrored, `<name> (You)`); camera off → **mic-state icon + name centered on a dark background** (no avatar — PRD FR-14); controls bar: mic toggle, camera toggle, **Leave**. The container is ready to host remote tiles + the 2×2 grid (Subtask 3) but renders none of them here. |
 | **`S1` call full** | `features/room-states` | "This call is full." / "Only four participants can join at a time." / "Back to home" (returns to the app root, which re-runs the capacity check). |
 | **Connecting** (transient) | `features/call` | Spinner + `Connecting…` between "Enter call" and the room appearing (master §4.6). |
 
@@ -136,7 +146,7 @@ React SDK for media.
 2. Pre-join requests camera/mic permission on load; the preview shows when granted, otherwise a
    per-device denied message and that toggle is disabled for the session.
 3. "Enter call" (name valid) → `POST .../join`:
-   - `FULL` ⇒ `S1`; `NAME_TAKEN`/`INVALID_NAME` ⇒ inline error;
+   - `FULL` ⇒ `S1`; `INVALID_NAME` ⇒ inline error;
    - success ⇒ show `Connecting…`, connect to LiveKit with the token; on the rare connect-time
      capacity rejection from the `maxParticipants` backstop ⇒ `S1`; on other connect failure ⇒
      `Unable to connect to the call service…`.
@@ -161,19 +171,22 @@ react-i18next, EN/RU parallel resources under `shared/i18n/`, namespaced (`prejo
 
 - `S1`: **"This call is full."** + **"Only four participants can join at a time."** + **"Back to home"**
 - Name empty: **"Please enter your name"**
-- Name length/chars: **"Name must be 2–30 characters"** (help: "letters, numbers, spaces, hyphens, apostrophes only")
-- Name taken: **"That name is already taken in this call."** *(new string — confirm exact EN/RU with design before locking, per master §6)*
+- Name length: **"Name must be 2–30 characters"**
+- Name illegal chars: **"Name can contain only letters, numbers, spaces, hyphens and apostrophes"** (PRD §6)
 - Camera denied: **"Camera access was denied. You can enable it in your browser settings."**
 - Mic denied: **"Microphone access was denied. You can enable it in your browser settings."**
+- Both denied: **"Camera and microphone access was denied. You can enable them in your browser settings."** (PRD FR-11)
 - Awaiting device permission: **"Allow camera and microphone access to continue."**
 - Connecting: **"Connecting…"**
 - Can't reach call service: **"Unable to connect to the call service. Please check your internet connection and try again."**
 
 ## 7. Validation rules
 
-- **Name:** 2–30 characters; allowed: letters, numbers, spaces, hyphens, apostrophes.
-- **Name uniqueness:** unique within the room, case-insensitive (vs current LiveKit identities) ⇒
-  `NAME_TAKEN` on collision.
+- **Name:** 2–30 characters; allowed: Unicode letters, digits, spaces, hyphens, apostrophes —
+  PRD §6 pattern `^[\p{L}\p{N} '\-]{2,30}$`; leading/trailing whitespace trimmed before validation,
+  input capped at 30.
+- **Duplicate names allowed — no uniqueness check** (PRD Assumption 10). Identity is a separate
+  server-generated id; the `(You)` suffix distinguishes the local user.
 - **Capacity:** 4 participants total, enforced server-side (soft gate + LiveKit `maxParticipants`
   backstop).
 - Validation runs **server-side** at the join boundary; the frontend mirrors it for UX only.
@@ -183,7 +196,8 @@ react-i18next, EN/RU parallel resources under `shared/i18n/`, namespaced (`prejo
 **Backend** (mock `listParticipants` + token minting; no real LiveKit):
 - Name validation: valid / too short / too long / illegal chars.
 - Capacity gate: 0 and 3 participants ⇒ token issued; 4 ⇒ `FULL`.
-- Name uniqueness: existing identity (case-insensitive) ⇒ `NAME_TAKEN`.
+- Duplicate names: a second join with an existing display name **succeeds** with a distinct
+  `identity` (no `NAME_TAKEN`).
 - `GET` status: <4 ⇒ `available`; =4 ⇒ `full`.
 
 **Frontend** (test hooks/stores directly; components via visible behavior):
@@ -205,6 +219,11 @@ for a clean build.
 - **Single fixed room.** No creation, links, or roles; `S2`/`S3`/`S4` screens are deferred.
 - **"Back to home"** has no landing page yet → returns to the app root, which re-runs the capacity
   check (effectively a retry).
+- **PRD alignment (identity & host token).** This subtask follows the PRD over the master spec on
+  two points the master spec had decided differently before the PRD was available: (1) **duplicate
+  names allowed**, so identity ≠ display name (above); (2) when host roles land later, the **host
+  token lives in the host URL** (PRD FR-1, Assumption 8), not in `sessionStorage` as master §2.1
+  currently states — host is deferred here, but the forward-compat target is the PRD's URL model.
 
 ## 10. Forward-compatibility mapping
 
@@ -217,4 +236,4 @@ When later subtasks arrive, this slice extends without rework:
 | Live-count capacity via `listParticipants` | in-memory registry as authority + LiveKit webhooks (§3.1, §3.3) |
 | Own tile only, in-call shell | remote tiles + audio + adaptive grid incl. 2×2 (§4.3 / Subtask 3) |
 | `GET` `status: 'available' \| 'full'` | full availability incl. `ended`/`not_found` → `S2`/`S3` (§3.2, §4.2) |
-| `join` returns `{ accessToken, livekitUrl, role, identity }` | adds `memberToken` for attachments (§3.2, §3.5) |
+| `join` returns `{ accessToken, livekitUrl, role, identity, displayName }` | adds `memberToken` for attachments (§3.2, §3.5) |

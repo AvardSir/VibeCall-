@@ -5,9 +5,12 @@
 - **Status:** Approved for planning
 - **Parent:** `docs/superpowers/specs/2026-06-26-kmb-video-chat-technical-design.md` (master spec)
 - **Decomposition:** `docs/superpowers/specs/subtasks/00-overview.md`
-- **Depends on:** Subtask 1 (`01-join-room.md`) — a joined participant with an `identity`.
+- **Depends on:** Subtask 1 (`01-join-room.md`) — a joined participant with a server-generated
+  `identity` (unique) and a `displayName` (may duplicate).
+- **Product source (binding):** `prd-kmb-video-chat.md` (v2.0) + wireframes. "PRD §X"/"FR-N"/"US-N"
+  point at the PRD; "master §X" at the technical design.
 - **Nature:** A **forward-compatible strict subset** of the master spec (chat lives in master §3.4 /
-  wireframe `H4`). It defers — never contradicts — the rest. "master §X" points at the master spec.
+  wireframe `H4`, PRD US-9 / FR-22–25). It defers — never contradicts — the rest.
 
 ---
 
@@ -60,8 +63,8 @@ of Subtask 1, per `.claude/rules/50-backend.md`:
 
 | Event | Payload | Server action |
 | --- | --- | --- |
-| `join_chat` | `{ identity, role }` | Verify `identity` is a current participant of the room (reuse Subtask-1 `listParticipants`); **bind** this socket → `identity`; join the room channel; emit `chat_history` to this socket. Reject (and do not bind) if not a member. |
-| `send_message` | `{ text }` | Validate (see §3.2). On success: build a `ChatMessage` stamping **`senderIdentity`/`senderName` from the socket binding** (not from the payload), append to history, broadcast `chat_message` to the room. On failure: emit `message_failed { code }` to the sender only. |
+| `join_chat` | `{ identity, role }` | Verify `identity` is a current participant of the room (reuse Subtask-1 `listParticipants`); resolve the participant's **`displayName`** from the LiveKit participant record (its `name`); **bind** this socket → `{ identity, displayName }`; join the room channel; emit `chat_history` to this socket. Reject (and do not bind) if not a member. |
+| `send_message` | `{ text }` | Validate (see §3.2). On success: build a `ChatMessage` stamping **`senderIdentity` (the unique id) and `senderName` (the bound `displayName`) from the socket binding** — never from the payload — append to history, broadcast `chat_message` to the room. On failure: emit `message_failed { code }` to the sender only. |
 
 **Server → client**
 
@@ -72,9 +75,10 @@ of Subtask 1, per `.claude/rules/50-backend.md`:
 | `message_failed` | `{ code }` | To the sender only, on a rejected `send_message`. |
 
 > **Authority (master §2.1).** The client sends *intents*; the server decides. The sender's name is
-> stamped from the socket→identity binding established at `join_chat`, so a client cannot spoof
-> another participant's name. Clients never push history, unread counts, or delivery status — those
-> are client-derived (master §3.4).
+> stamped from the socket binding established at `join_chat`, so a client cannot spoof another
+> participant. **Display names may duplicate** (PRD Assumption 10), so messages are keyed by the
+> unique `senderIdentity`, not by name; the UI flags the local user's own messages via that identity.
+> Clients never push history, unread counts, or delivery status — those are client-derived (master §3.4).
 
 ### 3.2 Message validation
 
@@ -88,8 +92,8 @@ of Subtask 1, per `.claude/rules/50-backend.md`:
 type ChatMessage = {
   id: string;
   roomName: string;
-  senderIdentity: string;
-  senderName: string;
+  senderIdentity: string;    // unique per participant (server-generated id)
+  senderName: string;        // display name; may be duplicated across participants
   sentAt: number;            // epoch ms; rendered as HH:MM
   text: string;              // max 1000 chars
   // attachments: Attachment[]  // deferred (master §3.5) — added later, no shape change to the above
@@ -107,8 +111,9 @@ controls bar from Subtask 1 gains a **chat button** that toggles the panel.
 
 ### 4.1 Components & hooks
 
-- **Chat panel** (`features/chat`): slides in on the right; message list (sender name + HH:MM, own
-  vs others distinguishable); input row (text field + Send); empty state "No messages yet.";
+- **Chat panel** (`features/chat`): slides in on the right; message list (sender name + HH:MM; own
+  vs others distinguished by `senderIdentity`, not by name); input row (text field + Send); empty
+  state "No messages yet.";
   character counter shown from 900.
 - **`useChat` hook:** owns the Socket.IO connection lifecycle — emits `join_chat` on entering the
   room, listens for `chat_history`/`chat_message`/`message_failed`, exposes `sendMessage(text)`. No
@@ -157,8 +162,9 @@ controls bar from Subtask 1 gains a **chat button** that toggles the panel.
 
 **Backend** (mock Socket.IO + `listParticipants`):
 - `join_chat`: member ⇒ socket bound + `chat_history` emitted; non-member ⇒ rejected, no bind.
-- `send_message`: valid text ⇒ appended to history + broadcast; `senderName` stamped from the
-  binding, **not** the payload (spoof attempt ignored).
+- `send_message`: valid text ⇒ appended to history + broadcast; `senderIdentity`/`senderName`
+  stamped from the binding, **not** the payload (spoof attempt ignored); two participants sharing a
+  display name keep distinct `senderIdentity`.
 - Validation: empty ⇒ `EMPTY_MESSAGE`; >1000 chars ⇒ `TEXT_TOO_LONG`; unbound ⇒ `NOT_A_MEMBER`.
 - History: new joiner receives prior messages via `chat_history`.
 
