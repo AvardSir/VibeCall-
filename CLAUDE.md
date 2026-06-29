@@ -63,12 +63,15 @@ host/guest roles, the host-reconnect grace timer, chat, and attachments.
 
 ## Source of Truth (read these first)
 
-- `docs/superpowers/specs/2026-06-26-kmb-video-chat-technical-design.md` — architecture, REST + Socket.IO interfaces, data models, screen map, flows, exact UI strings, validation.
-- `KMB_VideoChat_Wireframes_with_Overview (1) (1).html` — 16 screens (Host H1–H6, Guest G1–G6, System S1–S4) with elements, states, and verbatim UI strings.
+- `prd-kmb-video-chat.md` (v2.0) — product requirements (user stories, FRs, validation, exact UI strings). **Binding** for product behavior.
+- `KMB_VideoChat_Wireframes_with_Overview.html` — 16 screens (Host H1–H6, Guest G1–G6, System S1–S4) with elements, states, and verbatim UI strings.
+- `docs/superpowers/specs/2026-06-26-kmb-video-chat-technical-design.md` — technical design derived from the PRD/wireframes (architecture, REST + Socket.IO interfaces, data models, screen map, flows, validation).
+- `docs/superpowers/specs/subtasks/` — per-subtask specs (forward-compatible subsets of the technical design).
 - `docs/superpowers/plans/` — implementation plans. `CONTEXT.md` — running context.
 
-> The referenced PRD (`prd-kmb-video-chat.md` v2.0) is **not in this repo** — the wireframe HTML
-> and the technical spec are the binding source of truth.
+> The PRD (`prd-kmb-video-chat.md` v2.0) is now in the repo and is **binding** for product behavior.
+> Where the technical design had diverged from it (name uniqueness, host-token placement, camera-off
+> tile), the PRD wins — the specs have been reconciled to the PRD.
 
 ## Rules (auto-loaded)
 
