@@ -2,6 +2,7 @@ export type NameValidation =
   | { ok: true; value: string }
   | { ok: false; reason: 'empty' | 'length' | 'chars' };
 
+// Hyphen is literal at the end of character class, so no escaping needed (unescaped form avoids ESLint no-useless-escape)
 const NAME_PATTERN = /^[\p{L}\p{N} '-]{2,30}$/u;
 const MAX_NAME_LENGTH = 30;
 
