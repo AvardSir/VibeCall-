@@ -68,6 +68,12 @@ Three cooperating processes:
 - A **host** is identified by a host token issued only to the room creator. Host tokens carry
   LiveKit `roomAdmin` grants; the backend also records the host's participant identity in the
   room registry. Only the host can remove guests, end the call, and see "Copy link".
+- **Host token is never placed in the URL.** `POST /rooms` returns the `hostToken` in the response
+  body; the host client stores it in `sessionStorage` and navigates to the **clean** `/r/:room`
+  (no `?host=` query). The app reads the token from `sessionStorage` to authenticate host actions,
+  so it survives a page reload but is **not** exposed in the address bar (which a participant can
+  reveal while screen sharing) or in browser history. The wireframe's `?host=••••` is illustrative;
+  no PRD functional requirement mandates the URL placement. Guests open the tokenless `/r/:room`.
 - A **guest** receives a standard publish/subscribe token. Guests cannot perform host actions;
   the backend rejects any host action whose caller identity is not the recorded host.
 - **Participant identity** equals the participant's display name, which must be **unique within a
@@ -96,7 +102,7 @@ A single Node + TypeScript service. Suggested internal modules:
 | `grace` | Host-reconnect 60s countdown, driven by LiveKit webhooks + timers |
 | `chat` | Socket.IO chat relay + per-room in-memory history (unread badge is client-derived — see §3.4) |
 | `attachments` | Upload validation + local disk storage + download serving + cleanup |
-| `webhooks` | LiveKit webhook receiver (participant joined/left, room finished) |
+| `webhooks` | LiveKit webhook receiver (participant joined/left, room finished); **verifies the webhook signature** via the LiveKit SDK `WebhookReceiver` before acting (see §3.3) |
 
 ### 3.1 Room registry (in-memory)
 
@@ -104,8 +110,8 @@ A single Node + TypeScript service. Suggested internal modules:
 type RoomState = {
   roomName: string;              // LiveKit room name, e.g. "r_3f9a..."
   hostIdentity: string;          // participant identity of the host
-  hostToken: string;             // opaque secret embedded in the host link
-  status: 'active' | 'grace' | 'ended';
+  hostToken: string;             // opaque secret returned to the host client (stored client-side in sessionStorage)
+  status: 'active' | 'grace' | 'ending' | 'ended';  // 'ending' set before deleteRoom on intentional End call (see §3.3)
   participants: Map<string, Participant>; // identity -> participant
   createdAt: number;
   graceTimer?: NodeJS.Timeout;   // active only during host-reconnect grace
@@ -130,7 +136,7 @@ Rooms are created on host "Start a call", and removed from the registry when the
 
 | Method & path | Auth | Purpose | Returns |
 | --- | --- | --- | --- |
-| `POST /rooms` | none | Host starts a call. Create LiveKit room + registry entry. | `{ roomName, hostToken, participantUrl }` |
+| `POST /rooms` | none (per-IP rate-limited) | Host starts a call. Create LiveKit room + registry entry. `hostToken` is returned in the body for the client to store in `sessionStorage` (not embedded in any URL); `participantUrl` is the tokenless guest link. | `{ roomName, hostToken, participantUrl }` |
 | `GET /rooms/:roomName` | none | Validate a link before pre-join. | `{ status }` → drives S1/S2/S3 |
 | `POST /rooms/:roomName/join` | name + optional hostToken | Issue a LiveKit token for host or guest; re-check capacity/status. | `{ accessToken, livekitUrl, role, identity, memberToken }` or error code |
 | `POST /rooms/:roomName/remove` | hostToken + targetIdentity | Remove a guest (LiveKit `removeParticipant`). | `200` / error |
@@ -148,9 +154,17 @@ Rooms are created on host "Start a call", and removed from the registry when the
 
 ### 3.3 Host-reconnect grace (60s)
 
+0. **Webhook authenticity.** Every LiveKit webhook is verified with the SDK `WebhookReceiver`
+   (signature against the LiveKit API key/secret) before the backend acts on it. Unverified
+   payloads are rejected — otherwise anyone could POST a forged `room_finished`/`participant_left`
+   to end or destabilize a call.
 1. LiveKit fires `participant_left` webhook. Backend checks if the leaver is the host.
 2. If host left **unexpectedly** (not via `endCall`): set room `status = 'grace'`, record
    `graceEndsAt = now + 60s`, start a 1s broadcast over Socket.IO of remaining seconds.
+   "Unexpected" is determined by the intentional-end flag: `endCall` sets `status = 'ending'`
+   **before** calling `deleteRoom`, so the resulting host `participant_left` is recognized as a
+   normal teardown and does **not** trigger grace. A host `participant_left` while `status ===
+   'active'` is the unexpected case that starts the countdown.
 3. Guests render the **G6** overlay with the live countdown.
 4. If the host reconnects within 60s (re-join with hostToken): cancel timer, `status = 'active'`,
    broadcast `grace_cancelled`, guests clear the overlay.
@@ -226,7 +240,10 @@ Chat rules (from PRD/wireframes):
   `x-member-token` header on upload, the `?token=` query param on download (so a native `<img>` or
   `<a download>` can carry it). Non-members get `403 FORBIDDEN`. Stored URLs are tokenless; each
   client appends its own token when fetching.
-- **Cleanup:** the room folder is deleted when the room ends.
+- **Cleanup:** the room folder is deleted when the room ends. On backend **startup**, a one-time
+  sweep of `<storage-root>` removes any room folder that has no matching entry in the (freshly
+  empty) registry — i.e. folders orphaned by a previous crash — so disk usage cannot grow
+  unbounded across restarts.
 - **Errors:** `Unsupported file type.` / `File exceeds 10 MB.` / `You can attach up to 5 files per message.`
 
 ### 3.6 Screen-share arbitration
@@ -270,8 +287,8 @@ for the bespoke grid, screen-share view, and overlays.
 
 | Screen | Route / state | Notes |
 | --- | --- | --- |
-| H1 Landing | `/` | "Start a call" → `POST /rooms` → pre-join |
-| H2 Pre-join (host) | `/r/:room?host=…` (pre-join) | Preview, cam/mic toggles, name, Enter call, Copy link |
+| H1 Landing | `/` | "Start a call" → `POST /rooms` → store `hostToken` in `sessionStorage` → pre-join |
+| H2 Pre-join (host) | `/r/:room` (pre-join; host via stored token) | Preview, cam/mic toggles, name, Enter call, Copy link |
 | H3 In-call (host) | in-call state | Adaptive grid, controls + End call, Copy link, chat |
 | H4 Chat panel | in-call sub-state | Same panel for both roles; slides in, video area shrinks |
 | H5 Screen sharing | in-call sub-state | Shared content main area, tiles in strip |
@@ -314,20 +331,34 @@ subscriptions; the grid CSS mirrors the wireframe layouts.
 - **Guest:** Mic, Camera, Share screen, **Leave** (no End call / Copy link / Remove).
 - Mic/camera toggles flip to a struck-through "off" icon; device error shows inline above the bar, auto-dismiss 4s. A denied device disables its toggle for the whole session.
 
+### 4.6 Transient states (additions, not among the 16 PRD screens)
+
+These are not new screens — none of the 16 PRD screens is removed or altered. They are short-lived
+states that necessarily occur at runtime and that the wireframes did not enumerate. Kept minimal
+(a spinner + one line), with their strings entered into the i18n resources (§6) up front.
+
+| State | When | Rendering |
+| --- | --- | --- |
+| **Connecting…** | After "Enter call" / "Join", while the LiveKit connection + token exchange complete, before the grid appears | Spinner over the pre-join card with `Connecting…`; on failure, the existing `Unable to connect to the call service…` (§6) |
+| **Awaiting device permission** | On pre-join load, while the browser's camera/mic permission prompt is open | Preview area shows `Allow camera and microphone access to continue.`; resolves to the live preview (granted) or the existing per-device denied messages (§6) |
+| **Reconnecting (self)** | The **local** participant's own connection drops and LiveKit is auto-reconnecting (distinct from G6, which is the *host* dropping) | Non-blocking overlay `Reconnecting…`; clears on resume, or routes to the call-service error if it cannot recover |
+
 ---
 
 ## 5. Key flows
 
-1. **Host starts a call:** H1 → `POST /rooms` → `{ roomName, hostToken, participantUrl }` → H2
-   pre-join → `POST /rooms/:room/join` (with hostToken) → LiveKit token → connect → H3.
+1. **Host starts a call:** H1 → `POST /rooms` → `{ roomName, hostToken, participantUrl }` → store
+   `hostToken` in `sessionStorage`, navigate to the clean `/r/:room` → H2 pre-join →
+   `POST /rooms/:room/join` (hostToken from `sessionStorage`) → LiveKit token → connect → H3.
 2. **Guest joins:** open link → `GET /rooms/:room` → if OK, G1 pre-join → `POST .../join` → token → G2.
    Blocked outcomes → S1 (full) / S2 (ended) / S3 (not found).
 3. **Chat with file:** upload to `POST .../attachments` → backend stores on disk, returns metadata →
    client `send_message` over Socket.IO → backend relays + appends to history.
 4. **Host removes guest:** hover guest tile → "Remove" → confirm dialog → `POST .../remove` →
    LiveKit `removeParticipant` → grid re-arranges; removed guest sees G4 (may rejoin).
-5. **Host ends call:** `POST .../end` → LiveKit `deleteRoom` → all disconnected → guests see G5;
-   link now resolves to S2.
+5. **Host ends call:** `POST .../end` → set `status = 'ending'` → LiveKit `deleteRoom` → the host's
+   own `participant_left` is recognized as intentional (no grace) → all disconnected → guests see
+   G5; link now resolves to S2.
 6. **Host drops:** webhook `participant_left` (host) → grace 60s → G6 countdown → reconnect resumes,
    else room ends.
 
@@ -340,7 +371,10 @@ These must appear verbatim (localized EN/RU):
 - Room creation failed: `Unable to start a call right now. Please try again.`
 - Can't reach call service: `Unable to connect to the call service. Please check your internet connection and try again.`
 - Camera denied: `Camera access was denied. You can enable it in your browser settings.`
-- Mic denied: `Microphone access was denied…`
+- Mic denied: `Microphone access was denied. You can enable it in your browser settings.`
+- Connecting (after Enter/Join): `Connecting…`  *(transient state — §4.6)*
+- Awaiting device permission (pre-join): `Allow camera and microphone access to continue.`  *(transient state — §4.6)*
+- Reconnecting (own connection dropped): `Reconnecting…`  *(transient state — §4.6; distinct from the G6 host-grace overlay)*
 - Name empty: `Please enter your name`
 - Name length: `Name must be 2–30 characters` (letters, numbers, spaces, hyphens, apostrophes only)
 - Name already taken: `That name is already taken in this call.` *(new string — not in the original wireframes; confirm exact EN/RU wording with design before locking it in.)*
@@ -387,6 +421,11 @@ These must appear verbatim (localized EN/RU):
 - **Idle-room reaping.** A timer (~every 60s) forgets rooms that can't be returned to: empty rooms
   never joined within ~10 min, and ended rooms after ~1 h (link revisits resolve to S2 until then).
   This bounds memory against repeated `POST /rooms` on the unauthenticated endpoint.
+- **Webhook authenticity.** The LiveKit webhook endpoint verifies each request's signature with the
+  SDK `WebhookReceiver` (keyed by the LiveKit API key/secret) and rejects anything unsigned/invalid,
+  so room lifecycle and presence cannot be driven by forged payloads (see §3.3).
+- **Rate-limiting `POST /rooms`.** The room-creation endpoint is unauthenticated, so it is per-IP
+  rate-limited to bound abuse; the idle-room reaper bounds memory but not request rate.
 - **Upload MIME is client-supplied.** Attachment type is classified from the request
   `Content-Type`, which a client can spoof. For this scope it is accepted (uploads are member-gated,
   room-scoped, and deleted on room end). Hardening if needed: verify file signatures (magic bytes)
