@@ -1,4 +1,3 @@
-// frontend/src/features/preferences/components/TopBar.tsx
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../../stores/useUiStore';

@@ -3,6 +3,7 @@
 /* Class-based dark mode (driven by useUiStore toggling `.dark` on <html>) */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Light surfaces are the Tailwind defaults (white / slate); dark surfaces below are applied via the `dark:` variant. */
 @theme {
   /* Accent / status — identical in both themes (Figma dark palette) */
   --color-accent: #2c68fa;        /* Primary/Blue */

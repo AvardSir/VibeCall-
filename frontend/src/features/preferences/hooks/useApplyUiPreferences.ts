@@ -1,4 +1,3 @@
-// frontend/src/features/preferences/hooks/useApplyUiPreferences.ts
 import { useEffect } from 'react';
 import i18n from '../../../shared/i18n';
 import { useUiStore } from '../../../stores/useUiStore';

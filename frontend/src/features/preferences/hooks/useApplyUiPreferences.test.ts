@@ -1,4 +1,3 @@
-// frontend/src/features/preferences/hooks/useApplyUiPreferences.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useApplyUiPreferences } from './useApplyUiPreferences';
