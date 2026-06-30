@@ -2,17 +2,20 @@ import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NameErrorKey } from '../hooks/useNameValidation';
 
-export type NameFieldProps = {
+export type DisplayNameInputProps = {
   value: string;
   onChange: (value: string) => void;
   errorKey: NameErrorKey | null;
   showError: boolean;
 };
 
-export function NameField({ value, onChange, errorKey, showError }: NameFieldProps): JSX.Element {
+export function DisplayNameInput({
+  value,
+  onChange,
+  errorKey,
+  showError,
+}: DisplayNameInputProps): JSX.Element {
   const { t } = useTranslation('prejoin');
-  // Strip the namespace prefix so the key resolves within the 'prejoin' namespace.
-  const bareKey = errorKey ? errorKey.replace('prejoin.', '') : null;
 
   return (
     <label className="flex flex-col gap-1 text-sm">
@@ -24,8 +27,8 @@ export function NameField({ value, onChange, errorKey, showError }: NameFieldPro
         className="rounded-lg border border-slate-700 bg-surface-muted px-3 py-2 text-slate-100 outline-none focus:border-accent"
       />
       <span className="text-xs text-slate-500">{t('nameHelp')}</span>
-      {showError && bareKey ? (
-        <span className="text-xs text-red-400">{t(bareKey)}</span>
+      {showError && errorKey ? (
+        <span className="text-xs text-red-400">{t(errorKey)}</span>
       ) : null}
     </label>
   );
