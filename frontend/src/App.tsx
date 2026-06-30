@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { getRoomStatus, joinRoom } from './shared/lib/apiClient';
 import type { JoinResponse } from './shared/types';
@@ -37,38 +37,35 @@ export function App(): JSX.Element {
     };
   }, [capacityTick]);
 
-  const recheckCapacity = useCallback(() => {
+  function recheckCapacity(): void {
     setView('loading');
     setCapacityTick((n) => n + 1);
-  }, []);
+  }
 
-  const handleEnter = useCallback(
-    async (name: string) => {
-      setView('connecting');
-      setPhase('connecting');
-      const result = await joinRoom(ROOM_NAME, name);
-      if (!result.ok) {
-        setView(result.error === 'FULL' ? 'full' : 'prejoin');
-        setPhase('idle');
-        return;
-      }
-      setSession(result.data);
-      useConnectionStore.getState().setLocalParticipant({
-        identity: result.data.identity,
-        displayName: result.data.displayName,
-      });
-      setView('in-call');
-    },
-    [setPhase],
-  );
+  async function handleEnter(name: string): Promise<void> {
+    setView('connecting');
+    setPhase('connecting');
+    const result = await joinRoom(ROOM_NAME, name);
+    if (!result.ok) {
+      setView(result.error === 'FULL' ? 'full' : 'prejoin');
+      setPhase('idle');
+      return;
+    }
+    setSession(result.data);
+    useConnectionStore.getState().setLocalParticipant({
+      identity: result.data.identity,
+      displayName: result.data.displayName,
+    });
+    setView('in-call');
+  }
 
-  const leave = useCallback(() => {
+  function leave(): void {
     setSession(null);
     resetConnection();
     resetMedia();
     resetChat();
     recheckCapacity();
-  }, [recheckCapacity, resetConnection, resetMedia, resetChat]);
+  }
 
   if (view === 'loading' || view === 'connecting') return <ConnectingScreen />;
   if (view === 'full') return <CallFullScreen onBackToHome={recheckCapacity} />;
