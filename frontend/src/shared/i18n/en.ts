@@ -4,6 +4,11 @@ export const en = {
     connecting: 'Connecting…',
     connectError: 'Unable to connect to the call service. Please check your internet connection and try again.',
     retry: 'Try again',
+    themeSwitchToLight: 'Switch to light theme',
+    themeSwitchToDark: 'Switch to dark theme',
+    language: 'Language',
+    languageEnglish: 'English',
+    languageRussian: 'Russian',
   },
   prejoin: {
     nameLabel: 'Your name',

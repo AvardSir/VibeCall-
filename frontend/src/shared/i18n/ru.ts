@@ -8,6 +8,11 @@ export const ru: Translations = {
     connecting: 'Подключение…',
     connectError: 'Не удалось подключиться к сервису звонков. Проверьте подключение к интернету и попробуйте снова.',
     retry: 'Попробовать снова',
+    themeSwitchToLight: 'Переключить на светлую тему',
+    themeSwitchToDark: 'Переключить на тёмную тему',
+    language: 'Язык',
+    languageEnglish: 'Английский',
+    languageRussian: 'Русский',
   },
   prejoin: {
     nameLabel: 'Ваше имя',
