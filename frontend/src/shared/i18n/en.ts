@@ -25,6 +25,16 @@ export const en = {
     micToggle: 'Microphone',
     cameraToggle: 'Camera',
   },
+  chat: {
+    title: 'Chat',
+    placeholder: 'Type a message…',
+    send: 'Send',
+    empty: 'No messages yet.',
+    sending: 'Sending…',
+    notDelivered: 'Not delivered',
+    charCount: '{{length}}/1000',
+    openChat: 'Chat',
+  },
   roomStates: {
     fullTitle: 'This call is full.',
     fullBody: 'Only four participants can join at a time.',
