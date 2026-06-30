@@ -1,4 +1,3 @@
-// frontend/src/features/preferences/components/ThemeToggle.test.tsx
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeToggle } from './ThemeToggle';
