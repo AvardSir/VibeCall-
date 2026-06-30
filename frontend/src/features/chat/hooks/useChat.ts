@@ -3,7 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { createSocket } from '../../../shared/lib/socketClient';
 import { useChatStore } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
-import type { ChatMessage, ChatErrorCode, ParticipantRole } from '../../../shared/types';
+import type { ChatMessage, ParticipantRole } from '../../../shared/types';
 
 export type UseChatResult = { sendMessage: (text: string) => void };
 
@@ -28,7 +28,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
     });
     socket.on('chat_history', (messages: ChatMessage[]) => setHistory(messages));
     socket.on('chat_message', (message: ChatMessage) => receiveMessage(message, identity));
-    socket.on('message_failed', (_payload: { code: ChatErrorCode }) => markFailed());
+    socket.on('message_failed', () => markFailed());
 
     return () => {
       socket.removeAllListeners();

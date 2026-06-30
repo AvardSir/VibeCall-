@@ -5,8 +5,10 @@ import type { JoinResponse } from './shared/types';
 import { PreJoinScreen } from './features/prejoin';
 import { CallFullScreen, ConnectErrorScreen } from './features/room-states';
 import { CallShell, ConnectingScreen } from './features/call';
+import { ChatPanel } from './features/chat';
 import { useConnectionStore } from './stores/useConnectionStore';
 import { useMediaStore } from './stores/useMediaStore';
+import { useChatStore } from './stores/useChatStore';
 
 const ROOM_NAME = 'main';
 
@@ -19,6 +21,7 @@ export function App(): JSX.Element {
   const setPhase = useConnectionStore((s) => s.setPhase);
   const resetConnection = useConnectionStore((s) => s.reset);
   const resetMedia = useMediaStore((s) => s.reset);
+  const resetChat = useChatStore((s) => s.reset);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,22 +66,26 @@ export function App(): JSX.Element {
     setSession(null);
     resetConnection();
     resetMedia();
+    resetChat();
     recheckCapacity();
-  }, [recheckCapacity, resetConnection, resetMedia]);
+  }, [recheckCapacity, resetConnection, resetMedia, resetChat]);
 
   if (view === 'loading' || view === 'connecting') return <ConnectingScreen />;
   if (view === 'full') return <CallFullScreen onBackToHome={recheckCapacity} />;
   if (view === 'connect-error') return <ConnectErrorScreen onRetry={recheckCapacity} />;
   if (view === 'in-call' && session) {
     return (
-      <CallShell
-        accessToken={session.accessToken}
-        serverUrl={session.livekitUrl}
-        displayName={session.displayName}
-        onLeave={leave}
-        onConnectError={() => setView('connect-error')}
-        onRoomFull={() => setView('full')}
-      />
+      <>
+        <CallShell
+          accessToken={session.accessToken}
+          serverUrl={session.livekitUrl}
+          displayName={session.displayName}
+          onLeave={leave}
+          onConnectError={() => setView('connect-error')}
+          onRoomFull={() => setView('full')}
+        />
+        <ChatPanel role={session.role} />
+      </>
     );
   }
   return <PreJoinScreen onEnter={(name) => void handleEnter(name)} />;
