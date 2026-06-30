@@ -65,6 +65,21 @@ describe('App routing', () => {
     await waitFor(() => expect(screen.getByText('in-call-shell')).toBeInTheDocument());
   });
 
+  it('shows the theme and language controls on the full-room screen', async () => {
+    getRoomStatus.mockResolvedValue('full');
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('This call is full.')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /switch to light theme/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /russian/i })).toBeInTheDocument();
+  });
+
+  it('shows the theme and language controls on the pre-join screen', async () => {
+    getRoomStatus.mockResolvedValue('available');
+    render(<App />);
+    await waitFor(() => screen.getByLabelText(/your name/i));
+    expect(screen.getByRole('button', { name: /switch to light theme/i })).toBeInTheDocument();
+  });
+
   it('renders connect-error view when onConnectError is called', async () => {
     getRoomStatus.mockResolvedValue('available');
     joinRoom.mockResolvedValue({
