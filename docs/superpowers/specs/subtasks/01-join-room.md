@@ -155,7 +155,9 @@ React SDK for media.
 
 ### 5.3 State (Zustand — `.claude/rules/30-state-store.md`)
 
-- `useCallStore` — local mic/cam on-off, connection status, local participant. UI state only.
+- `useMediaStore` — local mic/cam on-off + device-permission state (self only). UI state only.
+- `useConnectionStore` — connection phase (`idle | connecting | connected | failed`) + the local
+  participant. UI state only.
 - `useUiStore` — theme (`dark` default) / language (`en` default). Toggles' UI deferred; the store
   and i18n wiring exist now.
 

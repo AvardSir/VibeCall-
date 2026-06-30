@@ -1,0 +1,33 @@
+export const en = {
+  common: {
+    appName: 'kmb-video-chat',
+    connecting: 'Connecting…',
+    connectError: 'Unable to connect to the call service. Please check your internet connection and try again.',
+    retry: 'Try again',
+  },
+  prejoin: {
+    nameLabel: 'Your name',
+    nameHelp: '2–30 characters. Letters, numbers, spaces, hyphens and apostrophes.',
+    enterCall: 'Enter call →',
+    micToggle: 'Microphone',
+    cameraToggle: 'Camera',
+    awaitingPermission: 'Allow camera and microphone access to continue.',
+    nameEmpty: 'Please enter your name',
+    nameLength: 'Name must be 2–30 characters',
+    nameChars: 'Name can contain only letters, numbers, spaces, hyphens and apostrophes',
+    cameraDenied: 'Camera access was denied. You can enable it in your browser settings.',
+    micDenied: 'Microphone access was denied. You can enable it in your browser settings.',
+    bothDenied: 'Camera and microphone access was denied. You can enable them in your browser settings.',
+  },
+  call: {
+    you: '{{name}} (You)',
+    leave: 'Leave',
+    micToggle: 'Microphone',
+    cameraToggle: 'Camera',
+  },
+  roomStates: {
+    fullTitle: 'This call is full.',
+    fullBody: 'Only four participants can join at a time.',
+    backToHome: 'Back to home',
+  },
+} as const;
