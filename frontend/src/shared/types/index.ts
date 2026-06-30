@@ -9,9 +9,12 @@ export type JoinResponse = {
   displayName: string;
 };
 
-export type JoinResult =
-  | { ok: true; data: JoinResponse }
-  | { ok: false; error: JoinError };
+// Generic envelope for API calls: a discriminated success/error union.
+export type ApiResponse<TData, TError> =
+  | { ok: true; data: TData }
+  | { ok: false; error: TError };
+
+export type JoinResult = ApiResponse<JoinResponse, JoinError>;
 
 export type ParticipantRole = 'host' | 'guest';
 

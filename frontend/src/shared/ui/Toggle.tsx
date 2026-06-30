@@ -13,13 +13,23 @@ export function Toggle({ label, pressed, disabled, onChange }: ToggleProps): JSX
       type="button"
       role="switch"
       aria-checked={pressed}
-      aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!pressed)}
-      className={`rounded-full px-4 py-2 text-sm transition disabled:opacity-40 ${
-        pressed ? 'bg-accent text-white' : 'bg-surface-muted text-slate-300'
-      }`}
+      className="inline-flex items-center gap-2 text-sm text-slate-300 transition disabled:opacity-40"
     >
+      {/* Decorative track + thumb; the visible label provides the accessible name. */}
+      <span
+        aria-hidden="true"
+        className={`relative h-6 w-11 rounded-full transition-colors ${
+          pressed ? 'bg-accent' : 'bg-surface-muted'
+        }`}
+      >
+        <span
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+            pressed ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </span>
       {label}
     </button>
   );

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { getRoomStatus, joinRoom } from './apiClient';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  vi.resetModules();
+});
 
 function mockFetch(status: number, body: unknown) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -15,6 +19,22 @@ describe('getRoomStatus', () => {
   it('returns the status field', async () => {
     mockFetch(200, { status: 'full' });
     expect(await getRoomStatus('main')).toBe('full');
+  });
+});
+
+describe('URL building', () => {
+  it('normalizes a trailing slash in the base URL (no double slash)', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3000/');
+    vi.resetModules();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'available' }),
+    } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const { getRoomStatus: getStatus } = await import('./apiClient');
+    await getStatus('main');
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/rooms/main');
   });
 });
 

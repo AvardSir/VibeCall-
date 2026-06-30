@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { StatusCodes } from 'http-status-codes';
 import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { TokenMinter } from './livekitTokens.js';
@@ -32,7 +33,7 @@ export function createApp(deps: AppDeps): Express {
       return;
     }
     logger.error({ err }, 'unhandled error in request');
-    res.status(500).json({ error: 'INTERNAL' });
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'INTERNAL' });
   });
 
   return app;
