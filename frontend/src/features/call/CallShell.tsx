@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { JSX } from 'react';
-import { useTranslation } from 'react-i18next';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
+import { ConnectionError, ConnectionErrorReason } from 'livekit-client';
 import '@livekit/components-styles';
 import { useConnectionStore } from '../../stores/useConnectionStore';
 import { useMediaStore } from '../../stores/useMediaStore';
@@ -25,15 +25,16 @@ export function CallShell({
   onConnectError,
   onRoomFull,
 }: CallShellProps): JSX.Element {
-  const { t } = useTranslation('common');
   const setPhase = useConnectionStore((s) => s.setPhase);
   const isMicOn = useMediaStore((s) => s.isMicOn);
   const isCamOn = useMediaStore((s) => s.isCamOn);
 
   const handleError = useCallback(
     (error: Error): void => {
-      // LiveKit rejects the surplus participant from the maxParticipants backstop → S1.
-      if (/full|exceeds|maximum|capacity/i.test(error.message)) {
+      // The server denies the join once the maxParticipants backstop is hit; LiveKit surfaces
+      // that as a NotAllowed connection error. Matching the structured reason (not the message
+      // text) keeps this stable across SDK versions and locales → routes to S1 (room full).
+      if (error instanceof ConnectionError && error.reason === ConnectionErrorReason.NotAllowed) {
         onRoomFull();
         return;
       }
@@ -55,7 +56,7 @@ export function CallShell({
       onDisconnected={onLeave}
       className="flex min-h-full flex-col"
     >
-      <div className="flex flex-1 items-center justify-center p-6" aria-label={t('appName')}>
+      <div className="flex flex-1 items-center justify-center p-6">
         {/* Subtask 3 replaces this single tile with the 2x2 remote grid. */}
         <div className="w-full max-w-2xl">
           <OwnTile displayName={displayName} />
