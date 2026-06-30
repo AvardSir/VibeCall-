@@ -7,7 +7,7 @@ export const i18nReady = i18n.use(initReactI18next).init({
   resources: { en: en, ru: ru },
   lng: 'en',
   fallbackLng: 'en',
-  ns: ['common', 'prejoin', 'call', 'roomStates'],
+  ns: ['common', 'prejoin', 'call', 'roomStates', 'chat'],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
 });

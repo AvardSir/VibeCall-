@@ -29,6 +29,16 @@ export const ru: Translations = {
     micToggle: 'Микрофон',
     cameraToggle: 'Камера',
   },
+  chat: {
+    title: 'Чат',
+    placeholder: 'Введите сообщение…',
+    send: 'Отправить',
+    empty: 'Сообщений пока нет.',
+    sending: 'Отправка…',
+    notDelivered: 'Не доставлено',
+    charCount: '{{length}}/1000',
+    openChat: 'Чат',
+  },
   roomStates: {
     fullTitle: 'Звонок заполнен.',
     fullBody: 'Одновременно могут участвовать только четыре человека.',

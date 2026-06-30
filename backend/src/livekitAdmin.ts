@@ -2,9 +2,12 @@ import { RoomServiceClient } from 'livekit-server-sdk';
 import type { AppConfig } from './config.js';
 import { logger } from './logger.js';
 
+export type ParticipantSummary = { identity: string; name: string };
+
 export type LivekitAdmin = {
   ensureRoom(): Promise<void>;
   listParticipantCount(): Promise<number>;
+  listParticipants(): Promise<ParticipantSummary[]>;
 };
 
 export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
@@ -13,6 +16,11 @@ export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
     config.livekitApiKey,
     config.livekitApiSecret,
   );
+
+  async function fetchParticipants(): Promise<ParticipantSummary[]> {
+    const participants = await client.listParticipants(config.fixedRoomName);
+    return participants.map((p) => ({ identity: p.identity, name: p.name }));
+  }
 
   return {
     async ensureRoom() {
@@ -26,8 +34,12 @@ export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
     },
 
     async listParticipantCount() {
-      const participants = await client.listParticipants(config.fixedRoomName);
+      const participants = await fetchParticipants();
       return participants.length;
+    },
+
+    async listParticipants() {
+      return fetchParticipants();
     },
   };
 }
