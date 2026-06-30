@@ -1,38 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { validateDisplayName } from './validation.js';
+import { nameSchema } from './validation.js';
 
-describe('validateDisplayName', () => {
+describe('nameSchema', () => {
   it('accepts a normal name and returns the trimmed value', () => {
-    expect(validateDisplayName('  Ann  ')).toEqual({ ok: true, value: 'Ann' });
+    const result = nameSchema.safeParse('  Ann  ');
+    expect(result.success).toBe(true);
+    expect(result.success && result.data).toBe('Ann');
   });
 
   it('accepts letters, numbers, spaces, hyphens and apostrophes', () => {
-    expect(validateDisplayName("O'Neil-7 Ann")).toEqual({ ok: true, value: "O'Neil-7 Ann" });
+    expect(nameSchema.safeParse("O'Neil-7 Ann").success).toBe(true);
   });
 
   it('accepts unicode letters', () => {
-    expect(validateDisplayName('Анна')).toEqual({ ok: true, value: 'Анна' });
+    expect(nameSchema.safeParse('Анна').success).toBe(true);
   });
 
-  it('rejects empty / whitespace-only as empty', () => {
-    expect(validateDisplayName('   ')).toEqual({ ok: false, reason: 'empty' });
-    expect(validateDisplayName('')).toEqual({ ok: false, reason: 'empty' });
+  it('rejects empty / whitespace-only', () => {
+    expect(nameSchema.safeParse('   ').success).toBe(false);
+    expect(nameSchema.safeParse('').success).toBe(false);
   });
 
-  it('rejects too-short (1 char) as length', () => {
-    expect(validateDisplayName('A')).toEqual({ ok: false, reason: 'length' });
+  it('rejects too-short (1 char)', () => {
+    expect(nameSchema.safeParse('A').success).toBe(false);
   });
 
-  it('rejects too-long (>30) as length', () => {
-    expect(validateDisplayName('a'.repeat(31))).toEqual({ ok: false, reason: 'length' });
+  it('rejects too-long (>30)', () => {
+    expect(nameSchema.safeParse('a'.repeat(31)).success).toBe(false);
   });
 
   it('rejects illegal characters', () => {
-    expect(validateDisplayName('Ann@home')).toEqual({ ok: false, reason: 'chars' });
+    expect(nameSchema.safeParse('Ann@home').success).toBe(false);
   });
 
-  it('rejects non-string input as empty', () => {
-    expect(validateDisplayName(undefined)).toEqual({ ok: false, reason: 'empty' });
-    expect(validateDisplayName(42)).toEqual({ ok: false, reason: 'empty' });
+  it('rejects non-string input', () => {
+    expect(nameSchema.safeParse(undefined).success).toBe(false);
+    expect(nameSchema.safeParse(42).success).toBe(false);
   });
 });

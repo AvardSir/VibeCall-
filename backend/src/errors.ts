@@ -1,14 +1,12 @@
+import { StatusCodes } from 'http-status-codes';
+
 export type ErrorCode = 'FULL' | 'INVALID_NAME' | 'INTERNAL';
 
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
-  FULL: 409,
-  INVALID_NAME: 400,
-  INTERNAL: 500,
+  FULL: StatusCodes.CONFLICT,
+  INVALID_NAME: StatusCodes.BAD_REQUEST,
+  INTERNAL: StatusCodes.INTERNAL_SERVER_ERROR,
 };
-
-export function httpStatusForCode(code: ErrorCode): number {
-  return STATUS_BY_CODE[code];
-}
 
 export class AppError extends Error {
   readonly code: ErrorCode;
@@ -18,6 +16,6 @@ export class AppError extends Error {
     super(message ?? code);
     this.name = 'AppError';
     this.code = code;
-    this.status = httpStatusForCode(code);
+    this.status = STATUS_BY_CODE[code];
   }
 }

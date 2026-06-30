@@ -1,39 +1,31 @@
-import type { JoinError, JoinResponse, JoinResult, RoomStatus } from '../types';
+import { z } from 'zod';
+import urlJoin from 'url-join';
+import type { JoinResult, RoomStatus } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
 // Endpoint URL builders kept in one place so paths are not scattered across call sites.
+// url-join normalizes separators (e.g. a trailing slash on BASE_URL) so segments never double up.
 const roomStatusUrl = (roomName: string): string =>
-  `${BASE_URL}/rooms/${encodeURIComponent(roomName)}`;
-const joinUrl = (roomName: string): string => `${roomStatusUrl(roomName)}/join`;
+  urlJoin(BASE_URL, 'rooms', encodeURIComponent(roomName));
+const joinUrl = (roomName: string): string => urlJoin(roomStatusUrl(roomName), 'join');
 
-function isRoomStatus(value: unknown): value is RoomStatus {
-  return value === 'available' || value === 'full';
-}
-
-function isJoinError(value: unknown): value is JoinError {
-  return value === 'FULL' || value === 'INVALID_NAME' || value === 'INTERNAL';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isJoinResponse(value: unknown): value is JoinResponse {
-  return (
-    isRecord(value) &&
-    typeof value.accessToken === 'string' &&
-    typeof value.livekitUrl === 'string' &&
-    value.role === 'guest' &&
-    typeof value.identity === 'string' &&
-    typeof value.displayName === 'string'
-  );
-}
+// Response schemas — validate untrusted server payloads at the boundary instead of casting.
+const roomStatusResponseSchema = z.object({ status: z.enum(['available', 'full']) });
+const joinResponseSchema = z.object({
+  accessToken: z.string(),
+  livekitUrl: z.string(),
+  role: z.literal('guest'),
+  identity: z.string(),
+  displayName: z.string(),
+});
+const errorBodySchema = z.object({ error: z.enum(['FULL', 'INVALID_NAME', 'INTERNAL']) });
 
 export async function getRoomStatus(roomName: string): Promise<RoomStatus> {
   const res = await fetch(roomStatusUrl(roomName));
   const body: unknown = await res.json();
-  if (isRecord(body) && isRoomStatus(body.status)) return body.status;
+  const parsed = roomStatusResponseSchema.safeParse(body);
+  if (parsed.success) return parsed.data.status;
   throw new Error('Malformed room status response');
 }
 
@@ -45,10 +37,10 @@ export async function joinRoom(roomName: string, name: string): Promise<JoinResu
   });
   if (res.ok) {
     const data: unknown = await res.json();
-    if (isJoinResponse(data)) return { ok: true, data };
-    return { ok: false, error: 'INTERNAL' };
+    const parsed = joinResponseSchema.safeParse(data);
+    return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: 'INTERNAL' };
   }
   const body: unknown = await res.json().catch(() => ({}));
-  const error = isRecord(body) && isJoinError(body.error) ? body.error : 'INTERNAL';
-  return { ok: false, error };
+  const parsed = errorBodySchema.safeParse(body);
+  return { ok: false, error: parsed.success ? parsed.data.error : 'INTERNAL' };
 }

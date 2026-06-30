@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 
 export type ChatMessage = {
   id: string;
@@ -18,11 +19,19 @@ export type MessageValidation =
   | { ok: true; value: string }
   | { ok: false; code: 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' };
 
+// Reason codes are carried as the zod issue message so the first failing check maps straight to
+// a MessageValidation code. Checks are ordered empty-before-length; a value cannot fail both.
+const messageTextSchema = z
+  .string({ error: 'EMPTY_MESSAGE' })
+  .refine((s) => s.trim().length > 0, { error: 'EMPTY_MESSAGE' })
+  .refine((s) => s.length <= MAX_TEXT_LENGTH, { error: 'TEXT_TOO_LONG' });
+
 export function validateMessageText(raw: unknown): MessageValidation {
-  if (typeof raw !== 'string') return { ok: false, code: 'EMPTY_MESSAGE' };
-  if (raw.trim().length === 0) return { ok: false, code: 'EMPTY_MESSAGE' };
-  if (raw.length > MAX_TEXT_LENGTH) return { ok: false, code: 'TEXT_TOO_LONG' };
-  return { ok: true, value: raw };
+  const result = messageTextSchema.safeParse(raw);
+  if (result.success) return { ok: true, value: result.data };
+  const [issue] = result.error.issues;
+  const code = issue?.message === 'TEXT_TOO_LONG' ? 'TEXT_TOO_LONG' : 'EMPTY_MESSAGE';
+  return { ok: false, code };
 }
 
 export type ChatService = {

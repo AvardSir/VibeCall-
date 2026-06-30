@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { z } from 'zod';
 
 // Bare keys within the 'prejoin' i18n namespace — consumers resolve them with the namespaced t().
 export type NameErrorKey = 'nameEmpty' | 'nameLength' | 'nameChars';
@@ -8,17 +9,31 @@ export type NameValidity = { valid: boolean; errorKey: NameErrorKey | null };
 // (backend/src/validation.ts) for instant client-side feedback; the server re-validates as the
 // authority. Keep both copies in sync with the PRD.
 const NAME_PATTERN = /^[\p{L}\p{N} '-]{2,30}$/u;
-const MAX_NAME_LENGTH = 30;
+
+// Each refine carries its reason code as the issue message; the first failing check wins, giving
+// the priority empty → length → chars.
+const nameSchema = z
+  .string()
+  .transform((s) => s.trim())
+  .pipe(
+    z
+      .string()
+      .refine((s) => s.length > 0, { error: 'nameEmpty' })
+      .refine((s) => s.length >= 2 && s.length <= 30, { error: 'nameLength' })
+      .refine((s) => NAME_PATTERN.test(s), { error: 'nameChars' }),
+  );
 
 export function useNameValidation(name: string): NameValidity {
   return useMemo(() => {
-    const trimmed = name.trim();
-    if (trimmed.length === 0) return { valid: false, errorKey: 'nameEmpty' };
-    const capped = trimmed.slice(0, MAX_NAME_LENGTH);
-    if (trimmed.length > MAX_NAME_LENGTH || capped.length < 2) {
-      return { valid: false, errorKey: 'nameLength' };
-    }
-    if (!NAME_PATTERN.test(capped)) return { valid: false, errorKey: 'nameChars' };
-    return { valid: true, errorKey: null };
+    const result = nameSchema.safeParse(name);
+    if (result.success) return { valid: true, errorKey: null };
+    const [issue] = result.error.issues;
+    const errorKey: NameErrorKey =
+      issue?.message === 'nameLength'
+        ? 'nameLength'
+        : issue?.message === 'nameChars'
+          ? 'nameChars'
+          : 'nameEmpty';
+    return { valid: false, errorKey };
   }, [name]);
 }
