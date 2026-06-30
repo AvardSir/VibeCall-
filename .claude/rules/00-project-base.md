@@ -15,7 +15,7 @@ conventions introduced here. Read this first.
 | Media | LiveKit Components React SDK + local LiveKit server (SFU) |
 | Styling | Tailwind CSS (`dark:` variants for theming) |
 | i18n | react-i18next (EN default / RU) |
-| State | **Zustand** (one store per domain) |
+| State | **Zustand** (one store per concern, not per domain) |
 | Backend | Node + TypeScript, Socket.IO 4 |
 | Runtime | Node.js 22 |
 
