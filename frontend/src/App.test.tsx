@@ -25,7 +25,15 @@ beforeEach(() => {
   onConnectErrorCallback = null;
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(async () => {
+  // Flush pending microtasks/macrotasks so any trailing async effects (e.g.
+  // useDevicePermissions' getUserMedia call) complete while navigator is still
+  // stubbed. Without this, the last test's effect can resolve after
+  // vi.unstubAllGlobals() restores jsdom's real navigator (which has no
+  // mediaDevices), causing "Cannot read properties of undefined" on the next tick.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  vi.unstubAllGlobals();
+});
 
 import { App } from './App';
 
