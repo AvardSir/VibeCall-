@@ -19,6 +19,10 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, LIVEKIT_API_KEY: undefined })).toThrow();
   });
 
+  it('throws when a LiveKit URL is not a valid URL', () => {
+    expect(() => loadConfig({ ...base, LIVEKIT_URL: 'not-a-url' })).toThrow();
+  });
+
   it('honours FIXED_ROOM_NAME and PORT overrides', () => {
     const cfg = loadConfig({ ...base, FIXED_ROOM_NAME: 'demo', PORT: '4000' });
     expect(cfg.fixedRoomName).toBe('demo');

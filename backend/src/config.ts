@@ -7,8 +7,10 @@ const EMPTY_TIMEOUT_SECONDS = 300;
 const envSchema = z.object({
   LIVEKIT_API_KEY: z.string().min(1),
   LIVEKIT_API_SECRET: z.string().min(1),
-  LIVEKIT_URL: z.string().min(1),
-  LIVEKIT_HOST: z.string().min(1),
+  // LIVEKIT_URL is the client-facing signalling endpoint (ws://|wss://); LIVEKIT_HOST is the
+  // server API endpoint (http://|https://). Both must be syntactically valid URLs.
+  LIVEKIT_URL: z.url(),
+  LIVEKIT_HOST: z.url(),
   PORT: z.coerce.number().int().positive().default(3000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   FIXED_ROOM_NAME: z.string().min(1).default('main'),

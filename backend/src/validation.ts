@@ -2,7 +2,10 @@ export type NameValidation =
   | { ok: true; value: string }
   | { ok: false; reason: 'empty' | 'length' | 'chars' };
 
-// Hyphen is literal at the end of character class, so no escaping needed (unescaped form avoids ESLint no-useless-escape)
+// Display-name rule. Source of truth: PRD §6. Intentionally duplicated in the frontend
+// (frontend/src/features/prejoin/hooks/useNameValidation.ts) for instant client-side feedback;
+// the server re-validates as the authority. Keep both copies in sync with the PRD.
+// Hyphen is literal at the end of the character class, so no escaping needed (avoids ESLint no-useless-escape).
 const NAME_PATTERN = /^[\p{L}\p{N} '-]{2,30}$/u;
 const MAX_NAME_LENGTH = 30;
 
