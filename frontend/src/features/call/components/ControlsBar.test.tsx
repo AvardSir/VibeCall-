@@ -33,4 +33,19 @@ describe('ControlsBar', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Microphone' }));
     expect(setMicEnabled).toHaveBeenLastCalledWith(false);
   });
+
+  it('shows state-aware tooltips on the camera and mic toggles', () => {
+    render(<ControlsBar onLeave={vi.fn()} />);
+    // Defaults: mic on, camera on → tooltips offer the "turn off / mute" action.
+    expect(screen.getByRole('switch', { name: 'Camera' })).toHaveAttribute('title', 'Turn camera off');
+    expect(screen.getByRole('switch', { name: 'Microphone' })).toHaveAttribute('title', 'Mute microphone');
+    // Toggle the mic off → tooltip flips to the "unmute" action.
+    fireEvent.click(screen.getByRole('switch', { name: 'Microphone' }));
+    expect(screen.getByRole('switch', { name: 'Microphone' })).toHaveAttribute('title', 'Unmute microphone');
+  });
+
+  it('shows a tooltip on the Leave button', () => {
+    render(<ControlsBar onLeave={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Leave' })).toHaveAttribute('title', 'Leave the call');
+  });
 });

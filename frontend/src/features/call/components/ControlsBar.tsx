@@ -33,8 +33,18 @@ export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
 
   return (
     <div className="flex items-center justify-center gap-3 p-4">
-      <Toggle label={t('micToggle')} pressed={isMicOn} onChange={setMicOn} />
-      <Toggle label={t('cameraToggle')} pressed={isCamOn} onChange={setCamOn} />
+      <Toggle
+        label={t('micToggle')}
+        pressed={isMicOn}
+        tooltip={isMicOn ? t('micTooltipOn') : t('micTooltipOff')}
+        onChange={setMicOn}
+      />
+      <Toggle
+        label={t('cameraToggle')}
+        pressed={isCamOn}
+        tooltip={isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff')}
+        onChange={setCamOn}
+      />
       <button
         type="button"
         aria-label={tc('openChat')}
@@ -51,7 +61,7 @@ export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
           </span>
         )}
       </button>
-      <Button variant="ghost" onClick={onLeave}>
+      <Button variant="ghost" title={t('leaveTooltip')} onClick={onLeave}>
         {t('leave')}
       </Button>
     </div>
