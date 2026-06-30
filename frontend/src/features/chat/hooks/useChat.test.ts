@@ -33,13 +33,23 @@ describe('useChat', () => {
     fake.handlers.clear();
     fake.emitted = [];
     useChatStore.getState().reset();
+    useConnectionStore.getState().reset();
     useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me' });
   });
 
-  it('emits join_chat on connect and loads history', () => {
+  it('defers join_chat until the call is connected, then joins and loads history', () => {
     renderHook(() => useChat('guest'));
+    // Socket connects before LiveKit finishes connecting → must NOT join yet
+    // (joining here would race the SFU participant registration → NOT_A_MEMBER).
     act(() => fake.trigger('connect', undefined));
-    expect(fake.emitted).toContainEqual({ event: 'join_chat', payload: { identity: 'p_self', role: 'guest' } });
+    expect(fake.emitted.find((e) => e.event === 'join_chat')).toBeUndefined();
+
+    // LiveKit reaches 'connected' → now it is safe to join.
+    act(() => useConnectionStore.getState().setPhase('connected'));
+    expect(fake.emitted).toContainEqual({
+      event: 'join_chat',
+      payload: { identity: 'p_self', role: 'guest' },
+    });
 
     act(() =>
       fake.trigger('chat_history', [
@@ -47,6 +57,14 @@ describe('useChat', () => {
       ]),
     );
     expect(useChatStore.getState().messages.map((m) => m.text)).toEqual(['hi']);
+  });
+
+  it('joins exactly once on socket connect when the call is already connected', () => {
+    act(() => useConnectionStore.getState().setPhase('connected'));
+    renderHook(() => useChat('guest'));
+    act(() => fake.trigger('connect', undefined));
+    // Idempotent: the phase-effect and the connect handler must not double-join.
+    expect(fake.emitted.filter((e) => e.event === 'join_chat')).toHaveLength(1);
   });
 
   it('appends incoming chat_message to the store', () => {
