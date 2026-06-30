@@ -72,6 +72,12 @@ host/guest roles, the host-reconnect grace timer, chat, and attachments.
 > The PRD (`prd-kmb-video-chat.md` v2.0) is now in the repo and is **binding** for product behavior.
 > Where the technical design had diverged from it (name uniqueness, host-token placement, camera-off
 > tile), the PRD wins — the specs have been reconciled to the PRD.
+>
+> **PRD is authoritative; the Figma design is an outdated visual reference** (decided 2026-06-30).
+> Scope is the **full PRD**; on any PRD-vs-Figma conflict, the **PRD wins**. Use Figma only as a
+> visual-style cue for the screens it covers (dark palette, components, room layouts, chat, pre-join);
+> for anything Figma lacks, build per the PRD in a consistent style. See the gap roadmap at
+> `docs/superpowers/plans/2026-06-30-prd-gap-roadmap.md`.
 
 ## Rules (auto-loaded)
 

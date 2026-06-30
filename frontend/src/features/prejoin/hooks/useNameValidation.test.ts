@@ -5,17 +5,17 @@ import { useNameValidation } from './useNameValidation';
 describe('useNameValidation', () => {
   it('flags empty input', () => {
     const { result } = renderHook(() => useNameValidation('   '));
-    expect(result.current).toEqual({ valid: false, errorKey: 'prejoin.nameEmpty' });
+    expect(result.current).toEqual({ valid: false, errorKey: 'nameEmpty' });
   });
 
   it('flags too-short input as length', () => {
     const { result } = renderHook(() => useNameValidation('A'));
-    expect(result.current.errorKey).toBe('prejoin.nameLength');
+    expect(result.current.errorKey).toBe('nameLength');
   });
 
   it('flags illegal characters', () => {
     const { result } = renderHook(() => useNameValidation('Ann@home'));
-    expect(result.current.errorKey).toBe('prejoin.nameChars');
+    expect(result.current.errorKey).toBe('nameChars');
   });
 
   it('accepts a valid name', () => {

@@ -1,6 +1,21 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Class-based dark mode (driven by useUiStore toggling `.dark` on <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light surfaces are the Tailwind defaults (white / slate); dark surfaces below are applied via the `dark:` variant. */
+@theme {
+  /* Accent / status — identical in both themes (Figma dark palette) */
+  --color-accent: #2c68fa;        /* Primary/Blue */
+  --color-accent-strong: #285ddf; /* Primary/Blue more (hover) */
+  --color-danger: #ff4e4e;        /* Secondary/Red — End call */
+  --color-sender: #9180ff;        /* Secondary/Purple — chat sender name */
+
+  /* Dark surfaces (Figma "Young Fighter" dark palette) */
+  --color-surface: #181b1d;          /* Primary/Black — app background */
+  --color-surface-elevated: #1f2224; /* Primary/Gray dark — cards, panels, modals */
+  --color-surface-muted: #2a2e30;    /* Primary/Gray — inputs, borders, control pills */
+}
 
 html, body, #root { height: 100%; }
 body { @apply bg-white text-slate-900 dark:bg-surface dark:text-slate-100; }

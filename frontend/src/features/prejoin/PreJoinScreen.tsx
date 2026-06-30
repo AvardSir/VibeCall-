@@ -7,7 +7,7 @@ import { useNameValidation } from './hooks/useNameValidation';
 import { useMediaStore } from '../../stores/useMediaStore';
 import { CameraPreview } from './components/CameraPreview';
 import { DeviceToggles } from './components/DeviceToggles';
-import { NameField } from './components/NameField';
+import { DisplayNameInput } from './components/DisplayNameInput';
 
 export type PreJoinScreenProps = {
   onEnter: (name: string) => void;
@@ -46,7 +46,7 @@ export function PreJoinScreen({ onEnter, submitting = false }: PreJoinScreenProp
         <p className="text-sm text-amber-400">{t('bothDenied')}</p>
       ) : null}
       <DeviceToggles />
-      <NameField
+      <DisplayNameInput
         value={name}
         onChange={setName}
         errorKey={errorKey}
