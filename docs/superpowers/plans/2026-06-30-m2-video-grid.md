@@ -461,11 +461,12 @@ export function VideoTile({
 }: VideoTileProps): JSX.Element {
   const { t } = useTranslation('call');
   const label = isLocal ? t('you', { name }) : name;
-  const showVideo = isCameraEnabled && cameraTrackRef != null;
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl bg-black">
-      {showVideo ? (
+      {/* Inline the condition (not a precomputed boolean) so TS narrows `cameraTrackRef`
+          to `TrackReference` inside this branch — `VideoTrack` then receives a defined ref. */}
+      {isCameraEnabled && cameraTrackRef != null ? (
         <>
           <VideoTrack
             trackRef={cameraTrackRef}
@@ -950,7 +951,10 @@ export function Button({ children, onClick, disabled, variant = 'primary', type 
 
 - [ ] **Step 4: Write the failing tooltip assertions in `ControlsBar.test.tsx`**
 
-Append these tests inside the `describe('ControlsBar', …)` block in `frontend/src/features/call/components/ControlsBar.test.tsx`:
+The test file already imports `render`, `screen`, `fireEvent` (from `@testing-library/react`) and
+`vi` (from `vitest`) — the appended tests compile against those existing imports; no new import is
+needed. Append these tests inside the `describe('ControlsBar', …)` block in
+`frontend/src/features/call/components/ControlsBar.test.tsx`:
 
 ```tsx
   it('shows state-aware tooltips on the camera and mic toggles', () => {
