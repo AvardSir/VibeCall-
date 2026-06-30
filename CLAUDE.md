@@ -32,6 +32,13 @@ CONTEXT.md            Running project context
 ## Commands
 
 ```bash
+# Docker (recommended) — whole stack with hot-reload from the repo root
+docker compose up --build      # livekit + backend + frontend; browse http://localhost:5173
+docker compose down            # stop and remove the stack
+# Ports: frontend 5173, backend 3000, livekit 7880/7881 + 7882/udp.
+# Docker-specific env (e.g. LIVEKIT_HOST=http://livekit:7880) is set in docker-compose.yml.
+
+# --- or run natively (LiveKit must run separately) ---
 # LiveKit (local SFU) — run separately, backend needs its API key/secret/URL
 livekit-server --dev
 
