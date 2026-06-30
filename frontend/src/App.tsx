@@ -6,6 +6,7 @@ import { PreJoinScreen } from './features/prejoin';
 import { CallFullScreen, ConnectErrorScreen } from './features/room-states';
 import { CallShell, ConnectingScreen } from './features/call';
 import { ChatPanel } from './features/chat';
+import { TopBar, useApplyUiPreferences } from './features/preferences';
 import { useConnectionStore } from './stores/useConnectionStore';
 import { useMediaStore } from './stores/useMediaStore';
 import { useChatStore } from './stores/useChatStore';
@@ -18,6 +19,7 @@ export function App(): JSX.Element {
   const [view, setView] = useState<View>('loading');
   const [session, setSession] = useState<JoinResponse | null>(null);
   const [capacityTick, setCapacityTick] = useState(0);
+  useApplyUiPreferences();
   const setPhase = useConnectionStore((s) => s.setPhase);
   const resetConnection = useConnectionStore((s) => s.reset);
   const resetMedia = useMediaStore((s) => s.reset);
@@ -67,11 +69,15 @@ export function App(): JSX.Element {
     recheckCapacity();
   }
 
-  if (view === 'loading' || view === 'connecting') return <ConnectingScreen />;
-  if (view === 'full') return <CallFullScreen onBackToHome={recheckCapacity} />;
-  if (view === 'connect-error') return <ConnectErrorScreen onRetry={recheckCapacity} />;
-  if (view === 'in-call' && session) {
-    return (
+  let content: JSX.Element;
+  if (view === 'loading' || view === 'connecting') {
+    content = <ConnectingScreen />;
+  } else if (view === 'full') {
+    content = <CallFullScreen onBackToHome={recheckCapacity} />;
+  } else if (view === 'connect-error') {
+    content = <ConnectErrorScreen onRetry={recheckCapacity} />;
+  } else if (view === 'in-call' && session) {
+    content = (
       <>
         <CallShell
           accessToken={session.accessToken}
@@ -84,6 +90,14 @@ export function App(): JSX.Element {
         <ChatPanel role={session.role} />
       </>
     );
+  } else {
+    content = <PreJoinScreen onEnter={(name) => void handleEnter(name)} />;
   }
-  return <PreJoinScreen onEnter={(name) => void handleEnter(name)} />;
+
+  return (
+    <>
+      <TopBar />
+      {content}
+    </>
+  );
 }
