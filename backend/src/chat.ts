@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import type { Attachment } from './attachments.js';
 
 export type ChatMessage = {
   id: string;
@@ -8,7 +9,7 @@ export type ChatMessage = {
   senderName: string; // display name; may be duplicated across participants
   sentAt: number; // epoch ms; rendered as HH:MM on the client
   text: string; // max 1000 chars
-  // attachments deferred (master §3.5) — added later, no shape change to the above
+  attachments: Attachment[];
 };
 
 export type ChatErrorCode = 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' | 'NOT_A_MEMBER';
@@ -34,13 +35,27 @@ export function validateMessageText(raw: unknown): MessageValidation {
   return { ok: false, code };
 }
 
+// Text may be blank when at least one attachment is present (an attachment-only message).
+export function validateMessage(input: { text: string; attachmentCount: number }): MessageValidation {
+  const { text, attachmentCount } = input;
+  if (text.trim().length === 0 && attachmentCount === 0) {
+    return { ok: false, code: 'EMPTY_MESSAGE' };
+  }
+  if (text.length > MAX_TEXT_LENGTH) {
+    return { ok: false, code: 'TEXT_TOO_LONG' };
+  }
+  return { ok: true, value: text };
+}
+
 export type ChatService = {
   validateText(raw: unknown): MessageValidation;
+  validateMessage(input: { text: string; attachmentCount: number }): MessageValidation;
   build(input: {
     roomName: string;
     senderIdentity: string;
     senderName: string;
     text: string;
+    attachments?: Attachment[];
   }): ChatMessage;
   append(message: ChatMessage): void;
   history(roomName: string): ChatMessage[];
@@ -59,8 +74,17 @@ export function createChatService(options: ChatServiceOptions = {}): ChatService
 
   return {
     validateText: validateMessageText,
-    build({ roomName, senderIdentity, senderName, text }) {
-      return { id: newId(), roomName, senderIdentity, senderName, sentAt: now(), text };
+    validateMessage,
+    build({ roomName, senderIdentity, senderName, text, attachments }) {
+      return {
+        id: newId(),
+        roomName,
+        senderIdentity,
+        senderName,
+        sentAt: now(),
+        text,
+        attachments: attachments ?? [],
+      };
     },
     append(message) {
       const list = histories.get(message.roomName) ?? [];
