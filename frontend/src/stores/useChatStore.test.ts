@@ -12,6 +12,7 @@ function serverMsg(over: Partial<ChatMessage>): ChatMessage {
     senderName: 'Other',
     sentAt: 1000,
     text: 'hello',
+    attachments: [],
     ...over,
   };
 }

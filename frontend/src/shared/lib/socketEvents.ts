@@ -1,5 +1,5 @@
 import type { Socket } from 'socket.io-client';
-import type { ChatMessage, ChatErrorCode, ParticipantRole, RoomEndReason } from '../types';
+import type { Attachment, ChatMessage, ChatErrorCode, ParticipantRole, RoomEndReason } from '../types';
 
 // NOTE: intentionally duplicated from backend/src/socket.ts for now — this repo is not an npm
 // workspace and follows a "duplicate + cross-ref" convention (see validation.ts↔nameValidation.ts,
@@ -17,7 +17,7 @@ export type ServerToClientEvents = {
 
 export type ClientToServerEvents = {
   join_chat: (p: { roomId: string; identity: string; role: ParticipantRole }) => void;
-  send_message: (p: { text: string }) => void;
+  send_message: (p: { text: string; attachments?: Attachment[] }) => void;
 };
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
