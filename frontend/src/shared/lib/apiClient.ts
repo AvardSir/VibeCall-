@@ -28,13 +28,15 @@ export async function createRoom(): Promise<CreateRoomResult> {
   if (!res.ok) return { ok: false, error: 'INTERNAL' };
   // Low-stakes cast: roomId/hostToken only build a URL; a malformed one surfaces as NOT_FOUND when
   // the link is used, so a runtime schema here would be ceremony without a safety benefit.
-  const data = (await res.json()) as { roomId: string; hostToken: string };
+  const data = (await res.json().catch(() => null)) as { roomId: string; hostToken: string } | null;
+  if (data === null) return { ok: false, error: 'INTERNAL' };
   return { ok: true, data };
 }
 
 export async function getRoomStatus(roomId: string): Promise<RoomStatus> {
   const res = await fetch(roomStatusUrl(roomId));
   if (res.status === 404) return 'not-found';
+  if (!res.ok) throw new Error('Unexpected room status response');
   return ((await res.json()) as { status: RoomStatus }).status;
 }
 
