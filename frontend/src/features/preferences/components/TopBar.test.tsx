@@ -13,8 +13,8 @@ describe('TopBar', () => {
   it('renders theme and language controls', () => {
     render(<TopBar />);
     expect(screen.getByRole('button', { name: /switch to light theme/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /english/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /russian/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'EN' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'RU' })).toBeInTheDocument();
   });
 
   it('toggles the store theme when the theme button is clicked', () => {
@@ -25,7 +25,7 @@ describe('TopBar', () => {
 
   it('sets the store language when a language button is clicked', () => {
     render(<TopBar />);
-    fireEvent.click(screen.getByRole('button', { name: /russian/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'RU' }));
     expect(useUiStore.getState().language).toBe('ru');
   });
 });
