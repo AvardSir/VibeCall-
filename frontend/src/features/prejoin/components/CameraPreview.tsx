@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMediaStore } from '../../../stores/useMediaStore';
+import { Icon } from '../../../shared/ui/Icon';
 
 export type CameraPreviewProps = { stream: MediaStream | null };
 
@@ -22,7 +23,7 @@ export function CameraPreview({ stream }: CameraPreviewProps): JSX.Element {
   }, [stream, showVideo]);
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-[12px] bg-black">
+    <div className="relative aspect-video w-full overflow-hidden rounded-[12px] bg-slate-200 dark:bg-surface-elevated">
       {showVideo ? (
         // Mirrored local preview (PRD FR-11).
         <video
@@ -33,11 +34,12 @@ export function CameraPreview({ stream }: CameraPreviewProps): JSX.Element {
           className="h-full w-full -scale-x-100 object-cover"
         />
       ) : (
-        // Camera off / denied: mic-state icon centered on dark background, no avatar, no name.
-        <div className="grid h-full place-items-center text-slate-400">
-          <span aria-label={t('cameraToggle')} className="text-4xl">
-            {isMicOn ? '🎤' : '🔇'}
-          </span>
+        // Camera off / denied: mic-state glyph in a dark pill, matching the in-call camera-off tile.
+        <div className="grid h-full place-items-center">
+          <div className="rounded-[9px] bg-[rgba(31,34,36,0.5)] p-4">
+            <Icon name={isMicOn ? 'micOn' : 'micOff'} className="h-8 w-8 text-white" />
+            <span className="sr-only">{t('cameraToggle')}</span>
+          </div>
         </div>
       )}
     </div>
