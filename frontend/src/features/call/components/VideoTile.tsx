@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VideoTrack } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
+import { Tooltip } from '../../../shared/ui/Tooltip';
 
 export type VideoTileProps = {
   name: string;
@@ -9,6 +10,7 @@ export type VideoTileProps = {
   isCameraEnabled: boolean;
   isMicrophoneEnabled: boolean;
   cameraTrackRef: TrackReference | undefined;
+  onRemove?: () => void;
 };
 
 export function VideoTile({
@@ -17,12 +19,26 @@ export function VideoTile({
   isCameraEnabled,
   isMicrophoneEnabled,
   cameraTrackRef,
+  onRemove,
 }: VideoTileProps): JSX.Element {
   const { t } = useTranslation('call');
   const label = isLocal ? t('you', { name }) : name;
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl bg-black">
+    <div className="group relative h-full w-full overflow-hidden rounded-xl bg-black">
+      {onRemove ? (
+        <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100">
+          <Tooltip label={t('removeGuestTooltip')}>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded-lg bg-black/60 px-3 py-1 text-xs font-medium text-white transition hover:bg-black/80"
+            >
+              {t('removeGuest')}
+            </button>
+          </Tooltip>
+        </div>
+      ) : null}
       {/* Inline the condition (not a precomputed boolean) so TS narrows `cameraTrackRef`
           to `TrackReference` inside this branch — `VideoTrack` then receives a defined ref. */}
       {isCameraEnabled && cameraTrackRef != null ? (
