@@ -46,7 +46,12 @@ function makeAppAndIo(): { app: ReturnType<typeof createApp>; io: ChatServer } {
   // Real, detached Socket.IO server (fake admin/chat deps) — this is the object under test.
   const io = createSocketServer({ config: { corsOrigin: config.corsOrigin }, admin, chat: chat as never });
   const webhookHandler = vi.fn((_req: Request, res: Response) => res.sendStatus(200));
-  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler });
+  const attachments = {
+    validateAndStore: vi.fn().mockResolvedValue({
+      fileId: 'file123', name: 'c.png', size: 3, mime: 'image/png', kind: 'image', url: '/attachments/room/file123/c.png',
+    }),
+  };
+  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler, attachments });
   return { app, io };
 }
 

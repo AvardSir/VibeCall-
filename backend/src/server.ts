@@ -5,12 +5,13 @@ import type { Server as HttpServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import type { Express } from 'express';
 import { WebhookReceiver } from 'livekit-server-sdk';
-import { loadConfig } from './config.js';
+import { loadConfig, MAX_ATTACHMENT_BYTES } from './config.js';
 import { createLivekitAdmin } from './livekitAdmin.js';
 import { createTokenMinter } from './livekitTokens.js';
 import { createRoomRegistry } from './rooms.js';
 import { createApp } from './app.js';
 import { createChatService } from './chat.js';
+import { createAttachmentService } from './attachments.js';
 import { createSocketServer, emitGraceTick, emitGraceCancelled, emitRoomEnded } from './socket.js';
 import type { ChatServer } from './socket.js';
 import { createGraceService } from './grace.js';
@@ -38,6 +39,12 @@ async function main(): Promise<void> {
   const minter = createTokenMinter(config);
   const registry = createRoomRegistry();
   const chat = createChatService();
+  // Minimal construction for Task 7 (upload endpoint wiring); Task 9 adds the orphan sweep and
+  // any teardown/lifecycle hooks around this service.
+  const attachments = createAttachmentService({
+    storageRoot: config.attachmentStoragePath,
+    maxBytes: MAX_ATTACHMENT_BYTES,
+  });
 
   // `io` and `grace` reference each other (grace broadcasts over `io`; `end`/`remove` cancel
   // grace over the same `io`), so `io` is created first (detached from any http server), then
@@ -55,7 +62,7 @@ async function main(): Promise<void> {
   const receiver = new WebhookReceiver(config.livekitApiKey, config.livekitApiSecret);
   const webhookHandler = createWebhookHandler({ receiver, registry, grace });
 
-  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler });
+  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler, attachments });
   const httpServer = buildHttpServer(app, io);
 
   httpServer.listen(config.port, () => {
