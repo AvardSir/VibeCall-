@@ -1,4 +1,6 @@
 import type { JSX, ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import clsx from 'clsx';
 
 export type TooltipProps = {
   label: string;
@@ -6,17 +8,78 @@ export type TooltipProps = {
   placement?: 'top' | 'bottom';
 };
 
-// Dep-free custom tooltip: wraps a single trigger and reveals a styled bubble on hover and on
-// keyboard focus (group-focus-within). Native `title` can't be styled to the design, hence this.
+const OPEN_DELAY_MS = 400;
+// Broadcast so only one tooltip shows at a time: when one opens it announces its id on the document,
+// and every other tooltip closes itself. Uses a DOM event (no shared mutable module state).
+const OPEN_EVENT = 'kmb:tooltip-open';
+
+// Dep-free custom tooltip (native `title` can't be styled to the design). Shows after a short hover
+// delay and on keyboard focus; hidden on leave/blur and on click. JS-controlled (not CSS group-hover)
+// so it can enforce the delay and the single-open-at-a-time rule.
 export function Tooltip({ label, children, placement = 'top' }: TooltipProps): JSX.Element {
-  // Figma white bubble sits 44px above the trigger (mb-2.5 = 10px + the control gap).
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A pointer press focuses the trigger; suppress the focus-open so clicking dismisses (not re-shows).
+  const pointerDownRef = useRef(false);
+
+  const hide = useCallback((): void => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setOpen(false);
+  }, []);
+
+  const show = useCallback((): void => {
+    document.dispatchEvent(new CustomEvent<string>(OPEN_EVENT, { detail: id }));
+    setOpen(true);
+  }, [id]);
+
+  // Close when another tooltip opens (single-open rule), and clean up the timer on unmount.
+  useEffect(() => {
+    const onOtherOpen = (e: Event): void => {
+      if ((e as CustomEvent<string>).detail !== id) hide();
+    };
+    document.addEventListener(OPEN_EVENT, onOtherOpen);
+    return () => {
+      document.removeEventListener(OPEN_EVENT, onOtherOpen);
+      hide();
+    };
+  }, [id, hide]);
+
+  const scheduleShow = (): void => {
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(show, OPEN_DELAY_MS);
+  };
+
   const position = placement === 'top' ? 'bottom-full mb-2.5' : 'top-full mt-2.5';
+
   return (
-    <span className="group relative inline-flex">
+    <span
+      className="group relative inline-flex"
+      onPointerEnter={scheduleShow}
+      onPointerLeave={hide}
+      onPointerDown={() => {
+        pointerDownRef.current = true;
+        hide();
+      }}
+      onFocus={() => {
+        if (!pointerDownRef.current) show();
+      }}
+      onBlur={() => {
+        pointerDownRef.current = false;
+        hide();
+      }}
+    >
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 ${position} whitespace-nowrap rounded-[8px] bg-slate-800 px-3 py-1.5 text-sm font-semibold leading-[18px] text-white opacity-0 dark:bg-white dark:text-surface shadow transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100`}
+        className={clsx(
+          'pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-[8px] bg-slate-800 px-3 py-1.5 text-sm font-semibold leading-[18px] text-white shadow transition-opacity duration-100 dark:bg-white dark:text-surface',
+          position,
+          open ? 'opacity-100' : 'opacity-0',
+        )}
       >
         {label}
       </span>
