@@ -22,4 +22,12 @@ describe('useConnectionStore', () => {
     expect(useConnectionStore.getState().phase).toBe('idle');
     expect(useConnectionStore.getState().localParticipant).toBeNull();
   });
+
+  it('tracks grace countdown and clears it on reset', () => {
+    const s = useConnectionStore.getState();
+    s.setGraceSecondsLeft(42);
+    expect(useConnectionStore.getState().graceSecondsLeft).toBe(42);
+    useConnectionStore.getState().reset();
+    expect(useConnectionStore.getState().graceSecondsLeft).toBeNull();
+  });
 });
