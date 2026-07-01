@@ -4,6 +4,7 @@ import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { ChatService, ChatMessage, ChatErrorCode } from './chat.js';
 import type { Attachment } from './attachments.js';
+import type { RoomRegistry } from './rooms.js';
 import { logger } from './logger.js';
 
 export type JoinChatPayload = { roomId: string; identity: string; role: 'host' | 'guest' };
@@ -26,10 +27,15 @@ export type ServerToClientEvents = {
   grace_cancelled: () => void;
   room_ended: (payload: { reason: RoomEndReason }) => void;
   participant_removed: (payload: { identity: string }) => void;
+  share_granted: () => void;
+  share_denied: (e: { reason: 'busy' }) => void;
+  share_state: (s: { activeSharerId: string | null }) => void;
 };
 export type ClientToServerEvents = {
   join_chat: (payload: JoinChatPayload) => void;
   send_message: (payload: SendMessagePayload) => void;
+  claim_share: (payload: { roomName: string }) => void;
+  release_share: (payload: { roomName: string }) => void;
 };
 
 type ChatSocketData = { binding?: ChatSocketBinding };
@@ -41,6 +47,7 @@ export type ChatGatewayDeps = {
   config: Pick<AppConfig, 'corsOrigin'>;
   admin: Pick<LivekitAdmin, 'listParticipants'>;
   chat: ChatService;
+  registry: Pick<RoomRegistry, 'claimShare' | 'releaseShare'>;
 };
 
 export async function handleJoinChat(
@@ -100,6 +107,33 @@ export function handleSendMessage(
   io.to(binding.roomName).emit('chat_message', message);
 }
 
+export function broadcastShareState(io: ChatServer, roomName: string, activeSharerId: string | null): void {
+  io.to(roomName).emit('share_state', { activeSharerId });
+}
+
+export function handleClaimShare(socket: ChatSocket, io: ChatServer, deps: ChatGatewayDeps): void {
+  const binding = socket.data.binding;
+  if (!binding) {
+    socket.emit('share_denied', { reason: 'busy' }); // unbound → treat as unable to share
+    return;
+  }
+  const result = deps.registry.claimShare(binding.roomName, binding.identity);
+  if (result.ok) {
+    socket.emit('share_granted');
+    broadcastShareState(io, binding.roomName, binding.identity);
+  } else {
+    socket.emit('share_denied', { reason: 'busy' });
+  }
+}
+
+export function handleReleaseShare(socket: ChatSocket, io: ChatServer, deps: ChatGatewayDeps): void {
+  const binding = socket.data.binding;
+  if (!binding) return;
+  if (deps.registry.releaseShare(binding.roomName, binding.identity)) {
+    broadcastShareState(io, binding.roomName, null);
+  }
+}
+
 export function createSocketServer(deps: ChatGatewayDeps): ChatServer {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>({
     cors: { origin: deps.config.corsOrigin },
@@ -116,6 +150,20 @@ export function createSocketServer(deps: ChatGatewayDeps): ChatServer {
         handleSendMessage(socket, io, deps, payload);
       } catch (err: unknown) {
         logger.error({ err }, 'send_message handler failed');
+      }
+    });
+    socket.on('claim_share', () => {
+      try {
+        handleClaimShare(socket, io, deps);
+      } catch (err: unknown) {
+        logger.error({ err }, 'claim_share handler failed');
+      }
+    });
+    socket.on('release_share', () => {
+      try {
+        handleReleaseShare(socket, io, deps);
+      } catch (err: unknown) {
+        logger.error({ err }, 'release_share handler failed');
       }
     });
   });

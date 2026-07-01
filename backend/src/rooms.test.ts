@@ -43,7 +43,7 @@ describe('createRoomRegistry', () => {
     let n = 0;
     const registry = createRoomRegistry({ now: () => 123, newToken: () => `t${n++}` });
     const room = registry.create();
-    expect(room).toEqual({ roomId: 't0', hostToken: 't1', hostIdentity: null, createdAt: 123, status: 'active', graceEndsAt: null, memberTokens: new Map() });
+    expect(room).toEqual({ roomId: 't0', hostToken: 't1', hostIdentity: null, createdAt: 123, status: 'active', graceEndsAt: null, memberTokens: new Map(), activeSharerId: null });
   });
 
   it('creates rooms in the active status with no grace deadline', () => {
@@ -103,5 +103,38 @@ describe('createRoomRegistry', () => {
     expect(() => registry.revokeMemberToken('ghost', 'p_1')).not.toThrow();
     expect(() => registry.revokeMemberToken(room.roomId, 'p_unknown')).not.toThrow();
     expect(registry.verifyMemberToken(room.roomId, token)).toBe(true);
+  });
+
+  it('grants a share to the first claimant and denies a second, distinct one', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    expect(registry.claimShare(room.roomId, 'p_1')).toEqual({ ok: true });
+    expect(registry.get(room.roomId)?.activeSharerId).toBe('p_1');
+    expect(registry.claimShare(room.roomId, 'p_2')).toEqual({ ok: false, code: 'BUSY' });
+    expect(registry.claimShare(room.roomId, 'p_1')).toEqual({ ok: true }); // idempotent for the holder
+  });
+
+  it('claimShare on an unknown room returns NOT_FOUND', () => {
+    const registry = createRoomRegistry();
+    expect(registry.claimShare('ghost', 'p_1')).toEqual({ ok: false, code: 'NOT_FOUND' });
+  });
+
+  it('releaseShare clears only for the active sharer', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    registry.claimShare(room.roomId, 'p_1');
+    expect(registry.releaseShare(room.roomId, 'p_2')).toBe(false); // not the sharer
+    expect(registry.get(room.roomId)?.activeSharerId).toBe('p_1');
+    expect(registry.releaseShare(room.roomId, 'p_1')).toBe(true);
+    expect(registry.get(room.roomId)?.activeSharerId).toBeNull();
+  });
+
+  it('clearShare unconditionally clears and reports whether it changed', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    registry.claimShare(room.roomId, 'p_1');
+    expect(registry.clearShare(room.roomId)).toBe(true);
+    expect(registry.get(room.roomId)?.activeSharerId).toBeNull();
+    expect(registry.clearShare(room.roomId)).toBe(false); // already clear
   });
 });
