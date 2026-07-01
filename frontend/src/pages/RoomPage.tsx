@@ -40,7 +40,15 @@ export function RoomPage(): JSX.Element {
   const resetParticipants = useParticipantsStore((s) => s.reset);
 
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => {
+    // Set true on (re)mount, not just at ref init: StrictMode runs setup→cleanup→setup in dev,
+    // and without restoring it here the cleanup would leave mountedRef false forever — stranding
+    // every post-join `if (!mountedRef.current) return` on the connecting screen.
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
