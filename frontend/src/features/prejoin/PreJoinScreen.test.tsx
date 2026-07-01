@@ -16,9 +16,9 @@ beforeEach(() => {
 });
 
 describe('PreJoinScreen', () => {
-  it('disables Enter call until the name is valid', async () => {
+  it('disables Join until the name is valid', async () => {
     render(<PreJoinScreen onEnter={vi.fn()} />);
-    const button = screen.getByRole('button', { name: /enter call/i });
+    const button = screen.getByRole('button', { name: /^join$/i });
     expect(button).toBeDisabled();
     fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Ann' } });
     await waitFor(() => expect(button).toBeEnabled());
@@ -28,7 +28,7 @@ describe('PreJoinScreen', () => {
     const onEnter = vi.fn();
     render(<PreJoinScreen onEnter={onEnter} />);
     fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: '  Ann  ' } });
-    fireEvent.click(screen.getByRole('button', { name: /enter call/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^join$/i }));
     await waitFor(() => expect(onEnter).toHaveBeenCalledWith('Ann'));
   });
 });
