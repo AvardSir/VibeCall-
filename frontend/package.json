@@ -14,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource-variable/roboto-flex": "5.2.8",
     "@livekit/components-react": "2.9.21",
     "@livekit/components-styles": "1.2.0",
     "clsx": "2.1.1",

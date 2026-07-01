@@ -14,7 +14,9 @@ export const en = {
     startCallError: 'Unable to start a call right now. Please try again.',
   },
   prejoin: {
+    title: 'Enter your name',
     nameLabel: 'Your name',
+    namePlaceholder: 'Name',
     nameHelp: '2–30 characters. Letters, numbers, spaces, hyphens and apostrophes.',
     enterCall: 'Enter call →',
     join: 'Join',
