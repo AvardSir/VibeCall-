@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { getRoomStatus, joinRoom } from '../shared/lib/apiClient';
-import type { JoinResponse, ParticipantRole } from '../shared/types';
+import { endCall, getRoomStatus, joinRoom } from '../shared/lib/apiClient';
+import type { JoinResponse, ParticipantRole, RoomEndReason } from '../shared/types';
 import { PreJoinScreen } from '../features/prejoin';
-import { CallFullScreen, ConnectErrorScreen, InvalidLinkScreen } from '../features/room-states';
+import {
+  CallEndedScreen,
+  CallFullScreen,
+  ConnectErrorScreen,
+  GraceExpiredScreen,
+  GuestLeftScreen,
+  HostEndedScreen,
+  InvalidLinkScreen,
+  RemovedScreen,
+} from '../features/room-states';
 import { CallShell, ConnectingScreen } from '../features/call';
 import { ChatPanel } from '../features/chat';
 import { useConnectionStore } from '../stores/useConnectionStore';
@@ -13,7 +22,19 @@ import { useChatStore } from '../stores/useChatStore';
 import { useParticipantsStore } from '../stores/useParticipantsStore';
 import { SocketProvider } from '../shared/lib/SocketProvider';
 
-type View = 'loading' | 'prejoin' | 'full' | 'not-found' | 'connecting' | 'in-call' | 'connect-error';
+type View =
+  | 'loading'
+  | 'prejoin'
+  | 'full'
+  | 'not-found'
+  | 'connecting'
+  | 'in-call'
+  | 'connect-error'
+  | 'ended'
+  | 'left'
+  | 'removed'
+  | 'host-ended'
+  | 'grace-expired';
 
 function readHostToken(hash: string): string | undefined {
   // Host URL: /r/<roomId>#h=<token>. The hash is never sent to the server.
@@ -56,6 +77,7 @@ export function RoomPage(): JSX.Element {
       .then((status) => {
         if (cancelled) return;
         if (status === 'not-found') setView('not-found');
+        else if (status === 'ended') setView('ended');
         else setView(status === 'full' ? 'full' : 'prejoin');
       })
       .catch(() => {
@@ -97,19 +119,54 @@ export function RoomPage(): JSX.Element {
     setView('in-call');
   }
 
-  function leave(): void {
+  function resetRoomStores(): void {
     setSession(null);
     resetConnection();
     resetMedia();
     resetChat();
     resetParticipants();
+  }
+
+  // Guest clicked "Leave call": show the left-call screen. Deliberately does NOT recheck
+  // capacity — the guest is not returning to pre-join automatically, only via explicit Rejoin.
+  function handleLeave(): void {
+    resetRoomStores();
+    setView('left');
+  }
+
+  // GuestLeftScreen's Rejoin action: reuse the same reset + recheck-capacity path as other
+  // returns to pre-join.
+  function handleRejoin(): void {
+    resetRoomStores();
     recheckCapacity();
+  }
+
+  async function handleEndCall(): Promise<void> {
+    if (!roomId || !hostToken) return;
+    await endCall(roomId, hostToken);
+    resetRoomStores();
+    navigate('/');
+  }
+
+  function handleRoomEnded(reason: RoomEndReason): void {
+    resetRoomStores();
+    setView(reason === 'host_ended' ? 'host-ended' : 'grace-expired');
+  }
+
+  function handleRemoved(): void {
+    resetRoomStores();
+    setView('removed');
   }
 
   if (view === 'loading' || view === 'connecting') return <ConnectingScreen />;
   if (view === 'not-found') return <InvalidLinkScreen />;
   if (view === 'full') return <CallFullScreen onBackToHome={() => navigate('/')} />;
   if (view === 'connect-error') return <ConnectErrorScreen onRetry={recheckCapacity} />;
+  if (view === 'ended') return <CallEndedScreen />;
+  if (view === 'left') return <GuestLeftScreen onRejoin={handleRejoin} />;
+  if (view === 'host-ended') return <HostEndedScreen />;
+  if (view === 'grace-expired') return <GraceExpiredScreen />;
+  if (view === 'removed') return <RemovedScreen />;
   if (view === 'in-call' && session) {
     const participantUrl = `${window.location.origin}/r/${session.roomId}`;
     return (
@@ -122,13 +179,12 @@ export function RoomPage(): JSX.Element {
           roomId={session.roomId}
           hostToken={hostToken}
           identity={session.identity}
-          onLeave={leave}
+          onLeave={handleLeave}
           onConnectError={() => setView('connect-error')}
           onRoomFull={() => setView('full')}
-          // TODO(Task 17): wire real end/lifecycle screens (host-ended / grace-expired / removed).
-          onEndCall={leave}
-          onRoomEnded={() => leave()}
-          onRemoved={() => leave()}
+          onEndCall={() => void handleEndCall()}
+          onRoomEnded={handleRoomEnded}
+          onRemoved={handleRemoved}
         />
         <ChatPanel role={session.role} />
       </SocketProvider>
