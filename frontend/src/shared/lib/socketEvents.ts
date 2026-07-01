@@ -13,11 +13,16 @@ export type ServerToClientEvents = {
   grace_cancelled: () => void;
   room_ended: (payload: { reason: RoomEndReason }) => void;
   participant_removed: (payload: { identity: string }) => void;
+  share_granted: () => void;
+  share_denied: (e: { reason: 'busy' }) => void;
+  share_state: (s: { activeSharerId: string | null }) => void;
 };
 
 export type ClientToServerEvents = {
   join_chat: (p: { roomId: string; identity: string; role: ParticipantRole }) => void;
   send_message: (p: { text: string; attachments?: Attachment[] }) => void;
+  claim_share: (p: { roomName: string }) => void;
+  release_share: (p: { roomName: string }) => void;
 };
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

@@ -9,6 +9,7 @@ import { useMediaStore } from '../../../stores/useMediaStore';
 import { useChatStore } from '../../../stores/useChatStore';
 import type { ParticipantRole } from '../../../shared/types';
 import { CopyLinkButton } from './CopyLinkButton';
+import { useScreenShare } from '../hooks/useScreenShare';
 
 export type ControlsBarProps = {
   onLeave: () => void;
@@ -29,6 +30,13 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
   const togglePanel = useChatStore((s) => s.togglePanel);
   const isPanelOpen = useChatStore((s) => s.isPanelOpen);
   const markAllRead = useChatStore((s) => s.markAllRead);
+  const { isSharing, isBusy, error: shareError, toggle: toggleShare } = useScreenShare();
+
+  const shareTooltip = isBusy
+    ? t('shareTooltipBusy')
+    : isSharing
+      ? t('shareTooltipActive')
+      : t('shareTooltipIdle');
 
   // Reconcile published tracks with the store's desired state.
   useEffect(() => {
@@ -45,12 +53,24 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
   };
 
   return (
-    <div className="flex items-center justify-center gap-3 p-4">
+    <div className="flex flex-col items-center gap-1">
+      {shareError ? <p className="text-sm text-amber-400">{shareError}</p> : null}
+      <div className="flex items-center justify-center gap-3 p-4">
       <Tooltip label={isMicOn ? t('micTooltipOn') : t('micTooltipOff')}>
         <Toggle label={t('micToggle')} pressed={isMicOn} onChange={setMicOn} />
       </Tooltip>
       <Tooltip label={isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff')}>
         <Toggle label={t('cameraToggle')} pressed={isCamOn} onChange={setCamOn} />
+      </Tooltip>
+      <Tooltip label={shareTooltip}>
+        <button
+          type="button"
+          onClick={toggleShare}
+          disabled={isBusy}
+          className="rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isSharing ? t('stopSharing') : t('shareScreen')}
+        </button>
       </Tooltip>
       <button
         type="button"
@@ -86,6 +106,7 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
           </Button>
         </Tooltip>
       )}
+      </div>
     </div>
   );
 }

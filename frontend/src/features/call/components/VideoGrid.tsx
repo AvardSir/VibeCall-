@@ -5,7 +5,7 @@ import { useTracks } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
 import { useParticipants } from '../hooks/useParticipants';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
-import { VideoTile } from './VideoTile';
+import { ParticipantTile } from './ParticipantTile';
 
 // Layout per FR-13: 1 → full; 2 → left/right; 3 → two top + one centered bottom;
 // 4 → 2×2. The 3-up case uses a 2×2 grid where the third tile spans and centers.
@@ -43,15 +43,10 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
             count === 3 && index === 2 ? 'col-span-2 w-1/2 justify-self-center' : '';
           return (
             <div key={p.identity} className={`min-h-0 ${centerBottom}`}>
-              <VideoTile
-                name={p.name}
-                isLocal={p.isLocal}
-                isCameraEnabled={p.isCameraEnabled}
-                isMicrophoneEnabled={p.isMicrophoneEnabled}
+              <ParticipantTile
+                participant={p}
                 cameraTrackRef={trackByIdentity.get(p.identity)}
-                onRemove={
-                  !p.isLocal && onRemoveGuest ? () => onRemoveGuest(p.identity, p.name) : undefined
-                }
+                onRemoveGuest={onRemoveGuest}
               />
             </div>
           );

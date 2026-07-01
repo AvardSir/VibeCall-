@@ -12,6 +12,11 @@ vi.mock('@livekit/components-react', () => ({
   }),
 }));
 
+// The screen-share hook pulls in a socket + room context we don't wire here; stub it inert.
+vi.mock('../hooks/useScreenShare', () => ({
+  useScreenShare: () => ({ isSharing: false, isBusy: false, error: null, toggle: vi.fn() }),
+}));
+
 describe('ControlsBar chat button', () => {
   beforeEach(() => useChatStore.getState().reset());
 

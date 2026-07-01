@@ -32,4 +32,11 @@ describe('useParticipantsStore', () => {
     expect(useParticipantsStore.getState().participants).toEqual([]);
     expect(useParticipantsStore.getState().activeSharerId).toBeNull();
   });
+
+  it('sets and clears the active sharer', () => {
+    useParticipantsStore.getState().setActiveSharerId('p_1');
+    expect(useParticipantsStore.getState().activeSharerId).toBe('p_1');
+    useParticipantsStore.getState().setActiveSharerId(null);
+    expect(useParticipantsStore.getState().activeSharerId).toBeNull();
+  });
 });

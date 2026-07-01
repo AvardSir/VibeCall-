@@ -13,6 +13,9 @@ vi.mock('@livekit/components-react', () => ({
   }),
 }));
 
+let shareState = { isSharing: false, isBusy: false, error: null as string | null, toggle: vi.fn() };
+vi.mock('../hooks/useScreenShare', () => ({ useScreenShare: () => shareState }));
+
 import { ControlsBar } from './ControlsBar';
 
 type RenderOptions = {
@@ -37,6 +40,7 @@ beforeEach(() => {
   useMediaStore.getState().reset();
   setMicEnabled.mockClear();
   setCamEnabled.mockClear();
+  shareState = { isSharing: false, isBusy: false, error: null, toggle: vi.fn() };
 });
 
 describe('ControlsBar', () => {
@@ -98,5 +102,41 @@ describe('ControlsBar', () => {
     renderControls({ role: 'guest' });
     expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'End call' })).not.toBeInTheDocument();
+  });
+
+  it('shows an enabled Share screen button with the idle tooltip by default', () => {
+    renderControls();
+    const button = screen.getByRole('button', { name: 'Share screen' });
+    expect(button).toBeEnabled();
+    expect(screen.getByText('Share your screen')).toBeInTheDocument();
+  });
+
+  it('labels the button Stop sharing while sharing', () => {
+    shareState = { ...shareState, isSharing: true };
+    renderControls();
+    expect(screen.getByRole('button', { name: 'Stop sharing' })).toBeInTheDocument();
+  });
+
+  it('disables the button with the busy tooltip when someone else is sharing', () => {
+    shareState = { ...shareState, isBusy: true };
+    renderControls();
+    expect(screen.getByRole('button', { name: 'Share screen' })).toBeDisabled();
+    expect(screen.getByText('Someone is already sharing their screen')).toBeInTheDocument();
+  });
+
+  it('renders the inline share error when set', () => {
+    shareState = { ...shareState, error: 'Unable to share your screen. Please check your browser permissions.' };
+    renderControls();
+    expect(
+      screen.getByText('Unable to share your screen. Please check your browser permissions.'),
+    ).toBeInTheDocument();
+  });
+
+  it('calls toggle when the Share button is clicked', () => {
+    const toggle = vi.fn();
+    shareState = { ...shareState, toggle };
+    renderControls();
+    fireEvent.click(screen.getByRole('button', { name: 'Share screen' }));
+    expect(toggle).toHaveBeenCalledOnce();
   });
 });
