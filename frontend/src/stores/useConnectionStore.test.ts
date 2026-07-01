@@ -11,7 +11,7 @@ describe('useConnectionStore', () => {
 
   it('records phase and local participant', () => {
     useConnectionStore.getState().setPhase('connecting');
-    useConnectionStore.getState().setLocalParticipant({ identity: 'p_1', displayName: 'Ann' });
+    useConnectionStore.getState().setLocalParticipant({ identity: 'p_1', displayName: 'Ann', roomId: 'r_1' });
     expect(useConnectionStore.getState().phase).toBe('connecting');
     expect(useConnectionStore.getState().localParticipant?.displayName).toBe('Ann');
   });

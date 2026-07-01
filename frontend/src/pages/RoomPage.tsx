@@ -83,6 +83,7 @@ export function RoomPage(): JSX.Element {
     useConnectionStore.getState().setLocalParticipant({
       identity: result.data.identity,
       displayName: result.data.displayName,
+      roomId: result.data.roomId,
     });
     setView('in-call');
   }

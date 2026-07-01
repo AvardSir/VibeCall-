@@ -31,7 +31,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
       if (joinedRef.current) return;
       if (useConnectionStore.getState().phase !== 'connected') return;
       joinedRef.current = true;
-      socket.emit('join_chat', { identity, role });
+      socket.emit('join_chat', { roomId: localParticipant.roomId, identity, role });
     };
 
     const handleDisconnect = (): void => {
@@ -70,7 +70,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
     if (phase !== 'connected' || joinedRef.current) return;
     if (!localParticipant) return;
     joinedRef.current = true;
-    socket.emit('join_chat', { identity: localParticipant.identity, role });
+    socket.emit('join_chat', { roomId: localParticipant.roomId, identity: localParticipant.identity, role });
   }, [phase, localParticipant, role, socket]);
 
   const sendMessage = useCallback(

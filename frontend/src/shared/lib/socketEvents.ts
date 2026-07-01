@@ -12,7 +12,7 @@ export type ServerToClientEvents = {
 };
 
 export type ClientToServerEvents = {
-  join_chat: (p: { identity: string; role: ParticipantRole }) => void;
+  join_chat: (p: { roomId: string; identity: string; role: ParticipantRole }) => void;
   send_message: (p: { text: string }) => void;
 };
 
