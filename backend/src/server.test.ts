@@ -50,6 +50,7 @@ function makeAppAndIo(): { app: ReturnType<typeof createApp>; io: ChatServer } {
     validateAndStore: vi.fn().mockResolvedValue({
       fileId: 'file123', name: 'c.png', size: 3, mime: 'image/png', kind: 'image', url: '/attachments/room/file123/c.png',
     }),
+    resolvePath: vi.fn().mockResolvedValue(null),
   };
   const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler, attachments });
   return { app, io };

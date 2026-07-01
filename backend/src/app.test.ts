@@ -36,6 +36,7 @@ function makeApp(count: number) {
     validateAndStore: vi.fn().mockResolvedValue({
       fileId: 'file123', name: 'c.png', size: 3, mime: 'image/png', kind: 'image', url: '/attachments/room/file123/c.png',
     }),
+    resolvePath: vi.fn().mockResolvedValue(null),
   };
   return {
     // `io` is a minimal fake (only `to().emit()` is used by the controller), not a full
