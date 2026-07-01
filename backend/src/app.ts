@@ -5,6 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { TokenMinter } from './livekitTokens.js';
+import type { RoomRegistry } from './rooms.js';
 import { AppError } from './errors.js';
 import type { ErrorCode } from './errors.js';
 import { logger } from './logger.js';
@@ -12,7 +13,8 @@ import { createRootRouter } from './routes/index.js';
 
 export type AppDeps = {
   config: AppConfig;
-  admin: Pick<LivekitAdmin, 'listParticipantCount'>;
+  registry: RoomRegistry;
+  admin: Pick<LivekitAdmin, 'ensureRoom' | 'listParticipantCount'>;
   minter: TokenMinter;
 };
 

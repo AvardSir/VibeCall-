@@ -22,4 +22,10 @@ describe('AppError', () => {
   it('uses the code as the default message', () => {
     expect(new AppError('FULL').message).toBe('FULL');
   });
+
+  it('maps NOT_FOUND to 404', () => {
+    const err = new AppError('NOT_FOUND');
+    expect(err.status).toBe(404);
+    expect(err.code).toBe('NOT_FOUND');
+  });
 });
