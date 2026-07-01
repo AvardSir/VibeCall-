@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { ChangeEvent, ClipboardEvent, FormEvent, JSX } from 'react';
+import type { ChangeEvent, ClipboardEvent, FormEvent, JSX, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../../../shared/ui/Icon';
 import { Text } from '../../../shared/ui/Text';
@@ -35,11 +35,23 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
 
   const canSend = text.trim().length > 0 || stagedAttachments.length > 0;
 
-  const submit = (e: FormEvent): void => {
-    e.preventDefault();
+  const send = (): void => {
     if (!canSend) return;
     onSend(text, stagedAttachments);
     setText('');
+  };
+
+  const submit = (e: FormEvent): void => {
+    e.preventDefault();
+    send();
+  };
+
+  // Enter sends; Shift+Enter inserts a newline. Ignore Enter mid-IME-composition.
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      send();
+    }
   };
 
   const openFilePicker = (): void => {
@@ -140,6 +152,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT_LENGTH))}
           onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
           placeholder={t('placeholder')}
           rows={2}
           className="flex-1 resize-none bg-transparent text-base font-light text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/25"
