@@ -9,6 +9,7 @@ export type Room = {
   createdAt: number;
   status: RoomStatus; // lifecycle state (M4); starts 'active'
   graceEndsAt: number | null; // epoch ms the grace period ends, else null
+  memberTokens: Map<string, string>; // identity → token; authorizes attachment upload/download (M5)
 };
 
 export type RoomRegistry = {
@@ -20,6 +21,8 @@ export type RoomRegistry = {
   markEnded(roomId: string): void;
   startGraceState(roomId: string, endsAt: number): void;
   clearGraceState(roomId: string): void;
+  recordMemberToken(roomId: string, identity: string): string;
+  verifyMemberToken(roomId: string, token: string): boolean;
 };
 
 export type RoomRegistryOptions = {
@@ -46,6 +49,7 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
         createdAt: now(),
         status: 'active',
         graceEndsAt: null,
+        memberTokens: new Map(),
       };
       rooms.set(room.roomId, room);
       return room;
@@ -86,6 +90,19 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
         room.status = 'active';
         room.graceEndsAt = null;
       }
+    },
+    recordMemberToken(roomId: string, identity: string): string {
+      const room = rooms.get(roomId);
+      if (!room) return '';
+      const token = newToken();
+      room.memberTokens.set(identity, token);
+      return token;
+    },
+    verifyMemberToken(roomId: string, token: string): boolean {
+      const room = rooms.get(roomId);
+      if (!room) return false;
+      for (const t of room.memberTokens.values()) if (t === token) return true;
+      return false;
     },
   };
 }
