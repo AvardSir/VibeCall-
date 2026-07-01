@@ -6,7 +6,7 @@ import { uploadAttachment } from '../../../shared/lib/apiClient';
 import type { ChatMessage, ParticipantRole, Attachment, UploadResult } from '../../../shared/types';
 import type { StagedFile } from '../../../stores/useChatStore';
 
-export type UseChatResult = { sendMessage: (text: string, files: StagedFile[]) => void };
+export type UseChatResult = { sendMessage: (text: string, files?: StagedFile[]) => void };
 
 export function useChat(role: ParticipantRole): UseChatResult {
   const socket = useSocket();
@@ -77,7 +77,9 @@ export function useChat(role: ParticipantRole): UseChatResult {
   }, [phase, localParticipant, role, socket]);
 
   const sendMessage = useCallback(
-    (text: string, files: StagedFile[]) => {
+    // `files` is optional so `sendMessage` stays assignable to ChatInput's `onSend(text)` until
+    // Task 16 wires staged attachments through; text-only sends pass no files.
+    (text: string, files: StagedFile[] = []) => {
       if (!localParticipant) return;
       const { roomId, memberToken } = localParticipant;
       const clientId = `c_${clientSeq.current++}`;
