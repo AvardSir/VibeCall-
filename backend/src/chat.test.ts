@@ -50,6 +50,7 @@ describe('createChatService', () => {
       senderName: 'Ann',
       sentAt: 1000,
       text: 'hi',
+      attachments: [],
     });
   });
 
@@ -73,5 +74,21 @@ describe('createChatService', () => {
     chat.append(chat.build({ roomName: 'main', senderIdentity: 'p_1', senderName: 'Ann', text: 'a' }));
     chat.clear('main');
     expect(chat.history('main')).toEqual([]);
+  });
+
+  it('allows an empty text when attachments are present', () => {
+    const chat = createChatService();
+    const v = chat.validateMessage({ text: '   ', attachmentCount: 1 });
+    expect(v.ok).toBe(true);
+  });
+  it('still rejects empty text with no attachments', () => {
+    const chat = createChatService();
+    expect(chat.validateMessage({ text: '', attachmentCount: 0 })).toMatchObject({ ok: false, code: 'EMPTY_MESSAGE' });
+  });
+  it('build carries attachments onto the message', () => {
+    const chat = createChatService();
+    const att = { fileId: 'f0', name: 'c.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/r1/f0/c.png' };
+    const m = chat.build({ roomName: 'r1', senderIdentity: 'p_1', senderName: 'Ann', text: '', attachments: [att] });
+    expect(m.attachments).toEqual([att]);
   });
 });
