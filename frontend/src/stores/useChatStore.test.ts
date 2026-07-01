@@ -112,4 +112,21 @@ describe('useChatStore', () => {
     expect(s.isPanelOpen).toBe(false);
     expect(s.unreadCount).toBe(0);
   });
+
+  it('stages and removes files', () => {
+    const s = useChatStore.getState();
+    const f = new File([new Uint8Array([1])], 'a.png', { type: 'image/png' });
+    s.addStaged(f);
+    const id = useChatStore.getState().stagedAttachments[0].id;
+    expect(useChatStore.getState().stagedAttachments).toHaveLength(1);
+    useChatStore.getState().removeStaged(id);
+    expect(useChatStore.getState().stagedAttachments).toHaveLength(0);
+  });
+
+  it('optimistic + delivered items carry attachments', () => {
+    const s = useChatStore.getState();
+    const att = { fileId: 'f0', name: 'c.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/r1/f0/c.png' };
+    s.addOptimistic('c1', '', { identity: 'p_1', displayName: 'Ann' } as never, [att]);
+    expect(useChatStore.getState().messages.at(-1)?.attachments).toEqual([att]);
+  });
 });

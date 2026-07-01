@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ChatMessage } from '../shared/types';
+import type { Attachment, ChatMessage } from '../shared/types';
 
 export type ChatItemStatus = 'sending' | 'delivered' | 'failed';
 
@@ -10,19 +10,36 @@ export type ChatItem = {
   sentAt: number;
   text: string;
   status: ChatItemStatus;
+  attachments: Attachment[];
 };
+
+export type StagedFile = {
+  id: string;
+  file: File;
+};
+
+let stagedSeq = 0;
 
 type ChatState = {
   messages: ChatItem[];
   isPanelOpen: boolean;
   unreadCount: number;
+  stagedAttachments: StagedFile[];
   setHistory: (messages: ChatMessage[]) => void;
   receiveMessage: (message: ChatMessage, selfIdentity: string) => void;
-  addOptimistic: (clientId: string, text: string, self: { identity: string; displayName: string }) => void;
+  addOptimistic: (
+    clientId: string,
+    text: string,
+    self: { identity: string; displayName: string },
+    attachments?: Attachment[],
+  ) => void;
   markFailed: () => void;
   openPanel: () => void;
   togglePanel: () => void;
   markAllRead: () => void;
+  addStaged: (file: File) => void;
+  removeStaged: (id: string) => void;
+  clearStaged: () => void;
   reset: () => void;
 };
 
@@ -36,6 +53,7 @@ function toDelivered(message: ChatMessage): ChatItem {
     // required string for now — attachment rendering is a later task, so default to ''.
     text: message.text ?? '',
     status: 'delivered',
+    attachments: message.attachments,
   };
 }
 
@@ -43,6 +61,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   messages: [],
   isPanelOpen: false,
   unreadCount: 0,
+  stagedAttachments: [],
 
   setHistory: (messages) => set({ messages: messages.map(toDelivered) }),
 
@@ -65,7 +84,7 @@ export const useChatStore = create<ChatState>()((set) => ({
       };
     }),
 
-  addOptimistic: (clientId, text, self) =>
+  addOptimistic: (clientId, text, self, attachments = []) =>
     set((state) => ({
       messages: [
         ...state.messages,
@@ -76,6 +95,7 @@ export const useChatStore = create<ChatState>()((set) => ({
           sentAt: Date.now(),
           text,
           status: 'sending',
+          attachments,
         },
       ],
     })),
@@ -92,5 +112,16 @@ export const useChatStore = create<ChatState>()((set) => ({
   openPanel: () => set({ isPanelOpen: true }),
   togglePanel: () => set((s) => ({ isPanelOpen: !s.isPanelOpen })),
   markAllRead: () => set({ unreadCount: 0 }),
-  reset: () => set({ messages: [], isPanelOpen: false, unreadCount: 0 }),
+
+  addStaged: (file) =>
+    set((state) => ({
+      stagedAttachments: [...state.stagedAttachments, { id: `s_${stagedSeq++}`, file }],
+    })),
+  removeStaged: (id) =>
+    set((state) => ({
+      stagedAttachments: state.stagedAttachments.filter((s) => s.id !== id),
+    })),
+  clearStaged: () => set({ stagedAttachments: [] }),
+
+  reset: () => set({ messages: [], isPanelOpen: false, unreadCount: 0, stagedAttachments: [] }),
 }));
