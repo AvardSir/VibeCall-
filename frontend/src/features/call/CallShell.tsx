@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { JSX } from 'react';
+import clsx from 'clsx';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ConnectionError, ConnectionErrorReason } from 'livekit-client';
 import '@livekit/components-styles';
@@ -14,6 +15,7 @@ import { RemoveGuestDialog } from './components/RemoveGuestDialog';
 import { useRoomLifecycle } from './hooks/useRoomLifecycle';
 import { useShareState } from './hooks/useShareState';
 import { useParticipantsStore } from '../../stores/useParticipantsStore';
+import { useChatStore } from '../../stores/useChatStore';
 
 export type CallShellProps = {
   accessToken: string;
@@ -53,6 +55,7 @@ export function CallShell({
   const isCamOn = useMediaStore((s) => s.isCamOn);
   const graceSecondsLeft = useConnectionStore((s) => s.graceSecondsLeft);
   const activeSharerId = useParticipantsStore((s) => s.activeSharerId);
+  const isPanelOpen = useChatStore((s) => s.isPanelOpen);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
   useRoomLifecycle({ identity, onRoomEnded, onRemoved });
@@ -97,7 +100,12 @@ export function CallShell({
       onConnected={() => setPhase('connected')}
       onError={handleError}
       onDisconnected={onLeave}
-      className="relative flex h-full flex-col overflow-hidden"
+      // Shrink the call area to the left of the chat panel (fixed 340px, right) when it's open, so the
+      // grid and the bottom-right controls (host Copy link + Chat) aren't covered by the panel.
+      className={clsx(
+        'relative flex h-full flex-col overflow-hidden transition-[padding] duration-200',
+        isPanelOpen && 'pr-[340px]',
+      )}
     >
       {graceSecondsLeft !== null ? <GraceOverlay secondsLeft={graceSecondsLeft} /> : null}
       <CallStage activeSharerId={activeSharerId} onRemoveGuest={onRemoveGuest} />
