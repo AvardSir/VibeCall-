@@ -34,7 +34,7 @@ export function VideoTile({
       className={clsx(
         'group relative h-full w-full overflow-hidden rounded-[12px] bg-surface-elevated',
         // Active-speaker highlight (project accent blue) — the design has no green.
-        isSpeaking && 'ring-2 ring-accent',
+        isSpeaking && 'ring-4 ring-accent',
       )}
     >
       {onRemove ? (

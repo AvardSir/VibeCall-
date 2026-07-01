@@ -44,11 +44,11 @@ describe('VideoTile', () => {
     const { container, rerender } = render(
       <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled cameraTrackRef={fakeTrack} />,
     );
-    expect(container.firstElementChild).not.toHaveClass('ring-2', 'ring-accent');
+    expect(container.firstElementChild).not.toHaveClass('ring-4', 'ring-accent');
     rerender(
       <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled isSpeaking cameraTrackRef={fakeTrack} />,
     );
-    expect(container.firstElementChild).toHaveClass('ring-2', 'ring-accent');
+    expect(container.firstElementChild).toHaveClass('ring-4', 'ring-accent');
   });
 
   it('shows the centered mic-glyph (SVG, not emoji) + name when the camera is off', () => {
