@@ -28,4 +28,10 @@ describe('AppError', () => {
     expect(err.status).toBe(404);
     expect(err.code).toBe('NOT_FOUND');
   });
+
+  it('maps ENDED to 410', () => {
+    const err = new AppError('ENDED');
+    expect(err.status).toBe(410);
+    expect(err.code).toBe('ENDED');
+  });
 });
