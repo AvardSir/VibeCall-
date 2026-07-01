@@ -9,10 +9,10 @@ const base = {
 describe('loadConfig', () => {
   it('parses a valid env with defaults', () => {
     const cfg = loadConfig(base);
-    expect(cfg.fixedRoomName).toBe('main');
     expect(cfg.port).toBe(3000);
     expect(cfg.maxParticipants).toBe(MAX_PARTICIPANTS);
     expect(cfg.maxParticipants).toBe(4);
+    expect('fixedRoomName' in cfg).toBe(false);
   });
 
   it('throws when a required LiveKit var is missing', () => {
@@ -23,9 +23,8 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, LIVEKIT_URL: 'not-a-url' })).toThrow();
   });
 
-  it('honours FIXED_ROOM_NAME and PORT overrides', () => {
-    const cfg = loadConfig({ ...base, FIXED_ROOM_NAME: 'demo', PORT: '4000' });
-    expect(cfg.fixedRoomName).toBe('demo');
+  it('honours the PORT override', () => {
+    const cfg = loadConfig({ ...base, PORT: '4000' });
     expect(cfg.port).toBe(4000);
   });
 });
