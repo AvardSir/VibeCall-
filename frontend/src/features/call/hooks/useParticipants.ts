@@ -16,6 +16,7 @@ const SYNC_EVENTS = [
   RoomEvent.TrackUnpublished,
   RoomEvent.LocalTrackPublished,
   RoomEvent.LocalTrackUnpublished,
+  RoomEvent.ActiveSpeakersChanged,
 ] as const;
 
 function toCallParticipant(participant: Participant, isLocal: boolean): CallParticipant {
@@ -26,6 +27,7 @@ function toCallParticipant(participant: Participant, isLocal: boolean): CallPart
     isLocal,
     isCameraEnabled: participant.isCameraEnabled,
     isMicrophoneEnabled: participant.isMicrophoneEnabled,
+    isSpeaking: participant.isSpeaking,
   };
 }
 

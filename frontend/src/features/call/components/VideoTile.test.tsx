@@ -40,6 +40,17 @@ describe('VideoTile', () => {
     expect(container.firstElementChild).toHaveClass('rounded-[12px]');
   });
 
+  it('shows the accent speaking ring only while the participant is speaking', () => {
+    const { container, rerender } = render(
+      <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled cameraTrackRef={fakeTrack} />,
+    );
+    expect(container.firstElementChild).not.toHaveClass('ring-2', 'ring-accent');
+    rerender(
+      <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled isSpeaking cameraTrackRef={fakeTrack} />,
+    );
+    expect(container.firstElementChild).toHaveClass('ring-2', 'ring-accent');
+  });
+
   it('shows the centered mic-glyph (SVG, not emoji) + name when the camera is off', () => {
     const { container } = render(
       <VideoTile name="Bob" isLocal={false} isCameraEnabled={false} isMicrophoneEnabled cameraTrackRef={undefined} />,

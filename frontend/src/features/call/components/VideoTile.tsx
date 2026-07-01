@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { VideoTrack } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
@@ -10,6 +11,7 @@ export type VideoTileProps = {
   isLocal: boolean;
   isCameraEnabled: boolean;
   isMicrophoneEnabled: boolean;
+  isSpeaking?: boolean;
   cameraTrackRef: TrackReference | undefined;
   onRemove?: () => void;
 };
@@ -19,6 +21,7 @@ export function VideoTile({
   isLocal,
   isCameraEnabled,
   isMicrophoneEnabled,
+  isSpeaking,
   cameraTrackRef,
   onRemove,
 }: VideoTileProps): JSX.Element {
@@ -26,7 +29,14 @@ export function VideoTile({
   const label = isLocal ? t('you', { name }) : name;
 
   return (
-    <div className="group relative h-full w-full overflow-hidden rounded-[12px] bg-surface-elevated">
+    <div
+      data-speaking={isSpeaking ? 'true' : undefined}
+      className={clsx(
+        'group relative h-full w-full overflow-hidden rounded-[12px] bg-surface-elevated',
+        // Active-speaker highlight (project accent blue) — the design has no green.
+        isSpeaking && 'ring-2 ring-accent',
+      )}
+    >
       {onRemove ? (
         <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100">
           <Tooltip label={t('removeGuestTooltip')}>

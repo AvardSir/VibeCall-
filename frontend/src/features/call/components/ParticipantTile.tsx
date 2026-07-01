@@ -19,6 +19,7 @@ export function ParticipantTile({ participant, cameraTrackRef, onRemoveGuest }: 
       isLocal={participant.isLocal}
       isCameraEnabled={participant.isCameraEnabled}
       isMicrophoneEnabled={participant.isMicrophoneEnabled}
+      isSpeaking={participant.isSpeaking}
       cameraTrackRef={cameraTrackRef}
       onRemove={
         !participant.isLocal && onRemoveGuest
