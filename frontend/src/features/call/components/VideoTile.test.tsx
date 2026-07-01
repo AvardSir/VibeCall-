@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '../../../shared/i18n';
 import type { TrackReference } from '@livekit/components-react';
 
@@ -56,5 +56,29 @@ describe('VideoTile', () => {
     );
     expect(screen.queryByTestId('corner-mute')).not.toBeInTheDocument();
     expect(screen.getByTestId('center-mic')).toBeInTheDocument();
+  });
+
+  it('renders a Remove control when onRemove is passed and calls it on click', () => {
+    const onRemove = vi.fn();
+    render(
+      <VideoTile
+        name="Bob"
+        isLocal={false}
+        isCameraEnabled
+        isMicrophoneEnabled
+        cameraTrackRef={fakeTrack}
+        onRemove={onRemove}
+      />,
+    );
+    const removeButton = screen.getByRole('button', { name: /^remove$/i });
+    fireEvent.click(removeButton);
+    expect(onRemove).toHaveBeenCalled();
+  });
+
+  it('does not render a Remove control when onRemove is absent', () => {
+    render(
+      <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled cameraTrackRef={fakeTrack} />,
+    );
+    expect(screen.queryByRole('button', { name: /^remove$/i })).not.toBeInTheDocument();
   });
 });
