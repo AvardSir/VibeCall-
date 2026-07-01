@@ -41,6 +41,11 @@ describe('getRoomStatus', () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'full' }));
     expect(await getRoomStatus('r1')).toBe('full');
   });
+
+  it('rejects on a non-ok non-404 response', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 500 }));
+    await expect(getRoomStatus('r1')).rejects.toThrow();
+  });
 });
 
 describe('joinRoom', () => {
