@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type ConnectionPhase = 'idle' | 'connecting' | 'connected' | 'failed';
-export type LocalParticipant = { identity: string; displayName: string; roomId: string };
+export type LocalParticipant = { identity: string; displayName: string; roomId: string; memberToken: string };
 
 type ConnectionState = {
   phase: ConnectionPhase;

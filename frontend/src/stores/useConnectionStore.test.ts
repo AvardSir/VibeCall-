@@ -11,7 +11,7 @@ describe('useConnectionStore', () => {
 
   it('records phase and local participant', () => {
     useConnectionStore.getState().setPhase('connecting');
-    useConnectionStore.getState().setLocalParticipant({ identity: 'p_1', displayName: 'Ann', roomId: 'r_1' });
+    useConnectionStore.getState().setLocalParticipant({ identity: 'p_1', displayName: 'Ann', roomId: 'r_1', memberToken: 'mt' });
     expect(useConnectionStore.getState().phase).toBe('connecting');
     expect(useConnectionStore.getState().localParticipant?.displayName).toBe('Ann');
   });
@@ -29,5 +29,16 @@ describe('useConnectionStore', () => {
     expect(useConnectionStore.getState().graceSecondsLeft).toBe(42);
     useConnectionStore.getState().reset();
     expect(useConnectionStore.getState().graceSecondsLeft).toBeNull();
+  });
+
+  it('round-trips memberToken on local participant', () => {
+    useConnectionStore.getState().setLocalParticipant({
+      identity: 'p_1',
+      displayName: 'Ann',
+      roomId: 'r_1',
+      memberToken: 'mt_abc123',
+    });
+    const participant = useConnectionStore.getState().localParticipant;
+    expect(participant?.memberToken).toBe('mt_abc123');
   });
 });
