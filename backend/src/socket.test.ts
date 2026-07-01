@@ -52,11 +52,13 @@ function makeIo() {
   return { io, broadcasts };
 }
 
-function makeDeps(participants: { identity: string; name: string }[]): ChatGatewayDeps {
+function makeDeps(participants: { identity: string; name: string }[], roomId = 'r1'): ChatGatewayDeps {
   let seq = 0;
   return {
-    config: { fixedRoomName: 'main', corsOrigin: '*' },
-    admin: { listParticipants: vi.fn().mockResolvedValue(participants) },
+    config: { corsOrigin: '*' },
+    admin: {
+      listParticipants: vi.fn(async (id: string) => (id === roomId ? participants : [])),
+    },
     chat: createChatService({ now: () => 1000, newId: () => `m${++seq}` }),
   };
 }
@@ -106,10 +108,10 @@ describe('handleJoinChat', () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
     const { socket, emitted, joined } = makeSocket();
 
-    await handleJoinChat(socket as unknown as ChatSocket, deps, { identity: 'p_1', role: 'guest' });
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
 
-    expect(socket.data.binding).toEqual({ identity: 'p_1', displayName: 'Ann', roomName: 'main' });
-    expect(joined).toEqual(['main']);
+    expect(socket.data.binding).toEqual({ identity: 'p_1', displayName: 'Ann', roomName: 'r1' });
+    expect(joined).toEqual(['r1']);
     expect(emitted).toEqual([{ event: 'chat_history', payload: [] }]);
   });
 
@@ -117,21 +119,31 @@ describe('handleJoinChat', () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
     const { socket, emitted, joined } = makeSocket();
 
-    await handleJoinChat(socket as unknown as ChatSocket, deps, { identity: 'ghost', role: 'guest' });
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'ghost', role: 'guest' });
 
     expect(socket.data.binding).toBeUndefined();
     expect(joined).toEqual([]);
     expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'NOT_A_MEMBER' } }]);
   });
 
+  it('rejects a join with a missing roomId', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: '', identity: 'p_1', role: 'guest' });
+
+    expect(socket.data.binding).toBeUndefined();
+    expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'NOT_A_MEMBER' } }]);
+  });
+
   it('replays prior history to a new joiner', async () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
     deps.chat.append(
-      deps.chat.build({ roomName: 'main', senderIdentity: 'p_0', senderName: 'Bo', text: 'earlier' }),
+      deps.chat.build({ roomName: 'r1', senderIdentity: 'p_0', senderName: 'Bo', text: 'earlier' }),
     );
     const { socket, emitted } = makeSocket();
 
-    await handleJoinChat(socket as unknown as ChatSocket, deps, { identity: 'p_1', role: 'guest' });
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
 
     const history = emitted.find((e) => e.event === 'chat_history')?.payload as { text: string }[];
     expect(history.map((m) => m.text)).toEqual(['earlier']);
