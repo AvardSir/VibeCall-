@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -69,6 +70,27 @@ describe('RoomPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^join$/i }));
     await waitFor(() => expect(screen.getByText(/in-call-shell role:guest/)).toBeInTheDocument());
     expect(joinRoom).toHaveBeenCalledWith('r1', 'Ann', undefined);
+  });
+
+  it('reaches the call view after joining under StrictMode (mountedRef must survive the remount)', async () => {
+    // StrictMode mounts→cleans up→remounts effects in dev. The mountedRef guard in handleEnter
+    // must not be left false by that cleanup, or the post-join `if (!mountedRef.current) return`
+    // silently strands the user on the connecting screen. This mirrors the real dev app.
+    getRoomStatus.mockResolvedValue('available');
+    joinRoom.mockResolvedValue({ ok: true, data: { accessToken: 'j', livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann', roomId: 'r1' } });
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={['/r/r1']}>
+          <Routes>
+            <Route path="/r/:roomId" element={<RoomPage />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    await waitFor(() => screen.getByLabelText(/your name/i));
+    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Ann' } });
+    fireEvent.click(screen.getByRole('button', { name: /^join$/i }));
+    await waitFor(() => expect(screen.getByText(/in-call-shell role:guest/)).toBeInTheDocument());
   });
 
   it('passes the hash host token to joinRoom and enters as host', async () => {
