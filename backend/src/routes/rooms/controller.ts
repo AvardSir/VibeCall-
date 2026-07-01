@@ -32,6 +32,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
 
   async function getStatus(req: Request, res: Response): Promise<void> {
     const { roomId } = req.params;
+    if (typeof roomId !== 'string') throw new AppError('NOT_FOUND');
     if (!registry.get(roomId)) throw new AppError('NOT_FOUND');
     const count = await admin.listParticipantCount(roomId);
     res.json({ status: count >= config.maxParticipants ? 'full' : 'available' });
@@ -39,6 +40,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
 
   async function join(req: Request, res: Response): Promise<void> {
     const { roomId } = req.params;
+    if (typeof roomId !== 'string') throw new AppError('NOT_FOUND');
     if (!registry.get(roomId)) throw new AppError('NOT_FOUND');
 
     const { name, hostToken } = parseJoinBody(req.body);
