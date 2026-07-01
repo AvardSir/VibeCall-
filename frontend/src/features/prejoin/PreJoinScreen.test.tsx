@@ -32,14 +32,14 @@ describe('PreJoinScreen', () => {
     await waitFor(() => expect(onEnter).toHaveBeenCalledWith('Ann'));
   });
 
-  it('renders a fixed-width Figma card with the title and CTA', () => {
+  it('renders the wider PRD/wireframe card with the title and CTA', () => {
     render(<PreJoinScreen onEnter={vi.fn()} />);
     // the H1 title
     expect(screen.getByRole('heading', { name: 'Enter your name' })).toBeInTheDocument();
-    // the card container carries the Figma geometry
-    const card = document.querySelector('.w-\\[412px\\]');
+    // the card container carries the wireframe geometry (wider card, larger preview area)
+    const card = document.querySelector('.w-\\[560px\\]');
     expect(card).not.toBeNull();
-    expect(card).toHaveClass('rounded-[12px]', 'bg-slate-100', 'dark:bg-surface-elevated', 'p-10');
+    expect(card).toHaveClass('rounded-[12px]', 'bg-slate-100', 'dark:bg-surface-elevated', 'p-8');
   });
 
   it('labels the CTA per role (guest → Join, host → Enter call)', () => {

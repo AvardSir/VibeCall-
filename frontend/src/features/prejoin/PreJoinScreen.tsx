@@ -35,10 +35,31 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
   }
 
   return (
-    <div className="mx-auto flex min-h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="flex w-[412px] flex-col items-center gap-3 rounded-[12px] bg-slate-100 p-10 dark:bg-surface-elevated">
+    <div className="mx-auto flex min-h-full flex-col items-center justify-center p-8">
+      {/* PRD/wireframe (H2) layout: a wider card with a large full-width camera preview, the device
+          toggles + permission notices, then the name field and CTA — all inside one card. */}
+      <div className="flex w-[560px] flex-col gap-4 rounded-[12px] bg-slate-100 p-8 dark:bg-surface-elevated">
         <CameraPreview stream={previewStream} />
-        <div className="flex w-full flex-col items-center gap-6">
+        <DeviceToggles />
+
+        {/* Permission notices sit under the toggles (PRD FR-10/11). */}
+        {cameraPermission === 'prompt' ? (
+          <Text size="sm" className="text-center text-text-muted">{t('awaitingPermission')}</Text>
+        ) : null}
+        {cameraPermission === 'denied' && micPermission !== 'denied' ? (
+          <Text size="sm" className="text-center text-amber-400">{t('cameraDenied')}</Text>
+        ) : null}
+        {micPermission === 'denied' && cameraPermission !== 'denied' ? (
+          <Text size="sm" className="text-center text-amber-400">{t('micDenied')}</Text>
+        ) : null}
+        {bothDenied ? (
+          <Text size="sm" className="text-center text-amber-400">{t('bothDenied')}</Text>
+        ) : null}
+        {error ? (
+          <Text size="sm" className="text-center text-amber-400">{t('common:connectError')}</Text>
+        ) : null}
+
+        <div className="flex w-full flex-col items-center gap-4">
           <Text tag="h1" size="2xl" weight="bold" className="text-slate-900 dark:text-white">
             {t('title')}
           </Text>
@@ -47,26 +68,6 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
             {role === 'host' ? t('enterCall') : t('join')}
           </Button>
         </div>
-      </div>
-
-      {/* Device toggles + permission notices — not in the Figma card; kept per PRD FR-10/11. */}
-      <div className="flex flex-col items-center gap-2">
-        <DeviceToggles />
-        {cameraPermission === 'prompt' ? (
-          <Text size="sm" className="text-text-muted">{t('awaitingPermission')}</Text>
-        ) : null}
-        {cameraPermission === 'denied' && micPermission !== 'denied' ? (
-          <Text size="sm" className="text-amber-400">{t('cameraDenied')}</Text>
-        ) : null}
-        {micPermission === 'denied' && cameraPermission !== 'denied' ? (
-          <Text size="sm" className="text-amber-400">{t('micDenied')}</Text>
-        ) : null}
-        {bothDenied ? (
-          <Text size="sm" className="text-amber-400">{t('bothDenied')}</Text>
-        ) : null}
-        {error ? (
-          <Text size="sm" className="text-amber-400">{t('common:connectError')}</Text>
-        ) : null}
       </div>
     </div>
   );

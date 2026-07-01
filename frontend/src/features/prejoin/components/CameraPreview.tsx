@@ -22,7 +22,7 @@ export function CameraPreview({ stream }: CameraPreviewProps): JSX.Element {
   }, [stream, showVideo]);
 
   return (
-    <div className="relative h-[170px] w-[224px] shrink-0 overflow-hidden rounded-[12px] bg-black">
+    <div className="relative aspect-video w-full overflow-hidden rounded-[12px] bg-black">
       {showVideo ? (
         // Mirrored local preview (PRD FR-11).
         <video
