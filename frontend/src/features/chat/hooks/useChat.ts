@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useSocket } from '../../../shared/hooks/useSocket';
 import { useChatStore } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
-import type { ChatMessage, ParticipantRole } from '../../../shared/types';
+import { uploadAttachment } from '../../../shared/lib/apiClient';
+import type { ChatMessage, ParticipantRole, Attachment, UploadResult } from '../../../shared/types';
+import type { StagedFile } from '../../../stores/useChatStore';
 
-export type UseChatResult = { sendMessage: (text: string) => void };
+export type UseChatResult = { sendMessage: (text: string, files: StagedFile[]) => void };
 
 export function useChat(role: ParticipantRole): UseChatResult {
   const socket = useSocket();
@@ -14,6 +16,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
   const receiveMessage = useChatStore((s) => s.receiveMessage);
   const addOptimistic = useChatStore((s) => s.addOptimistic);
   const markFailed = useChatStore((s) => s.markFailed);
+  const clearStaged = useChatStore((s) => s.clearStaged);
 
   const joinedRef = useRef(false);
   const clientSeq = useRef(0);
@@ -74,13 +77,39 @@ export function useChat(role: ParticipantRole): UseChatResult {
   }, [phase, localParticipant, role, socket]);
 
   const sendMessage = useCallback(
-    (text: string) => {
+    (text: string, files: StagedFile[]) => {
       if (!localParticipant) return;
+      const { roomId, memberToken } = localParticipant;
       const clientId = `c_${clientSeq.current++}`;
-      addOptimistic(clientId, text, localParticipant);
-      socket.emit('send_message', { text });
+
+      // Blob-URL previews let the optimistic bubble render attachments immediately, before the
+      // upload resolves; ChatMessageItem (Task 17) swaps them for tokened URLs once delivered.
+      const previews: Attachment[] = files.map((sf) => ({
+        fileId: sf.id,
+        name: sf.file.name,
+        size: sf.file.size,
+        mime: sf.file.type,
+        kind: sf.file.type.startsWith('image/') ? 'image' : 'file',
+        url: URL.createObjectURL(sf.file),
+      }));
+      addOptimistic(clientId, text, localParticipant, previews);
+
+      void (async () => {
+        try {
+          const results = await Promise.all(files.map((sf) => uploadAttachment(roomId, memberToken, sf.file)));
+          if (results.every((r) => r.ok)) {
+            const uploaded = results.map((r) => (r as Extract<UploadResult, { ok: true }>).data);
+            socket.emit('send_message', { text, attachments: uploaded });
+            clearStaged();
+          } else {
+            markFailed();
+          }
+        } catch {
+          markFailed();
+        }
+      })();
     },
-    [addOptimistic, localParticipant, socket],
+    [addOptimistic, markFailed, clearStaged, localParticipant, socket],
   );
 
   return { sendMessage };
