@@ -3,6 +3,7 @@ export { CallFullScreen } from './CallFullScreen';
 export type { CallFullScreenProps } from './CallFullScreen';
 export { ConnectErrorScreen } from './ConnectErrorScreen';
 export type { ConnectErrorScreenProps } from './ConnectErrorScreen';
+export { GraceExpiredScreen } from './GraceExpiredScreen';
 export { GuestLeftScreen } from './GuestLeftScreen';
 export type { GuestLeftScreenProps } from './GuestLeftScreen';
 export { HostEndedScreen } from './HostEndedScreen';
