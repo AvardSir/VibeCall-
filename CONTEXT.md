@@ -138,6 +138,14 @@ Implementation was started too early (git repo, branch, dispatched an implemente
 scaffold the backend). The user only wanted the **architecture** at this stage.
 Implementation is paused.
 
+## Known UI issues (backlog)
+
+- **In-call controls can fall below the fold (2026-07-01).** On the in-call screen the
+  ControlsBar (mic / camera / chat / leave) can require scrolling to reach — the `CallShell`
+  content appears to overgrow the viewport. App is desktop-only (≥1024px), so the call view
+  should fit the viewport height and keep the controls docked/visible without scrolling.
+  Low priority; not a functional bug (buttons work once scrolled into view).
+
 ## Possible next steps (await user direction)
 
 - Refine the architecture spec, or present it in another form (diagram / visual artifact / summary).
