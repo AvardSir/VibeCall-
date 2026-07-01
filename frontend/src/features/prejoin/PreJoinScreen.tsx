@@ -5,6 +5,7 @@ import { Button } from '../../shared/ui/Button';
 import { useDevicePermissions } from './hooks/useDevicePermissions';
 import { useNameValidation } from './hooks/useNameValidation';
 import { useMediaStore } from '../../stores/useMediaStore';
+import type { ParticipantRole } from '../../shared/types';
 import { CameraPreview } from './components/CameraPreview';
 import { DeviceToggles } from './components/DeviceToggles';
 import { NameInput } from './components/NameInput';
@@ -12,9 +13,11 @@ import { NameInput } from './components/NameInput';
 export type PreJoinScreenProps = {
   onEnter: (name: string) => void;
   submitting?: boolean;
+  role?: ParticipantRole;
+  error?: boolean;
 };
 
-export function PreJoinScreen({ onEnter, submitting = false }: PreJoinScreenProps): JSX.Element {
+export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', error = false }: PreJoinScreenProps): JSX.Element {
   const { t } = useTranslation('prejoin');
   const { previewStream } = useDevicePermissions();
   const [name, setName] = useState('');
@@ -52,8 +55,9 @@ export function PreJoinScreen({ onEnter, submitting = false }: PreJoinScreenProp
         errorKey={errorKey}
         showError={touched}
       />
+      {error ? <p className="text-sm text-amber-400">{t('common:connectError')}</p> : null}
       <Button type="button" onClick={handleSubmit} disabled={!valid || submitting}>
-        {t('enterCall')}
+        {role === 'host' ? t('enterCall') : t('join')}
       </Button>
     </div>
   );
