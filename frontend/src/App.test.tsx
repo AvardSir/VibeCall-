@@ -31,6 +31,6 @@ describe('App routing', () => {
   it('shows the theme and language controls on every screen', () => {
     renderAt('/');
     expect(screen.getByRole('button', { name: /switch to light theme/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /russian/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'RU' })).toBeInTheDocument();
   });
 });
