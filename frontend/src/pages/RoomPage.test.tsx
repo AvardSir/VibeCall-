@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import '../shared/i18n';
 
@@ -94,5 +94,17 @@ describe('RoomPage', () => {
       expect(screen.getByText(/unable to connect to the call service/i)).toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: /^join$/i })).toBeInTheDocument();
+  });
+
+  it('shows the connect-error screen when CallShell reports a connect error', async () => {
+    getRoomStatus.mockResolvedValue('available');
+    joinRoom.mockResolvedValue({ ok: true, data: { accessToken: 'j', livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann', roomId: 'r1' } });
+    renderAt('/r/r1');
+    await waitFor(() => screen.getByLabelText(/your name/i));
+    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Ann' } });
+    fireEvent.click(screen.getByRole('button', { name: /^join$/i }));
+    await waitFor(() => expect(screen.getByText(/in-call-shell role:guest/)).toBeInTheDocument());
+    await act(async () => { onConnectErrorCallback?.(); });
+    await waitFor(() => expect(screen.getByText(/unable to connect to the call service/i)).toBeInTheDocument());
   });
 });

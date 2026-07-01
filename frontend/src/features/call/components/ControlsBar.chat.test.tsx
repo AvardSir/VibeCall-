@@ -17,7 +17,7 @@ describe('ControlsBar chat button', () => {
 
   it('shows the unread badge count and clears it on open', async () => {
     useChatStore.setState({ unreadCount: 2 });
-    render(<ControlsBar onLeave={vi.fn()} />);
+    render(<ControlsBar onLeave={vi.fn()} role="guest" participantUrl="https://app/r/r1" />);
     expect(screen.getByTestId('chat-unread')).toHaveTextContent('2');
 
     await userEvent.click(screen.getByRole('button', { name: 'Chat' }));
@@ -27,7 +27,7 @@ describe('ControlsBar chat button', () => {
   });
 
   it('toggles the panel closed on a second click', async () => {
-    render(<ControlsBar onLeave={vi.fn()} />);
+    render(<ControlsBar onLeave={vi.fn()} role="guest" participantUrl="https://app/r/r1" />);
     const btn = screen.getByRole('button', { name: 'Chat' });
     await userEvent.click(btn);
     await userEvent.click(btn);
