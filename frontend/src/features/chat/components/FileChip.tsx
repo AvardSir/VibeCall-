@@ -19,6 +19,11 @@ export function FileChip({ name, size, href, downloadLabel }: FileChipProps): JS
     <a
       href={href}
       download={name}
+      // Open in a new tab: the backend serves the file cross-origin (different port), where browsers
+      // ignore `download` and would navigate THIS tab to the file/error — unmounting the call. A new
+      // tab downloads (Content-Disposition: attachment) and self-closes, leaving the call untouched.
+      target="_blank"
+      rel="noopener noreferrer"
       aria-label={`${downloadLabel}: ${name}`}
       className="inline-flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-sm text-slate-100 hover:bg-surface-muted/80"
     >
