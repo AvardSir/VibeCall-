@@ -33,7 +33,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps): JSX.El
       role="dialog"
       aria-modal="true"
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/80"
+      // transform-gpu + isolate promote the dim layer to its own compositing layer so a hardware
+      // <video> (webcam tiles) can't momentarily paint over it during a repaint (dimming flicker).
+      className="fixed inset-0 z-40 flex transform-gpu isolate items-center justify-center bg-black/80"
     >
       <button
         ref={closeButtonRef}
