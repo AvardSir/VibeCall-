@@ -50,18 +50,23 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
       <div
         data-testid="video-grid"
         data-count={count}
-        className={`grid h-full w-full gap-4 ${maxWidth} ${layout}`}
+        className={`grid h-full min-h-0 w-full gap-4 ${maxWidth} ${layout}`}
       >
         {participants.map((p, index) => {
           const centerBottom =
             count === 3 && index === 2 ? 'col-span-2 w-1/2 justify-self-center' : '';
           return (
-            <div key={p.identity} className={`aspect-video min-h-0 ${centerBottom}`}>
-              <ParticipantTile
-                participant={p}
-                cameraTrackRef={trackByIdentity.get(p.identity)}
-                onRemoveGuest={onRemoveGuest}
-              />
+            // Cell fills its grid track (bounded height); the inner box derives its WIDTH from that
+            // bounded height via aspect-video (max-w-full caps it), so a wide viewport never makes the
+            // tile taller than the available space — which previously overflowed and clipped the controls.
+            <div key={p.identity} className={`flex min-h-0 min-w-0 items-center justify-center ${centerBottom}`}>
+              <div className="aspect-video h-full max-w-full">
+                <ParticipantTile
+                  participant={p}
+                  cameraTrackRef={trackByIdentity.get(p.identity)}
+                  onRemoveGuest={onRemoveGuest}
+                />
+              </div>
             </div>
           );
         })}
