@@ -40,12 +40,15 @@ describe('useChatStore', () => {
     expect(useChatStore.getState().unreadCount).toBe(1); // own message does not bump unread
   });
 
-  it('openPanel resets unread; messages received while open do not bump', () => {
+  it('openPanel opens without clearing unread; markAllRead clears it', () => {
     useChatStore.getState().receiveMessage(serverMsg({}), SELF.identity);
     useChatStore.getState().openPanel();
+    expect(useChatStore.getState().isPanelOpen).toBe(true);
+    expect(useChatStore.getState().unreadCount).toBe(1); // opening no longer marks read
+    useChatStore.getState().markAllRead();
     expect(useChatStore.getState().unreadCount).toBe(0);
     useChatStore.getState().receiveMessage(serverMsg({ id: 'srv2' }), SELF.identity);
-    expect(useChatStore.getState().unreadCount).toBe(0);
+    expect(useChatStore.getState().unreadCount).toBe(0); // received while open does not bump
   });
 
   it('optimistic message shows sending, then is reconciled to delivered on echo', () => {
@@ -72,12 +75,12 @@ describe('useChatStore', () => {
   });
 
   describe('togglePanel', () => {
-    it('toggles from closed to open and clears unreadCount', () => {
+    it('toggles from closed to open without clearing unreadCount', () => {
       useChatStore.setState({ isPanelOpen: false, unreadCount: 3 });
       useChatStore.getState().togglePanel();
       const s = useChatStore.getState();
       expect(s.isPanelOpen).toBe(true);
-      expect(s.unreadCount).toBe(0);
+      expect(s.unreadCount).toBe(3); // togglePanel manages visibility only
     });
 
     it('toggles from open to closed and leaves unreadCount untouched', () => {
@@ -88,13 +91,13 @@ describe('useChatStore', () => {
       expect(s.unreadCount).toBe(5);
     });
 
-    it('idempotent double-toggle returns to start state', () => {
+    it('idempotent double-toggle returns to the start visibility, unread untouched', () => {
       useChatStore.setState({ isPanelOpen: false, unreadCount: 2 });
-      useChatStore.getState().togglePanel(); // → open, unread cleared
+      useChatStore.getState().togglePanel(); // → open
       useChatStore.getState().togglePanel(); // → closed
       const s = useChatStore.getState();
       expect(s.isPanelOpen).toBe(false);
-      expect(s.unreadCount).toBe(0); // cleared on first open, stays 0
+      expect(s.unreadCount).toBe(2);
     });
   });
 
