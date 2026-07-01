@@ -1,13 +1,16 @@
-export type RoomStatus = 'available' | 'full';
-export type JoinError = 'FULL' | 'INVALID_NAME' | 'INTERNAL';
+export type RoomStatus = 'available' | 'full' | 'not-found';
+export type JoinError = 'FULL' | 'INVALID_NAME' | 'NOT_FOUND' | 'INTERNAL';
 
 export type JoinResponse = {
   accessToken: string;
   livekitUrl: string;
-  role: 'guest';
+  role: 'host' | 'guest';
   identity: string;
   displayName: string;
+  roomId: string;
 };
+
+export type CreateRoomResponse = { roomId: string; hostToken: string };
 
 // Generic envelope for API calls: a discriminated success/error union.
 export type ApiResponse<TData, TError> =
@@ -15,6 +18,7 @@ export type ApiResponse<TData, TError> =
   | { ok: false; error: TError };
 
 export type JoinResult = ApiResponse<JoinResponse, JoinError>;
+export type CreateRoomResult = ApiResponse<CreateRoomResponse, 'INTERNAL'>;
 
 export type ParticipantRole = 'host' | 'guest';
 
