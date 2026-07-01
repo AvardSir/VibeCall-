@@ -16,6 +16,7 @@ export default tseslint.config(
         { type: 'feature', pattern: 'src/features/*', mode: 'folder' },
         { type: 'shared', pattern: 'src/shared/*', mode: 'folder' },
         { type: 'stores', pattern: 'src/stores/*', mode: 'folder' },
+        { type: 'pages', pattern: 'src/pages/*', mode: 'file' },
       ],
     },
     rules: {
@@ -26,7 +27,8 @@ export default tseslint.config(
       'boundaries/dependencies': ['error', {
         default: 'disallow',
         rules: [
-          { from: { type: 'app' }, allow: { to: { type: ['feature', 'shared', 'stores'] } } },
+          { from: { type: 'app' }, allow: { to: { type: ['feature', 'shared', 'stores', 'pages'] } } },
+          { from: { type: 'pages' }, allow: { to: { type: ['feature', 'shared', 'stores'] } } },
           { from: { type: 'feature' }, allow: { to: { type: ['shared', 'stores'] } } },
           { from: { type: 'shared' }, allow: { to: { type: 'shared' } } },
           { from: { type: 'stores' }, allow: { to: { type: 'shared' } } },
