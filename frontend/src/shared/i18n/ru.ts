@@ -14,10 +14,16 @@ export const ru: Translations = {
     languageEnglish: 'Английский',
     languageRussian: 'Русский',
   },
+  landing: {
+    tagline: 'Групповые видеозвонки до четырёх человек. Без регистрации.',
+    startCall: 'Начать звонок',
+    startCallError: 'Не удалось начать звонок. Пожалуйста, попробуйте снова.',
+  },
   prejoin: {
     nameLabel: 'Ваше имя',
     nameHelp: '2–30 символов. Буквы, цифры, пробелы, дефисы и апострофы.',
     enterCall: 'Войти в звонок →',
+    join: 'Присоединиться',
     micToggle: 'Микрофон',
     cameraToggle: 'Камера',
     awaitingPermission: 'Разрешите доступ к камере и микрофону, чтобы продолжить.',
@@ -39,6 +45,9 @@ export const ru: Translations = {
     micTooltipOn: 'Выключить микрофон',
     micTooltipOff: 'Включить микрофон',
     leaveTooltip: 'Покинуть звонок',
+    copyLink: 'Скопировать ссылку',
+    linkCopied: 'Ссылка скопирована!',
+    copyFailed: 'Не удалось скопировать. Пожалуйста, скопируйте ссылку из адреса ниже:',
   },
   chat: {
     title: 'Чат',
@@ -54,5 +63,8 @@ export const ru: Translations = {
     fullTitle: 'Звонок заполнен.',
     fullBody: 'Одновременно могут участвовать только четыре человека.',
     backToHome: 'На главную',
+    notFoundTitle: 'Звонок не найден.',
+    notFoundBody: 'Ссылка может быть неверной или устаревшей.',
+    startNewCall: 'Начать новый звонок',
   },
 };
