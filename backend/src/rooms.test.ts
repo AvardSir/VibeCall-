@@ -43,7 +43,7 @@ describe('createRoomRegistry', () => {
     let n = 0;
     const registry = createRoomRegistry({ now: () => 123, newToken: () => `t${n++}` });
     const room = registry.create();
-    expect(room).toEqual({ roomId: 't0', hostToken: 't1', hostIdentity: null, createdAt: 123, status: 'active', graceEndsAt: null });
+    expect(room).toEqual({ roomId: 't0', hostToken: 't1', hostIdentity: null, createdAt: 123, status: 'active', graceEndsAt: null, memberTokens: new Map() });
   });
 
   it('creates rooms in the active status with no grace deadline', () => {
@@ -70,5 +70,20 @@ describe('createRoomRegistry', () => {
     const registry = createRoomRegistry();
     expect(() => registry.markEnded('ghost')).not.toThrow();
     expect(() => registry.startGraceState('ghost', 1)).not.toThrow();
+  });
+
+  it('issues a distinct 128-bit member token per identity and verifies it', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    const t1 = registry.recordMemberToken(room.roomId, 'p_1');
+    expect(t1).toMatch(/^[A-Za-z0-9_-]{22}$/);
+    expect(registry.verifyMemberToken(room.roomId, t1)).toBe(true);
+    expect(registry.verifyMemberToken(room.roomId, 'nope')).toBe(false);
+    expect(registry.verifyMemberToken('ghost', t1)).toBe(false);
+  });
+
+  it('recordMemberToken on an unknown room returns empty and stores nothing', () => {
+    const registry = createRoomRegistry();
+    expect(registry.recordMemberToken('ghost', 'p_1')).toBe('');
   });
 });
