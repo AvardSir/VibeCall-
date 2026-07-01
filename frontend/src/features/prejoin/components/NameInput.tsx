@@ -9,26 +9,28 @@ export type NameInputProps = {
   showError: boolean;
 };
 
-export function NameInput({
-  value,
-  onChange,
-  errorKey,
-  showError,
-}: NameInputProps): JSX.Element {
+export function NameInput({ value, onChange, errorKey, showError }: NameInputProps): JSX.Element {
   const { t } = useTranslation('prejoin');
+  const showInlineError = showError && errorKey !== null;
 
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="text-slate-300">{t('nameLabel')}</span>
+    <label className="flex w-[332px] flex-col items-start gap-2">
+      {/* Label kept for accessibility only — Figma shows just the placeholder. */}
+      <span className="sr-only">{t('nameLabel')}</span>
       <input
         value={value}
         maxLength={30}
+        placeholder={t('namePlaceholder')}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-lg border border-slate-700 bg-surface-muted px-3 py-2 text-slate-100 outline-none focus:border-accent"
+        className={`w-[332px] rounded-[11px] bg-surface-muted px-3 py-3.5 text-base font-light text-white outline-none placeholder:text-white/25 ${
+          showInlineError ? 'border border-danger' : 'border border-transparent focus:border-accent'
+        }`}
       />
-      <span className="text-xs text-slate-500">{t('nameHelp')}</span>
-      {showError && errorKey ? (
-        <span className="text-xs text-red-400">{t(errorKey)}</span>
+      {showInlineError ? (
+        <span className="flex items-start gap-1 text-sm font-light leading-[18px] text-danger">
+          <span aria-hidden="true">*</span>
+          <span>{t(errorKey)}</span>
+        </span>
       ) : null}
     </label>
   );

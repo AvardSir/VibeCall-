@@ -31,4 +31,21 @@ describe('PreJoinScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: /^join$/i }));
     await waitFor(() => expect(onEnter).toHaveBeenCalledWith('Ann'));
   });
+
+  it('renders a fixed-width Figma card with the title and CTA', () => {
+    render(<PreJoinScreen onEnter={vi.fn()} />);
+    // the H1 title
+    expect(screen.getByRole('heading', { name: 'Enter your name' })).toBeInTheDocument();
+    // the card container carries the Figma geometry
+    const card = document.querySelector('.w-\\[412px\\]');
+    expect(card).not.toBeNull();
+    expect(card).toHaveClass('rounded-[12px]', 'bg-surface-elevated', 'p-10');
+  });
+
+  it('labels the CTA per role (guest → Join, host → Enter call)', () => {
+    const { rerender } = render(<PreJoinScreen onEnter={vi.fn()} role="guest" />);
+    expect(screen.getByRole('button', { name: 'Join' })).toBeInTheDocument();
+    rerender(<PreJoinScreen onEnter={vi.fn()} role="host" />);
+    expect(screen.getByRole('button', { name: /Enter call/ })).toBeInTheDocument();
+  });
 });

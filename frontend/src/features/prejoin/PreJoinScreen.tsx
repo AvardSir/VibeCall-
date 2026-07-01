@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/Button';
+import { Text } from '../../shared/ui/Text';
 import { useDevicePermissions } from './hooks/useDevicePermissions';
 import { validateName } from './nameValidation';
 import { useMediaStore } from '../../stores/useMediaStore';
@@ -34,31 +35,39 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-5 p-8">
-      <CameraPreview stream={previewStream} />
-      {cameraPermission === 'prompt' ? (
-        <p className="text-sm text-slate-400">{t('awaitingPermission')}</p>
-      ) : null}
-      {cameraPermission === 'denied' && micPermission !== 'denied' ? (
-        <p className="text-sm text-amber-400">{t('cameraDenied')}</p>
-      ) : null}
-      {micPermission === 'denied' && cameraPermission !== 'denied' ? (
-        <p className="text-sm text-amber-400">{t('micDenied')}</p>
-      ) : null}
-      {bothDenied ? (
-        <p className="text-sm text-amber-400">{t('bothDenied')}</p>
-      ) : null}
-      <DeviceToggles />
-      <NameInput
-        value={name}
-        onChange={setName}
-        errorKey={errorKey}
-        showError={touched}
-      />
-      {error ? <p className="text-sm text-amber-400">{t('common:connectError')}</p> : null}
-      <Button type="button" onClick={handleSubmit} disabled={!valid || submitting}>
-        {role === 'host' ? t('enterCall') : t('join')}
-      </Button>
+    <div className="mx-auto flex min-h-full flex-col items-center justify-center gap-6 p-8">
+      <div className="flex w-[412px] flex-col items-center gap-3 rounded-[12px] bg-surface-elevated p-10">
+        <CameraPreview stream={previewStream} />
+        <div className="flex w-full flex-col items-center gap-6">
+          <Text tag="h1" size="2xl" weight="bold" className="text-white">
+            {t('title')}
+          </Text>
+          <NameInput value={name} onChange={setName} errorKey={errorKey} showError={touched} />
+          <Button type="button" onClick={handleSubmit} disabled={!valid || submitting}>
+            {role === 'host' ? t('enterCall') : t('join')}
+          </Button>
+        </div>
+      </div>
+
+      {/* Device toggles + permission notices — not in the Figma card; kept per PRD FR-10/11. */}
+      <div className="flex flex-col items-center gap-2">
+        <DeviceToggles />
+        {cameraPermission === 'prompt' ? (
+          <Text size="sm" className="text-text-muted">{t('awaitingPermission')}</Text>
+        ) : null}
+        {cameraPermission === 'denied' && micPermission !== 'denied' ? (
+          <Text size="sm" className="text-amber-400">{t('cameraDenied')}</Text>
+        ) : null}
+        {micPermission === 'denied' && cameraPermission !== 'denied' ? (
+          <Text size="sm" className="text-amber-400">{t('micDenied')}</Text>
+        ) : null}
+        {bothDenied ? (
+          <Text size="sm" className="text-amber-400">{t('bothDenied')}</Text>
+        ) : null}
+        {error ? (
+          <Text size="sm" className="text-amber-400">{t('common:connectError')}</Text>
+        ) : null}
+      </div>
     </div>
   );
 }

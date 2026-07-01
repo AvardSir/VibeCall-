@@ -19,7 +19,7 @@ export function CameraPreview({ stream }: CameraPreviewProps): JSX.Element {
   const showVideo = isCamOn && cameraPermission === 'granted' && stream;
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+    <div className="relative h-[170px] w-[224px] shrink-0 overflow-hidden rounded-[12px] bg-black">
       {showVideo ? (
         // Mirrored local preview (PRD FR-11).
         <video

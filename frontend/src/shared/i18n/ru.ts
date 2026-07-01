@@ -18,7 +18,9 @@ export const ru: Translations = {
     startCallError: 'Не удалось начать звонок. Пожалуйста, попробуйте снова.',
   },
   prejoin: {
+    title: 'Введите ваше имя',
     nameLabel: 'Ваше имя',
+    namePlaceholder: 'Имя',
     nameHelp: '2–30 символов. Буквы, цифры, пробелы, дефисы и апострофы.',
     enterCall: 'Войти в звонок →',
     join: 'Присоединиться',
