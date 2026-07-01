@@ -27,4 +27,9 @@ describe('loadConfig', () => {
     const cfg = loadConfig({ ...base, PORT: '4000' });
     expect(cfg.port).toBe(4000);
   });
+
+  it('defaults grace timeout to 60 and honours the override', () => {
+    expect(loadConfig(base).graceTimeoutSeconds).toBe(60);
+    expect(loadConfig({ ...base, GRACE_TIMEOUT_SECONDS: '5' }).graceTimeoutSeconds).toBe(5);
+  });
 });

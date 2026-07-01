@@ -8,7 +8,7 @@ const config: AppConfig = {
   livekitApiKey: 'k', livekitApiSecret: 's',
   livekitUrl: 'ws://localhost:7880', livekitHost: 'http://localhost:7880',
   port: 3000, corsOrigin: '*',
-  maxParticipants: 4, emptyTimeoutSeconds: 300,
+  maxParticipants: 4, emptyTimeoutSeconds: 300, graceTimeoutSeconds: 60,
 };
 
 function makeApp(count: number) {
