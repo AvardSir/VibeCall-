@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { ChangeEvent, FormEvent, JSX } from 'react';
+import type { ChangeEvent, ClipboardEvent, FormEvent, JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../../../shared/ui/Icon';
 import { Text } from '../../../shared/ui/Text';
@@ -12,6 +12,15 @@ const MAX_TEXT_LENGTH = 1000;
 const COUNTER_THRESHOLD = 900;
 const ACCEPT_EXTENSIONS = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip';
 
+// Clipboard image blobs often arrive without a usable filename; normalize the name from the MIME
+// type so the shared extension-based validation (validateStagedFile) accepts a pasted screenshot.
+const IMAGE_EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
 export type ChatInputProps = { onSend: (text: string, files?: StagedFile[]) => void };
 
 export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
@@ -19,6 +28,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pasteCounter = useRef(0);
   const stagedAttachments = useChatStore((s) => s.stagedAttachments);
   const addStaged = useChatStore((s) => s.addStaged);
   const removeStaged = useChatStore((s) => s.removeStaged);
@@ -36,8 +46,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
     fileInputRef.current?.click();
   };
 
-  const handleFilesSelected = (e: ChangeEvent<HTMLInputElement>): void => {
-    const files = Array.from(e.target.files ?? []);
+  const stageFiles = (files: File[]): void => {
     let stagedInBatch = 0;
     let latestError: string | null = null;
 
@@ -54,7 +63,33 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
     }
 
     setError(latestError);
+  };
+
+  const handleFilesSelected = (e: ChangeEvent<HTMLInputElement>): void => {
+    stageFiles(Array.from(e.target.files ?? []));
     e.target.value = '';
+  };
+
+  // Paste a screenshot / image from the clipboard (Ctrl+V) — stage it like any attachment.
+  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>): void => {
+    const imageItems = Array.from(e.clipboardData.items).filter(
+      (item) => item.kind === 'file' && item.type.startsWith('image/'),
+    );
+    if (imageItems.length === 0) return; // no image on the clipboard → let normal text paste through
+
+    e.preventDefault();
+    const files: File[] = [];
+    for (const item of imageItems) {
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const ext = IMAGE_EXT_BY_MIME[blob.type];
+      // Give the nameless clipboard blob a proper filename so validation accepts it; if the MIME
+      // isn't a supported image, pass the blob through so validation surfaces "unsupportedType".
+      files.push(
+        ext ? new File([blob], `pasted-image-${(pasteCounter.current += 1)}.${ext}`, { type: blob.type }) : blob,
+      );
+    }
+    stageFiles(files);
   };
 
   return (
@@ -104,6 +139,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT_LENGTH))}
+          onPaste={handlePaste}
           placeholder={t('placeholder')}
           rows={2}
           className="flex-1 resize-none bg-transparent text-base font-light text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/25"

@@ -80,6 +80,26 @@ describe('ChatInput', () => {
     expect(screen.getByText('You can attach up to 5 files per message.')).toBeInTheDocument();
   });
 
+  it('stages an image pasted from the clipboard (Ctrl+V) as a chip', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    // Clipboard image blobs commonly arrive with no filename — the handler must name them.
+    const blob = new File(['x'], '', { type: 'image/png' });
+    fireEvent.paste(field, {
+      clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => blob }] },
+    });
+    expect(screen.getByText('pasted-image-1.png')).toBeInTheDocument();
+  });
+
+  it('ignores a plain-text paste (no image) and stages nothing', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    fireEvent.paste(field, {
+      clipboardData: { items: [{ kind: 'string', type: 'text/plain', getAsFile: () => null }] },
+    });
+    expect(useChatStore.getState().stagedAttachments).toHaveLength(0);
+  });
+
   it('removes a staged file when its remove button is clicked', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const input = screen.getByTestId('attach-input');
