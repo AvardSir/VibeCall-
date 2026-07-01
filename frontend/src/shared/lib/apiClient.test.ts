@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createRoom, joinRoom, getRoomStatus } from './apiClient';
+import { createRoom, joinRoom, getRoomStatus, endCall, removeParticipant } from './apiClient';
 
 const fetchMock = vi.fn();
 
@@ -46,6 +46,11 @@ describe('getRoomStatus', () => {
     fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 500 }));
     await expect(getRoomStatus('r1')).rejects.toThrow();
   });
+
+  it('maps 410 to ended', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 410, json: () => Promise.resolve({ error: 'ENDED' }) } as Response);
+    expect(await getRoomStatus('r1')).toBe('ended');
+  });
 });
 
 describe('joinRoom', () => {
@@ -80,5 +85,20 @@ describe('joinRoom', () => {
     fetchMock.mockResolvedValue(jsonResponse({ accessToken: 'jwt' }));
     const result = await joinRoom('r1', 'Ann');
     expect(result).toEqual({ ok: false, error: 'INTERNAL' });
+  });
+});
+
+describe('endCall / removeParticipant', () => {
+  it('endCall posts the host token and returns true on 204', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 204 } as Response);
+    expect(await endCall('r1', 'h1')).toBe(true);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body).toEqual({ hostToken: 'h1' });
+  });
+  it('removeParticipant posts hostToken + targetIdentity', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 204 } as Response);
+    expect(await removeParticipant('r1', 'h1', 'p_2')).toBe(true);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body).toEqual({ hostToken: 'h1', targetIdentity: 'p_2' });
   });
 });
