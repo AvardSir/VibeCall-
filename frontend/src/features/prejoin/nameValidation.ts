@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { z } from 'zod';
 
 // Bare keys within the 'prejoin' i18n namespace — consumers resolve them with the namespaced t().
@@ -29,12 +28,10 @@ function isNameErrorKey(x: unknown): x is NameErrorKey {
   return typeof x === 'string' && NAME_ERROR_KEYS.has(x);
 }
 
-export function useNameValidation(name: string): NameValidity {
-  return useMemo(() => {
-    const result = nameSchema.safeParse(name);
-    if (result.success) return { valid: true, errorKey: null };
-    const [issue] = result.error.issues;
-    const errorKey: NameErrorKey = isNameErrorKey(issue?.message) ? issue.message : 'nameEmpty';
-    return { valid: false, errorKey };
-  }, [name]);
+export function validateName(name: string): NameValidity {
+  const result = nameSchema.safeParse(name);
+  if (result.success) return { valid: true, errorKey: null };
+  const [issue] = result.error.issues;
+  const errorKey: NameErrorKey = isNameErrorKey(issue?.message) ? issue.message : 'nameEmpty';
+  return { valid: false, errorKey };
 }
