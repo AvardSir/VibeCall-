@@ -32,6 +32,8 @@ conventions introduced here. Read this first.
   library README is a *pattern* reference, not drop-in code. Port the idea, but rewrite it to our
   rules (no `I`-prefix, our React version, real Tailwind tokens, our folder layout) — never paste it
   verbatim and inherit a foreign convention.
+- **Pin exact dependency versions.** No `^`/`~` ranges in `package.json`; `frontend/.npmrc`
+  sets `save-exact=true` so new installs pin automatically. Upgrade deliberately, not implicitly.
 
 ## Naming (quick reference — details in `10-typescript.md`)
 
