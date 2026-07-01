@@ -9,7 +9,11 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps): JSX.El
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     closeButtonRef.current?.focus();
+    return () => {
+      previouslyFocused?.focus();
+    };
   }, []);
 
   useEffect(() => {
