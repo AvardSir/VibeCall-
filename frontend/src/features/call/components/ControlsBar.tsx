@@ -26,6 +26,8 @@ export function ControlsBar({ onLeave, role, participantUrl }: ControlsBarProps)
   const setCamOn = useMediaStore((s) => s.setCamOn);
   const unreadCount = useChatStore((s) => s.unreadCount);
   const togglePanel = useChatStore((s) => s.togglePanel);
+  const isPanelOpen = useChatStore((s) => s.isPanelOpen);
+  const markAllRead = useChatStore((s) => s.markAllRead);
 
   // Reconcile published tracks with the store's desired state.
   useEffect(() => {
@@ -35,6 +37,11 @@ export function ControlsBar({ onLeave, role, participantUrl }: ControlsBarProps)
   useEffect(() => {
     void localParticipant.setCameraEnabled(isCamOn);
   }, [localParticipant, isCamOn]);
+
+  const handleToggleChat = (): void => {
+    if (!isPanelOpen) markAllRead(); // opening the panel marks everything read
+    togglePanel();
+  };
 
   return (
     <div className="flex items-center justify-center gap-3 p-4">
@@ -47,7 +54,7 @@ export function ControlsBar({ onLeave, role, participantUrl }: ControlsBarProps)
       <button
         type="button"
         aria-label={tc('openChat')}
-        onClick={togglePanel}
+        onClick={handleToggleChat}
         className="relative rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted"
       >
         {tc('openChat')}
