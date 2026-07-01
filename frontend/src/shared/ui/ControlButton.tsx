@@ -14,8 +14,9 @@ export type ControlButtonProps = {
 };
 
 const VARIANT_CLASSES: Record<ControlVariant, string> = {
-  white: 'bg-white text-surface hover:bg-white/75',
-  dark: 'bg-surface-elevated text-white hover:bg-surface-muted',
+  white:
+    'bg-slate-800 text-white hover:bg-slate-700 dark:bg-white dark:text-surface dark:hover:bg-white/75',
+  dark: 'bg-slate-200 text-slate-900 hover:bg-slate-300 dark:bg-surface-elevated dark:text-white dark:hover:bg-surface-muted',
   danger: 'bg-danger text-white hover:bg-danger-strong',
   active: 'bg-accent text-white hover:bg-accent-strong',
 };

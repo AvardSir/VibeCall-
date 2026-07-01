@@ -15,7 +15,7 @@ describe('Button', () => {
   it('renders the secondary (white) variant', () => {
     render(<Button variant="secondary">Back</Button>);
     const el = screen.getByRole('button', { name: 'Back' });
-    expect(el).toHaveClass('bg-white', 'text-surface', 'hover:bg-white/75');
+    expect(el).toHaveClass('bg-slate-800', 'text-white', 'hover:bg-slate-700');
   });
 
   it('renders the danger variant', () => {

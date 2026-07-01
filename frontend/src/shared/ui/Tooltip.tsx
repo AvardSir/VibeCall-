@@ -16,7 +16,7 @@ export function Tooltip({ label, children, placement = 'top' }: TooltipProps): J
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 ${position} whitespace-nowrap rounded-[8px] bg-white px-3 py-1.5 text-sm font-semibold leading-[18px] text-surface opacity-0 shadow transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100`}
+        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 ${position} whitespace-nowrap rounded-[8px] bg-slate-800 px-3 py-1.5 text-sm font-semibold leading-[18px] text-white opacity-0 dark:bg-white dark:text-surface shadow transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100`}
       >
         {label}
       </span>

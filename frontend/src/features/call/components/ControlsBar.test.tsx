@@ -48,7 +48,7 @@ describe('ControlsBar', () => {
     renderControls();
     // Default: mic on → the round control offers "Mute microphone".
     const micBtn = screen.getByRole('button', { name: 'Mute microphone' });
-    expect(micBtn).toHaveClass('size-12', 'rounded-[30px]', 'bg-white');
+    expect(micBtn).toHaveClass('size-12', 'rounded-[30px]', 'bg-slate-800');
     fireEvent.click(micBtn);
     expect(setMicEnabled).toHaveBeenLastCalledWith(false);
   });
@@ -62,7 +62,7 @@ describe('ControlsBar', () => {
   it('toggles the camera via the round control', () => {
     renderControls();
     const camBtn = screen.getByRole('button', { name: 'Turn camera off' });
-    expect(camBtn).toHaveClass('size-12', 'rounded-[30px]', 'bg-white');
+    expect(camBtn).toHaveClass('size-12', 'rounded-[30px]', 'bg-slate-800');
     fireEvent.click(camBtn);
     expect(setCamEnabled).toHaveBeenLastCalledWith(false);
   });
@@ -111,7 +111,7 @@ describe('ControlsBar', () => {
     renderControls();
     const button = screen.getByRole('button', { name: 'Share your screen' });
     expect(button).toBeEnabled();
-    expect(button).toHaveClass('bg-white');
+    expect(button).toHaveClass('bg-slate-800');
     expect(screen.getByText('Share your screen')).toBeInTheDocument();
   });
 

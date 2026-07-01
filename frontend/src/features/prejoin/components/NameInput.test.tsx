@@ -7,7 +7,7 @@ describe('NameInput', () => {
   it('renders the Figma field with a placeholder and no visible label text', () => {
     render(<NameInput value="" onChange={() => {}} errorKey={null} showError={false} />);
     const input = screen.getByPlaceholderText('Name');
-    expect(input).toHaveClass('bg-surface-muted', 'rounded-[11px]', 'w-[332px]');
+    expect(input).toHaveClass('bg-slate-200', 'rounded-[11px]', 'w-[332px]');
     // accessible name comes from the sr-only label, not visible chrome
     expect(input).toHaveAccessibleName('Your name');
   });

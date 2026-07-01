@@ -42,7 +42,7 @@ describe('ChatMessageItem Figma styling', () => {
 
   it('uses the Figma bubble background + full radius for the first bubble in a group', () => {
     render(<ChatMessageItem item={item({})} isOwn={false} isFirstInGroup />);
-    expect(screen.getByTestId('chat-text')).toHaveClass('bg-surface', 'rounded-[12px]');
+    expect(screen.getByTestId('chat-text')).toHaveClass('bg-white', 'rounded-[12px]');
   });
 
   it('cuts the inner bottom corner for subsequent bubbles (others → bottom-left)', () => {
@@ -59,8 +59,8 @@ describe('ChatMessageItem Figma styling', () => {
     render(<ChatMessageItem item={item({ text: 'hi there' })} isOwn={false} isFirstInGroup />);
     const bubble = screen.getByTestId('chat-text');
     expect(bubble).toHaveTextContent('hi there');
-    expect(screen.getByTestId('chat-text-body')).toHaveClass('text-white');
-    expect(screen.getByTestId('chat-timestamp')).toHaveClass('text-white/50');
+    expect(screen.getByTestId('chat-text-body')).toHaveClass('text-slate-900');
+    expect(screen.getByTestId('chat-timestamp')).toHaveClass('text-slate-500');
   });
 });
 
