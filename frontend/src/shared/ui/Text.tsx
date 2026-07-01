@@ -21,22 +21,25 @@ export type TextProps = HTMLAttributes<HTMLElement> & {
   ref?: Ref<HTMLElement>;
 };
 
-// Sizes map to Tailwind's default type scale (this repo defines no custom `text-display-*`/`text-md`
-// tokens). Add a `variant: 'display' | 'text'` axis here if a display scale is ever added to the theme.
+// Sizes map to Figma type scale with explicit line-heights.
+// Note: '2xl' uses text-[22px] (Figma H1 = 22px), not Tailwind's text-2xl (24px).
+// Note: 'sm' uses leading-[18px] (Figma subtext 14/lh18), not Tailwind's default lh20.
 const SIZE_CLASSES: Record<TextSize, string> = {
-  '2xl': 'text-2xl',
-  xl: 'text-xl',
-  lg: 'text-lg',
-  md: 'text-base',
-  sm: 'text-sm',
-  xs: 'text-xs',
+  '2xl': 'text-[22px] leading-[30px]',
+  xl: 'text-xl leading-[28px]',
+  lg: 'text-lg leading-7',
+  md: 'text-base leading-6',
+  sm: 'text-sm leading-[18px]',
+  xs: 'text-xs leading-4',
 };
 
+// Weights map to Figma Roboto Flex axis values.
+// regular=300 (Figma body), medium=452 (Figma button label), semibold=600, bold=800 (Figma headings).
 const WEIGHT_CLASSES: Record<TextWeight, string> = {
-  regular: 'font-normal',
-  medium: 'font-medium',
+  regular: 'font-light',
+  medium: 'font-[452]',
   semibold: 'font-semibold',
-  bold: 'font-bold',
+  bold: 'font-extrabold',
 };
 
 export function Text({
