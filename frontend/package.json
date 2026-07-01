@@ -16,6 +16,7 @@
   "dependencies": {
     "@livekit/components-react": "2.9.21",
     "@livekit/components-styles": "1.2.0",
+    "clsx": "^2.1.1",
     "i18next": "26.3.3",
     "livekit-client": "2.20.0",
     "react": "19.2.7",

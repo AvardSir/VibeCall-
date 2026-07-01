@@ -55,4 +55,20 @@ describe('joinRoom', () => {
     mockFetch(400, { error: 'INVALID_NAME' });
     expect(await joinRoom('main', 'A')).toEqual({ ok: false, error: 'INVALID_NAME' });
   });
+
+  it('returns INTERNAL when error body is unparseable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => { throw new Error('bad json'); },
+    } as unknown as Response));
+    expect(await joinRoom('main', 'Ann')).toEqual({ ok: false, error: 'INTERNAL' });
+  });
+
+  it('returns INTERNAL when ok response body is malformed (missing accessToken)', async () => {
+    // This test proves joinResponseSchema.safeParse still guards the token path.
+    // A naive `as T` cast would return ok:true with incomplete data; the schema catches it.
+    mockFetch(200, { livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann' });
+    expect(await joinRoom('main', 'Ann')).toEqual({ ok: false, error: 'INTERNAL' });
+  });
 });
