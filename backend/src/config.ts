@@ -13,6 +13,7 @@ const envSchema = z.object({
   LIVEKIT_HOST: z.url(),
   PORT: z.coerce.number().int().positive().default(3000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  GRACE_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(60),
 });
 
 export type AppConfig = {
@@ -24,6 +25,7 @@ export type AppConfig = {
   corsOrigin: string;
   maxParticipants: number;
   emptyTimeoutSeconds: number;
+  graceTimeoutSeconds: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -42,5 +44,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     corsOrigin: e.CORS_ORIGIN,
     maxParticipants: MAX_PARTICIPANTS,
     emptyTimeoutSeconds: EMPTY_TIMEOUT_SECONDS,
+    graceTimeoutSeconds: e.GRACE_TIMEOUT_SECONDS,
   };
 }
