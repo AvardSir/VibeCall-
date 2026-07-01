@@ -3,9 +3,13 @@ import { useTranslation } from 'react-i18next';
 import type { ChatItem } from '../../../stores/useChatStore';
 import { ChatMessageItem } from './ChatMessageItem';
 
-export type MessageListProps = { items: ChatItem[]; selfIdentity: string };
+export type MessageListProps = {
+  items: ChatItem[];
+  selfIdentity: string;
+  onOpenImage?: (src: string, alt: string) => void;
+};
 
-export function MessageList({ items, selfIdentity }: MessageListProps): JSX.Element {
+export function MessageList({ items, selfIdentity, onOpenImage }: MessageListProps): JSX.Element {
   const { t } = useTranslation('chat');
 
   if (items.length === 0) {
@@ -17,7 +21,12 @@ export function MessageList({ items, selfIdentity }: MessageListProps): JSX.Elem
   return (
     <ul className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
       {items.map((m) => (
-        <ChatMessageItem key={m.key} item={m} isOwn={m.senderIdentity === selfIdentity} />
+        <ChatMessageItem
+          key={m.key}
+          item={m}
+          isOwn={m.senderIdentity === selfIdentity}
+          onOpenImage={onOpenImage}
+        />
       ))}
     </ul>
   );
