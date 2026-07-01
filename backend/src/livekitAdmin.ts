@@ -8,6 +8,8 @@ export type LivekitAdmin = {
   ensureRoom(roomId: string): Promise<void>;
   listParticipantCount(roomId: string): Promise<number>;
   listParticipants(roomId: string): Promise<ParticipantSummary[]>;
+  removeParticipant(roomId: string, identity: string): Promise<void>;
+  deleteRoom(roomId: string): Promise<void>;
 };
 
 export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
@@ -40,6 +42,16 @@ export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
 
     async listParticipants(roomId) {
       return fetchParticipants(roomId);
+    },
+
+    async removeParticipant(roomId, identity) {
+      await client.removeParticipant(roomId, identity);
+      logger.info({ room: roomId, identity }, 'removed participant');
+    },
+
+    async deleteRoom(roomId) {
+      await client.deleteRoom(roomId);
+      logger.info({ room: roomId }, 'deleted room');
     },
   };
 }
