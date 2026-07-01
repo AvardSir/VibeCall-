@@ -6,7 +6,7 @@ import type { LivekitAdmin } from './livekitAdmin.js';
 import type { ChatService, ChatMessage, ChatErrorCode } from './chat.js';
 import { logger } from './logger.js';
 
-export type JoinChatPayload = { identity: string; role: 'host' | 'guest' };
+export type JoinChatPayload = { roomId: string; identity: string; role: 'host' | 'guest' };
 export type SendMessagePayload = { text: string };
 
 export type ChatSocketBinding = { identity: string; displayName: string; roomName: string };
@@ -31,7 +31,7 @@ export type ChatServer = Server<ClientToServerEvents, ServerToClientEvents, Defa
 export type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>;
 
 export type ChatGatewayDeps = {
-  config: Pick<AppConfig, 'fixedRoomName' | 'corsOrigin'>;
+  config: Pick<AppConfig, 'corsOrigin'>;
   admin: Pick<LivekitAdmin, 'listParticipants'>;
   chat: ChatService;
 };
@@ -41,11 +41,15 @@ export async function handleJoinChat(
   deps: ChatGatewayDeps,
   payload: JoinChatPayload,
 ): Promise<void> {
-  const roomName = deps.config.fixedRoomName;
-  const participants = await deps.admin.listParticipants();
+  const roomName = payload?.roomId;
+  if (typeof roomName !== 'string' || roomName.length === 0) {
+    socket.emit('message_failed', { code: 'NOT_A_MEMBER' });
+    return;
+  }
+  const participants = await deps.admin.listParticipants(roomName);
   const match = participants.find((p) => p.identity === payload?.identity);
   if (!match) {
-    // Not a current member → do not bind, do not join the channel.
+    // Not a current member of this room → do not bind, do not join the channel.
     socket.emit('message_failed', { code: 'NOT_A_MEMBER' });
     return;
   }
