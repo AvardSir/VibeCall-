@@ -6,6 +6,8 @@ import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { TokenMinter } from './livekitTokens.js';
 import type { RoomRegistry } from './rooms.js';
+import type { GraceService } from './grace.js';
+import type { ChatServer } from './socket.js';
 import { AppError } from './errors.js';
 import type { ErrorCode } from './errors.js';
 import { logger } from './logger.js';
@@ -14,8 +16,10 @@ import { createRootRouter } from './routes/index.js';
 export type AppDeps = {
   config: AppConfig;
   registry: RoomRegistry;
-  admin: Pick<LivekitAdmin, 'ensureRoom' | 'listParticipantCount'>;
+  admin: Pick<LivekitAdmin, 'ensureRoom' | 'listParticipantCount' | 'removeParticipant' | 'deleteRoom'>;
   minter: TokenMinter;
+  grace: Pick<GraceService, 'cancelGrace'>;
+  io: ChatServer;
 };
 
 export function createApp(deps: AppDeps): Express {

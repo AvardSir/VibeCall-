@@ -11,3 +11,24 @@ export function parseJoinBody(body: unknown): { name: string; hostToken?: string
   if (!result.success) throw new AppError('INVALID_NAME');
   return { name: result.data.name, hostToken: result.data.hostToken };
 }
+
+// end/remove are host-only paths: a malformed body is treated the same as a bad room/token
+// (NOT_FOUND) so we don't leak details about why the request was refused.
+const endBodySchema = z.object({ hostToken: z.string().min(1) });
+
+export function parseEndBody(body: unknown): { hostToken: string } {
+  const result = endBodySchema.safeParse(body);
+  if (!result.success) throw new AppError('NOT_FOUND');
+  return result.data;
+}
+
+const removeBodySchema = z.object({
+  hostToken: z.string().min(1),
+  targetIdentity: z.string().min(1),
+});
+
+export function parseRemoveBody(body: unknown): { hostToken: string; targetIdentity: string } {
+  const result = removeBodySchema.safeParse(body);
+  if (!result.success) throw new AppError('NOT_FOUND');
+  return result.data;
+}

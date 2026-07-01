@@ -10,5 +10,7 @@ export function createRoomsRouter(deps: RoomsControllerDeps): Router {
   router.post('/', asyncHandler(controller.create));
   router.get('/:roomId', asyncHandler(controller.getStatus));
   router.post('/:roomId/join', asyncHandler(controller.join));
+  router.post('/:roomId/end', asyncHandler(controller.end));
+  router.post('/:roomId/remove', asyncHandler(controller.remove));
   return router;
 }
