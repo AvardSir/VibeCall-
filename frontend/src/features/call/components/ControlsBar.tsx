@@ -99,7 +99,8 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
 
       <div className="absolute bottom-4 right-7 flex items-center gap-4">
         {role === 'host' ? <CopyLinkButton url={participantUrl} /> : null}
-        <div className="relative">
+        {/* data-chat-toggle: excluded from ChatPanel's outside-click-close so this button keeps its own toggle. */}
+        <div className="relative" data-chat-toggle>
           <Tooltip label={tc('openChat')}>
             <ControlButton
               icon="chat"

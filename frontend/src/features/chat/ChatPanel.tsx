@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/useChatStore';
@@ -20,12 +20,29 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
   const messages = useChatStore((s) => s.messages);
   const isPanelOpen = useChatStore((s) => s.isPanelOpen);
   const togglePanel = useChatStore((s) => s.togglePanel);
+  const closePanel = useChatStore((s) => s.closePanel);
   const selfIdentity = useConnectionStore((s) => s.localParticipant?.identity ?? '');
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Close the panel on an outside click. Ignore clicks on the chat toggle button (it owns its own
+  // toggle) and skip while the image lightbox is open (its backdrop handles its own dismissal).
+  useEffect(() => {
+    if (!isPanelOpen || lightbox) return;
+    const onMouseDown = (e: MouseEvent): void => {
+      const target = e.target;
+      if (!(target instanceof Node) || panelRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('[data-chat-toggle]')) return;
+      closePanel();
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [isPanelOpen, lightbox, closePanel]);
 
   return (
     <>
       <aside
+        ref={panelRef}
         aria-labelledby="chat-panel-title"
         className={clsx(
           'fixed right-0 top-0 z-20 flex h-full w-[340px] flex-col bg-slate-100 transition-transform dark:bg-surface-elevated',

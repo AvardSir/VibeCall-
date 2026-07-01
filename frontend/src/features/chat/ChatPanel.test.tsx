@@ -37,6 +37,35 @@ describe('ChatPanel', () => {
     expect(useChatStore.getState().isPanelOpen).toBe(false);
   });
 
+  it('closes the panel on an outside mousedown', () => {
+    useChatStore.getState().openPanel();
+    render(<ChatPanel role="guest" />);
+    fireEvent.mouseDown(document.body);
+    expect(useChatStore.getState().isPanelOpen).toBe(false);
+  });
+
+  it('stays open when clicking inside the panel', () => {
+    useChatStore.getState().openPanel();
+    render(<ChatPanel role="guest" />);
+    fireEvent.mouseDown(screen.getByRole('heading', { name: 'Chat' }));
+    expect(useChatStore.getState().isPanelOpen).toBe(true);
+  });
+
+  it('stays open when clicking the chat toggle button (data-chat-toggle)', () => {
+    useChatStore.getState().openPanel();
+    const { container } = render(
+      <>
+        <div data-chat-toggle>
+          <button type="button">chat</button>
+        </div>
+        <ChatPanel role="guest" />
+      </>,
+    );
+    const toggle = container.querySelector('[data-chat-toggle] button') as HTMLElement;
+    fireEvent.mouseDown(toggle);
+    expect(useChatStore.getState().isPanelOpen).toBe(true);
+  });
+
   it('renders messages from the store', () => {
     useChatStore.getState().openPanel();
     useChatStore.getState().setHistory([
