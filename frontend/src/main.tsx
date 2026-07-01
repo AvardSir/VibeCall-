@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import '@fontsource-variable/roboto-flex';
 import './index.css';
 import './shared/i18n';
 import { App } from './App';

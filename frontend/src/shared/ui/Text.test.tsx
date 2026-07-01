@@ -7,7 +7,8 @@ describe('Text', () => {
     render(<Text>hello</Text>);
     const el = screen.getByText('hello');
     expect(el.tagName).toBe('SPAN');
-    expect(el).toHaveClass('text-base', 'font-normal');
+    // default size=md → text-base leading-6; default weight=regular → font-light (Figma 300)
+    expect(el).toHaveClass('text-base', 'leading-6', 'font-light');
   });
 
   it('renders the requested tag with mapped size and weight classes', () => {
@@ -18,7 +19,8 @@ describe('Text', () => {
     );
     const el = screen.getByText('title');
     expect(el.tagName).toBe('H1');
-    expect(el).toHaveClass('text-2xl', 'font-semibold');
+    // size=2xl → text-[22px] leading-[30px] (Figma H1); weight=semibold → font-semibold (600)
+    expect(el).toHaveClass('text-[22px]', 'leading-[30px]', 'font-semibold');
   });
 
   it('applies transform classes; capitalize is suppressed when uppercase is set', () => {
@@ -64,6 +66,7 @@ describe('Text', () => {
     expect(el.tagName).toBe('A');
     expect(el).toHaveAttribute('href', '/x');
     // slot styles + the child's own className are both present
-    expect(el).toHaveClass('text-lg', 'font-bold', 'text-red-500', 'underline');
+    // weight=bold → font-extrabold (Figma 800)
+    expect(el).toHaveClass('text-lg', 'font-extrabold', 'text-red-500', 'underline');
   });
 });
