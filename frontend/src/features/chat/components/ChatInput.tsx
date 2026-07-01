@@ -64,7 +64,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           {stagedAttachments.map((staged) => (
             <li
               key={staged.id}
-              className="flex items-center gap-1 rounded-full bg-surface-muted px-2 py-1 text-xs text-slate-200"
+              className="flex items-center gap-1 rounded-full bg-slate-200 px-2 py-1 text-xs text-slate-700 dark:bg-surface-muted dark:text-slate-200"
             >
               <Text size="xs" className="max-w-[10rem] truncate">
                 {staged.file.name}
@@ -73,7 +73,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
                 type="button"
                 aria-label={`${t('removeAttachment')}: ${staged.file.name}`}
                 onClick={() => removeStaged(staged.id)}
-                className="text-slate-400 hover:text-slate-200"
+                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               >
                 ×
               </button>
@@ -81,13 +81,13 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           ))}
         </ul>
       )}
-      <div className="flex items-end gap-3 rounded-[11px] bg-surface px-3 py-2 hover:border hover:border-white/25">
+      <div className="flex items-end gap-3 rounded-[11px] bg-white px-3 py-2 hover:border hover:border-slate-300 dark:bg-surface dark:hover:border-white/25">
         <Tooltip label={t('attach')}>
           <button
             type="button"
             aria-label={t('attach')}
             onClick={openFilePicker}
-            className="rounded-lg px-2 py-2 text-slate-300 hover:bg-surface-muted hover:text-slate-100"
+            className="rounded-lg px-2 py-2 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-surface-muted dark:hover:text-slate-100"
           >
             📎
           </button>
@@ -106,7 +106,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT_LENGTH))}
           placeholder={t('placeholder')}
           rows={2}
-          className="flex-1 resize-none bg-transparent text-base font-light text-white outline-none placeholder:text-white/25"
+          className="flex-1 resize-none bg-transparent text-base font-light text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/25"
         />
         <button
           type="submit"

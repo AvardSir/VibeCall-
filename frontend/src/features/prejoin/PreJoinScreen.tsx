@@ -36,10 +36,10 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
 
   return (
     <div className="mx-auto flex min-h-full flex-col items-center justify-center gap-6 p-8">
-      <div className="flex w-[412px] flex-col items-center gap-3 rounded-[12px] bg-surface-elevated p-10">
+      <div className="flex w-[412px] flex-col items-center gap-3 rounded-[12px] bg-slate-100 p-10 dark:bg-surface-elevated">
         <CameraPreview stream={previewStream} />
         <div className="flex w-full flex-col items-center gap-6">
-          <Text tag="h1" size="2xl" weight="bold" className="text-white">
+          <Text tag="h1" size="2xl" weight="bold" className="text-slate-900 dark:text-white">
             {t('title')}
           </Text>
           <NameInput value={name} onChange={setName} errorKey={errorKey} showError={touched} />

@@ -53,14 +53,14 @@ export function ChatMessageItem({ item: m, isOwn, isFirstInGroup, onOpenImage }:
         <div
           data-testid="chat-text"
           className={clsx(
-            'inline-block max-w-[280px] whitespace-pre-wrap break-words bg-surface px-3 py-2.5 text-left',
+            'inline-block max-w-[280px] whitespace-pre-wrap break-words bg-white px-3 py-2.5 text-left dark:bg-surface',
             radius,
           )}
         >
-          <span data-testid="chat-text-body" className="text-sm font-light leading-[18px] text-white">
+          <span data-testid="chat-text-body" className="text-sm font-light leading-[18px] text-slate-900 dark:text-white">
             {m.text}
           </span>
-          <span data-testid="chat-timestamp" className="text-sm text-white/50">
+          <span data-testid="chat-timestamp" className="text-sm text-slate-500 dark:text-white/50">
             {' · '}
             {formatTime(m.sentAt)}
           </span>

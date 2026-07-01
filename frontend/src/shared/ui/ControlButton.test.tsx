@@ -10,7 +10,7 @@ describe('ControlButton', () => {
     );
     const btn = screen.getByRole('button', { name: 'Mute microphone' });
     expect(btn).toHaveClass('size-12', 'rounded-[30px]');
-    expect(btn).toHaveClass('bg-white', 'text-surface'); // default variant = white
+    expect(btn).toHaveClass('bg-slate-800', 'text-white'); // default variant = white (light-base)
     expect(container.querySelector('svg')).not.toBeNull();
   });
 
@@ -29,8 +29,8 @@ describe('ControlButton', () => {
     );
     rerender(<ControlButton icon="chat" label="Chat" onClick={() => {}} variant="dark" />);
     expect(screen.getByRole('button', { name: 'Chat' })).toHaveClass(
-      'bg-surface-elevated',
-      'text-white',
+      'bg-slate-200',
+      'text-slate-900',
     );
   });
 

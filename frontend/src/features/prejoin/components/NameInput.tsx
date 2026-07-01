@@ -22,7 +22,7 @@ export function NameInput({ value, onChange, errorKey, showError }: NameInputPro
         maxLength={30}
         placeholder={t('namePlaceholder')}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-[332px] rounded-[11px] bg-surface-muted px-3 py-3.5 text-base font-light text-white outline-none placeholder:text-white/25 ${
+        className={`w-[332px] rounded-[11px] bg-slate-200 px-3 py-3.5 text-base font-light text-slate-900 outline-none placeholder:text-slate-400 dark:bg-surface-muted dark:text-white dark:placeholder:text-white/25 ${
           showInlineError ? 'border border-danger' : 'border border-transparent focus:border-accent'
         }`}
       />

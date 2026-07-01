@@ -39,7 +39,7 @@ describe('PreJoinScreen', () => {
     // the card container carries the Figma geometry
     const card = document.querySelector('.w-\\[412px\\]');
     expect(card).not.toBeNull();
-    expect(card).toHaveClass('rounded-[12px]', 'bg-surface-elevated', 'p-10');
+    expect(card).toHaveClass('rounded-[12px]', 'bg-slate-100', 'dark:bg-surface-elevated', 'p-10');
   });
 
   it('labels the CTA per role (guest → Join, host → Enter call)', () => {

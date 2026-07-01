@@ -31,7 +31,7 @@ describe('Tooltip', () => {
     );
     const bubble = screen.getByRole('tooltip');
     expect(bubble).toHaveTextContent('Turn off camera');
-    expect(bubble).toHaveClass('bg-white', 'text-surface', 'rounded-[8px]', 'px-3', 'py-1.5', 'text-sm', 'font-semibold');
+    expect(bubble).toHaveClass('bg-slate-800', 'text-white', 'rounded-[8px]', 'px-3', 'py-1.5', 'text-sm', 'font-semibold');
   });
 
   it('places above the trigger by default and below when placement="bottom"', () => {

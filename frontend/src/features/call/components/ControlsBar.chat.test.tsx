@@ -25,7 +25,7 @@ describe('ControlsBar chat button', () => {
       <ControlsBar onLeave={vi.fn()} onEndCall={vi.fn()} role="guest" participantUrl="https://app/r/r1" />,
     );
     const btn = screen.getByRole('button', { name: 'Chat' });
-    expect(btn).toHaveClass('size-12', 'rounded-[30px]', 'bg-surface-elevated');
+    expect(btn).toHaveClass('size-12', 'rounded-[30px]', 'bg-slate-200');
 
     await userEvent.click(btn);
     expect(useChatStore.getState().isPanelOpen).toBe(true);

@@ -42,7 +42,7 @@ export function CopyLinkButton({ url }: CopyLinkButtonProps): JSX.Element {
         </span>
       ) : null}
       {state === 'failed' ? (
-        <div className="absolute -top-16 w-72 rounded-md bg-surface-muted p-2 text-xs text-slate-200">
+        <div className="absolute -top-16 w-72 rounded-md bg-slate-200 p-2 text-xs text-slate-700 dark:bg-surface-muted dark:text-slate-200">
           <p>{t('copyFailed')}</p>
           <p className="select-all break-all font-mono">{url}</p>
         </div>
