@@ -14,7 +14,5 @@ describe('i18n resources', () => {
     expect(en.common.themeSwitchToLight).toBeTruthy();
     expect(en.common.themeSwitchToDark).toBeTruthy();
     expect(en.common.language).toBeTruthy();
-    expect(en.common.languageEnglish).toBeTruthy();
-    expect(en.common.languageRussian).toBeTruthy();
   });
 });

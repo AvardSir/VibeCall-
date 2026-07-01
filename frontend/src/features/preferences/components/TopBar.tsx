@@ -17,8 +17,6 @@ export function TopBar(): JSX.Element {
         language={language}
         onChange={setLanguage}
         groupLabel={t('language')}
-        englishLabel={t('languageEnglish')}
-        russianLabel={t('languageRussian')}
       />
       <ThemeToggle
         theme={theme}
