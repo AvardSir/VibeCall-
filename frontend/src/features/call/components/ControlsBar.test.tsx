@@ -44,34 +44,57 @@ beforeEach(() => {
 });
 
 describe('ControlsBar', () => {
-  it('fires onLeave when Leave is clicked (guest)', () => {
-    const onLeave = vi.fn();
-    renderControls({ onLeave, role: 'guest' });
-    fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
-    expect(onLeave).toHaveBeenCalledOnce();
-  });
-
-  it('reconciles mic state to the published track when toggled', () => {
+  it('toggles the mic via the round control and reconciles the published track', () => {
     renderControls();
-    fireEvent.click(screen.getByRole('switch', { name: 'Microphone' }));
+    // Default: mic on → the round control offers "Mute microphone".
+    const micBtn = screen.getByRole('button', { name: 'Mute microphone' });
+    expect(micBtn).toHaveClass('size-12', 'rounded-[30px]', 'bg-white');
+    fireEvent.click(micBtn);
     expect(setMicEnabled).toHaveBeenLastCalledWith(false);
   });
 
-  it('shows state-aware tooltips on the camera and mic toggles', () => {
+  it('flips the mic control label when muted', () => {
     renderControls();
-    // Defaults: mic on, camera on → tooltips offer the "turn off / mute" action.
+    fireEvent.click(screen.getByRole('button', { name: 'Mute microphone' }));
+    expect(screen.getByRole('button', { name: 'Unmute microphone' })).toBeInTheDocument();
+  });
+
+  it('toggles the camera via the round control', () => {
+    renderControls();
+    const camBtn = screen.getByRole('button', { name: 'Turn camera off' });
+    expect(camBtn).toHaveClass('size-12', 'rounded-[30px]', 'bg-white');
+    fireEvent.click(camBtn);
+    expect(setCamEnabled).toHaveBeenLastCalledWith(false);
+  });
+
+  it('shows state-aware tooltips on the mic and camera controls', () => {
+    renderControls();
     expect(screen.getByText('Turn camera off')).toBeInTheDocument();
     expect(screen.getByText('Mute microphone')).toBeInTheDocument();
-    // Toggle the mic off → tooltip flips to the "unmute" action.
-    fireEvent.click(screen.getByRole('switch', { name: 'Microphone' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mute microphone' }));
     expect(screen.getByText('Unmute microphone')).toBeInTheDocument();
   });
 
-  it('shows a tooltip on the Leave button (guest)', () => {
-    renderControls({ role: 'guest' });
+  it('shows a red end-call control (with tooltip) to the host', () => {
+    const onEndCall = vi.fn();
+    renderControls({ role: 'host', onEndCall });
+    const endBtn = screen.getByRole('button', { name: 'End the call for everyone' });
+    expect(endBtn).toHaveClass('bg-danger');
+    expect(screen.getByText('End the call for everyone')).toBeInTheDocument();
+    fireEvent.click(endBtn);
+    expect(onEndCall).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Leave the call' })).not.toBeInTheDocument();
+  });
+
+  it('shows a red leave control (with tooltip) to a guest', () => {
+    const onLeave = vi.fn();
+    renderControls({ role: 'guest', onLeave });
+    const leaveBtn = screen.getByRole('button', { name: 'Leave the call' });
+    expect(leaveBtn).toHaveClass('bg-danger');
     expect(screen.getByText('Leave the call')).toBeInTheDocument();
-    // The custom tooltip is a sibling, so the button's accessible name is unchanged.
-    expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument();
+    fireEvent.click(leaveBtn);
+    expect(onLeave).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'End the call for everyone' })).not.toBeInTheDocument();
   });
 
   it('shows Copy link to the host only', () => {
@@ -84,43 +107,25 @@ describe('ControlsBar', () => {
     expect(screen.queryByRole('button', { name: /copy link/i })).not.toBeInTheDocument();
   });
 
-  it('shows a red End call button (with tooltip) to the host instead of Leave', () => {
-    renderControls({ role: 'host' });
-    expect(screen.getByRole('button', { name: 'End call' })).toBeInTheDocument();
-    expect(screen.getByText('End the call for everyone')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Leave' })).not.toBeInTheDocument();
-  });
-
-  it('fires onEndCall when the host clicks End call', () => {
-    const onEndCall = vi.fn();
-    renderControls({ role: 'host', onEndCall });
-    fireEvent.click(screen.getByRole('button', { name: 'End call' }));
-    expect(onEndCall).toHaveBeenCalledOnce();
-  });
-
-  it('shows Leave (not End call) to a guest', () => {
-    renderControls({ role: 'guest' });
-    expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'End call' })).not.toBeInTheDocument();
-  });
-
-  it('shows an enabled Share screen button with the idle tooltip by default', () => {
+  it('shows an enabled screen-share control with the idle tooltip by default', () => {
     renderControls();
-    const button = screen.getByRole('button', { name: 'Share screen' });
+    const button = screen.getByRole('button', { name: 'Share your screen' });
     expect(button).toBeEnabled();
+    expect(button).toHaveClass('bg-white');
     expect(screen.getByText('Share your screen')).toBeInTheDocument();
   });
 
-  it('labels the button Stop sharing while sharing', () => {
+  it('marks the share control active while sharing', () => {
     shareState = { ...shareState, isSharing: true };
     renderControls();
-    expect(screen.getByRole('button', { name: 'Stop sharing' })).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Stop sharing' });
+    expect(button).toHaveClass('bg-accent');
   });
 
-  it('disables the button with the busy tooltip when someone else is sharing', () => {
+  it('disables the share control with the busy tooltip when someone else is sharing', () => {
     shareState = { ...shareState, isBusy: true };
     renderControls();
-    expect(screen.getByRole('button', { name: 'Share screen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Someone is already sharing their screen' })).toBeDisabled();
     expect(screen.getByText('Someone is already sharing their screen')).toBeInTheDocument();
   });
 
@@ -132,11 +137,11 @@ describe('ControlsBar', () => {
     ).toBeInTheDocument();
   });
 
-  it('calls toggle when the Share button is clicked', () => {
+  it('calls toggle when the share control is clicked', () => {
     const toggle = vi.fn();
     shareState = { ...shareState, toggle };
     renderControls();
-    fireEvent.click(screen.getByRole('button', { name: 'Share screen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your screen' }));
     expect(toggle).toHaveBeenCalledOnce();
   });
 });

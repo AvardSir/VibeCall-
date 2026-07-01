@@ -11,6 +11,13 @@ afterEach(() => {
 });
 
 describe('CopyLinkButton', () => {
+  it('renders as a round white control with an accessible label', () => {
+    render(<CopyLinkButton url="https://app/r/r1" />);
+    const btn = screen.getByRole('button', { name: 'Copy link' });
+    expect(btn).toHaveClass('size-12', 'rounded-[30px]', 'bg-white');
+    expect(btn.querySelector('svg')).not.toBeNull();
+  });
+
   it('copies the url and confirms for 2 seconds', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });

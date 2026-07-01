@@ -21,6 +21,22 @@ describe('ChatPanel', () => {
     expect(screen.getByPlaceholderText('Type a message…')).toBeInTheDocument();
   });
 
+  it('renders the Figma docked panel: 340px width, elevated surface, close control, H2 title', () => {
+    useChatStore.getState().openPanel();
+    render(<ChatPanel role="guest" />);
+    const panel = screen.getByRole('complementary');
+    expect(panel).toHaveClass('w-[340px]', 'bg-surface-elevated');
+    expect(screen.getByRole('button', { name: 'Close chat' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chat' })).toBeInTheDocument();
+  });
+
+  it('closes the panel when the close control is clicked', () => {
+    useChatStore.getState().openPanel();
+    render(<ChatPanel role="guest" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close chat' }));
+    expect(useChatStore.getState().isPanelOpen).toBe(false);
+  });
+
   it('renders messages from the store', () => {
     useChatStore.getState().openPanel();
     useChatStore.getState().setHistory([
@@ -52,7 +68,8 @@ describe('ChatPanel', () => {
     fireEvent.click(screen.getByRole('img', { name: 'c.png' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    // Exact name: the panel header now also carries a "Close chat" control, so /close/i is ambiguous.
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

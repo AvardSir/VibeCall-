@@ -20,6 +20,18 @@ vi.mock('../hooks/useScreenShare', () => ({
 describe('ControlsBar chat button', () => {
   beforeEach(() => useChatStore.getState().reset());
 
+  it('renders a dark chat control when the panel is closed and flips to active (blue) when open', async () => {
+    render(
+      <ControlsBar onLeave={vi.fn()} onEndCall={vi.fn()} role="guest" participantUrl="https://app/r/r1" />,
+    );
+    const btn = screen.getByRole('button', { name: 'Chat' });
+    expect(btn).toHaveClass('size-12', 'rounded-[30px]', 'bg-surface-elevated');
+
+    await userEvent.click(btn);
+    expect(useChatStore.getState().isPanelOpen).toBe(true);
+    expect(screen.getByRole('button', { name: 'Chat' })).toHaveClass('bg-accent');
+  });
+
   it('shows the unread badge count and clears it on open', async () => {
     useChatStore.setState({ unreadCount: 2 });
     render(

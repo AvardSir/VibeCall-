@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { VideoTrack } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
 import { Tooltip } from '../../../shared/ui/Tooltip';
+import { Icon } from '../../../shared/ui/Icon';
 
 export type VideoTileProps = {
   name: string;
@@ -25,7 +26,7 @@ export function VideoTile({
   const label = isLocal ? t('you', { name }) : name;
 
   return (
-    <div className="group relative h-full w-full overflow-hidden rounded-xl bg-black">
+    <div className="group relative h-full w-full overflow-hidden rounded-[12px] bg-surface-elevated">
       {onRemove ? (
         <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100">
           <Tooltip label={t('removeGuestTooltip')}>
@@ -50,24 +51,27 @@ export function VideoTile({
           {!isMicrophoneEnabled && (
             <span
               data-testid="corner-mute"
-              aria-hidden
-              className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-sm text-white"
+              className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(31,34,36,0.5)]"
             >
-              🔇
+              <Icon name="micOff" className="h-4 w-4 text-white" />
             </span>
           )}
-          <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-xs text-white">
-            {label}
+          <span
+            data-testid="name-label"
+            className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-[9px] bg-[rgba(31,34,36,0.5)] py-1 pl-1.5 pr-2.5"
+          >
+            <Icon name={isMicrophoneEnabled ? 'micOn' : 'micOff'} className="h-5 w-5 text-white" />
+            <span className="text-sm font-light text-white">{label}</span>
           </span>
         </>
       ) : (
-        // Camera off: mic-state icon centered above the name on a dark background — no avatar (FR-14).
+        // Camera off: mic-state glyph centered above the name on a dark background — no avatar (FR-14).
         <div className="grid h-full place-items-center">
-          <div className="flex flex-col items-center gap-2">
-            <span data-testid="center-mic" aria-hidden className="text-4xl text-slate-400">
-              {isMicrophoneEnabled ? '🎤' : '🔇'}
+          <div className="flex flex-col items-center gap-2 rounded-[9px] bg-[rgba(31,34,36,0.5)] px-4 py-3">
+            <span data-testid="center-mic">
+              <Icon name={isMicrophoneEnabled ? 'micOn' : 'micOff'} className="h-8 w-8 text-white" />
             </span>
-            <span className="text-sm text-white">{label}</span>
+            <span className="text-xl font-extrabold leading-[28px] text-white">{label}</span>
           </div>
         </div>
       )}

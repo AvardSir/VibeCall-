@@ -67,6 +67,7 @@ export const en = {
     notDelivered: 'Not delivered',
     charCount: '{{length}}/1000',
     openChat: 'Chat',
+    closeChat: 'Close chat',
     attach: 'Attach files',
     removeAttachment: 'Remove',
     unsupportedType: 'Unsupported file type.',

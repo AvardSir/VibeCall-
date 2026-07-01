@@ -16,6 +16,15 @@ const GRID_LAYOUT: Record<number, string> = {
   4: 'grid-cols-2 grid-rows-2',
 };
 
+// Per-count content width caps (Figma V2 room grids — audit §4/§5 item 7):
+// 1-up 1220px, 2-up 1382px, 3-up/4-up 1168px (4-up reuses V1 geometry).
+const GRID_MAX_WIDTH: Record<number, string> = {
+  1: 'max-w-[1220px]',
+  2: 'max-w-[1382px]',
+  3: 'max-w-[1168px]',
+  4: 'max-w-[1168px]',
+};
+
 export type VideoGridProps = {
   // Opens the remove-guest confirmation for a remote tile. Omitted entirely for a guest viewer —
   // only the host can remove participants (mirrors the M3 role-gated CopyLinkButton pattern).
@@ -34,15 +43,20 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
 
   const count = participants.length;
   const layout = GRID_LAYOUT[count] ?? 'grid-cols-2 grid-rows-2';
+  const maxWidth = GRID_MAX_WIDTH[count] ?? 'max-w-[1168px]';
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center p-6">
-      <div data-testid="video-grid" data-count={count} className={`grid h-full w-full max-w-5xl gap-3 ${layout}`}>
+      <div
+        data-testid="video-grid"
+        data-count={count}
+        className={`grid h-full w-full gap-4 ${maxWidth} ${layout}`}
+      >
         {participants.map((p, index) => {
           const centerBottom =
             count === 3 && index === 2 ? 'col-span-2 w-1/2 justify-self-center' : '';
           return (
-            <div key={p.identity} className={`min-h-0 ${centerBottom}`}>
+            <div key={p.identity} className={`aspect-video min-h-0 ${centerBottom}`}>
               <ParticipantTile
                 participant={p}
                 cameraTrackRef={trackByIdentity.get(p.identity)}

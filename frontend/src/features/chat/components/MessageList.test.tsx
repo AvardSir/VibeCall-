@@ -23,15 +23,31 @@ describe('MessageList', () => {
     expect(screen.getByText('No messages yet.')).toBeInTheDocument();
   });
 
-  it('renders messages in order with sender names', () => {
+  it('renders messages in order with their text bodies', () => {
     render(
       <MessageList
         items={[item({ key: '1', text: 'first' }), item({ key: '2', text: 'second', senderName: 'Bo' })]}
         selfIdentity="p_self"
       />,
     );
-    const texts = screen.getAllByTestId('chat-text').map((el) => el.textContent);
+    const texts = screen.getAllByTestId('chat-text-body').map((el) => el.textContent);
     expect(texts).toEqual(['first', 'second']);
+  });
+
+  it('marks the first message of a sender run as first-in-group (shows its sender name)', () => {
+    render(
+      <MessageList
+        items={[
+          item({ key: '1', senderIdentity: 'a', senderName: 'Ann', text: 'a1' }),
+          item({ key: '2', senderIdentity: 'a', senderName: 'Ann', text: 'a2' }),
+          item({ key: '3', senderIdentity: 'b', senderName: 'Bo', text: 'b1' }),
+        ]}
+        selfIdentity="p_self"
+      />,
+    );
+    // Ann's name shows once (first bubble of her run); Bo's shows once.
+    expect(screen.getAllByText('Ann')).toHaveLength(1);
+    expect(screen.getAllByText('Bo')).toHaveLength(1);
   });
 
   it('shows the Sending… / Not delivered status on own messages', () => {
