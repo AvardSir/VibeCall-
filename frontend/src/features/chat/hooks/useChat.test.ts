@@ -3,6 +3,16 @@ import { renderHook, act } from '@testing-library/react';
 import { useChat } from './useChat';
 import { useChatStore } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
+import { uploadAttachment } from '../../../shared/lib/apiClient';
+import type { StagedFile } from '../../../stores/useChatStore';
+
+vi.mock('../../../shared/lib/apiClient', () => ({ uploadAttachment: vi.fn() }));
+
+const mockUploadAttachment = vi.mocked(uploadAttachment);
+
+function makeStagedFile(name: string): StagedFile {
+  return { id: `s_${name}`, file: new File(['content'], name, { type: 'image/png' }) };
+}
 
 // A minimal fake socket whose events we can drive from the test.
 type Handler = (payload: unknown) => void;
@@ -33,6 +43,7 @@ describe('useChat', () => {
     useChatStore.getState().reset();
     useConnectionStore.getState().reset();
     useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me', roomId: 'r_test', memberToken: 'mt' });
+    mockUploadAttachment.mockReset();
   });
 
   it('defers join_chat until the call is connected, then joins and loads history', () => {
@@ -80,17 +91,60 @@ describe('useChat', () => {
     expect(useChatStore.getState().messages.map((m) => m.text)).toEqual(['yo']);
   });
 
-  it('sendMessage adds an optimistic item and emits send_message', () => {
+  it('sendMessage adds an optimistic item and emits send_message', async () => {
     const { result } = renderHook(() => useChat('guest'));
-    act(() => result.current.sendMessage('hello'));
+    await act(async () => {
+      result.current.sendMessage('hello', []);
+      await Promise.resolve();
+    });
     expect(useChatStore.getState().messages[0]).toMatchObject({ text: 'hello', status: 'sending' });
-    expect(fake.emitted).toContainEqual({ event: 'send_message', payload: { text: 'hello' } });
+    expect(fake.emitted).toContainEqual({ event: 'send_message', payload: { text: 'hello', attachments: [] } });
   });
 
-  it('message_failed flips the pending item to failed', () => {
+  it('message_failed flips the pending item to failed', async () => {
     const { result } = renderHook(() => useChat('guest'));
-    act(() => result.current.sendMessage('oops'));
+    await act(async () => {
+      result.current.sendMessage('oops', []);
+      await Promise.resolve();
+    });
     act(() => fake.trigger('message_failed', { code: 'TEXT_TOO_LONG' }));
     expect(useChatStore.getState().messages[0]!.status).toBe('failed');
+  });
+
+  it('sendMessage uploads staged files then relays metadata and clears staged on success', async () => {
+    const uploaded = { fileId: 'f1', name: 'a.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/f1' };
+    mockUploadAttachment.mockResolvedValue({ ok: true, data: uploaded });
+    useChatStore.getState().addStaged(new File(['content'], 'a.png', { type: 'image/png' }));
+
+    const { result } = renderHook(() => useChat('guest'));
+    await act(async () => {
+      result.current.sendMessage('with file', [makeStagedFile('a.png')]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockUploadAttachment).toHaveBeenCalledWith('r_test', 'mt', expect.any(File));
+    expect(fake.emitted).toContainEqual({
+      event: 'send_message',
+      payload: { text: 'with file', attachments: [uploaded] },
+    });
+    expect(useChatStore.getState().stagedAttachments).toEqual([]);
+  });
+
+  it('sendMessage keeps staged files and marks failed when an upload fails', async () => {
+    mockUploadAttachment.mockResolvedValue({ ok: false, error: 'FILE_TOO_LARGE' });
+    const file = new File(['content'], 'a.png', { type: 'image/png' });
+    useChatStore.getState().addStaged(file);
+
+    const { result } = renderHook(() => useChat('guest'));
+    await act(async () => {
+      result.current.sendMessage('with file', [makeStagedFile('a.png')]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(fake.emitted.find((e) => e.event === 'send_message')).toBeUndefined();
+    expect(useChatStore.getState().messages[0]!.status).toBe('failed');
+    expect(useChatStore.getState().stagedAttachments).toEqual([{ id: expect.any(String), file }]);
   });
 });
