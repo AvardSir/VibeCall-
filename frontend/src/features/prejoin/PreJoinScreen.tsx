@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/Button';
 import { useDevicePermissions } from './hooks/useDevicePermissions';
-import { useNameValidation } from './hooks/useNameValidation';
+import { validateName } from './nameValidation';
 import { useMediaStore } from '../../stores/useMediaStore';
 import type { ParticipantRole } from '../../shared/types';
 import { CameraPreview } from './components/CameraPreview';
@@ -22,7 +22,7 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
   const { previewStream } = useDevicePermissions();
   const [name, setName] = useState('');
   const [touched, setTouched] = useState(false);
-  const { valid, errorKey } = useNameValidation(name);
+  const { valid, errorKey } = validateName(name);
   const cameraPermission = useMediaStore((s) => s.cameraPermission);
   const micPermission = useMediaStore((s) => s.micPermission);
 

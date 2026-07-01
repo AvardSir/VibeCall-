@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { NameErrorKey } from '../hooks/useNameValidation';
+import type { NameErrorKey } from '../nameValidation';
 
 export type NameInputProps = {
   value: string;
