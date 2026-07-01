@@ -35,6 +35,7 @@ type ChatState = {
   ) => void;
   markFailed: () => void;
   openPanel: () => void;
+  closePanel: () => void;
   togglePanel: () => void;
   markAllRead: () => void;
   addStaged: (file: File) => void;
@@ -110,6 +111,7 @@ export const useChatStore = create<ChatState>()((set) => ({
     }),
 
   openPanel: () => set({ isPanelOpen: true }),
+  closePanel: () => set({ isPanelOpen: false }),
   togglePanel: () => set((s) => ({ isPanelOpen: !s.isPanelOpen })),
   markAllRead: () => set({ unreadCount: 0 }),
 
