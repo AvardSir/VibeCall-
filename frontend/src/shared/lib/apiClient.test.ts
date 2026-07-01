@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createRoom, joinRoom, getRoomStatus, endCall, removeParticipant } from './apiClient';
+import {
+  createRoom,
+  joinRoom,
+  getRoomStatus,
+  endCall,
+  removeParticipant,
+  uploadAttachment,
+  attachmentDownloadUrl,
+} from './apiClient';
 
 const fetchMock = vi.fn();
 
@@ -56,10 +64,10 @@ describe('getRoomStatus', () => {
 describe('joinRoom', () => {
   it('sends the host token in the body and parses a host response', async () => {
     fetchMock.mockResolvedValue(jsonResponse({
-      accessToken: 'jwt', livekitUrl: 'ws://x', role: 'host', identity: 'p_1', displayName: 'Ann', roomId: 'r1',
+      accessToken: 'jwt', livekitUrl: 'ws://x', role: 'host', identity: 'p_1', displayName: 'Ann', roomId: 'r1', memberToken: 'm1',
     }));
     const result = await joinRoom('r1', 'Ann', 'h1');
-    expect(result).toEqual({ ok: true, data: expect.objectContaining({ role: 'host', roomId: 'r1' }) });
+    expect(result).toEqual({ ok: true, data: expect.objectContaining({ role: 'host', roomId: 'r1', memberToken: 'm1' }) });
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body).toEqual({ name: 'Ann', hostToken: 'h1' });
   });
@@ -100,5 +108,50 @@ describe('endCall / removeParticipant', () => {
     expect(await removeParticipant('r1', 'h1', 'p_2')).toBe(true);
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body).toEqual({ hostToken: 'h1', targetIdentity: 'p_2' });
+  });
+});
+
+describe('uploadAttachment', () => {
+  it('uploadAttachment posts FormData with the member token and parses the attachment', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: () =>
+        Promise.resolve({
+          fileId: 'f0',
+          name: 'c.png',
+          size: 3,
+          mime: 'image/png',
+          kind: 'image',
+          url: '/attachments/r1/f0/c.png',
+        }),
+    } as Response);
+    const file = new File([new Uint8Array([1, 2, 3])], 'c.png', { type: 'image/png' });
+    const r = await uploadAttachment('r1', 'm1', file);
+    expect(r).toEqual({ ok: true, data: expect.objectContaining({ fileId: 'f0', kind: 'image' }) });
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((init.headers as Record<string, string>)['x-member-token']).toBe('m1');
+    expect(init.body).toBeInstanceOf(FormData);
+  });
+
+  it('maps an upload 415 to UNSUPPORTED_TYPE', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 415,
+      json: () => Promise.resolve({ error: 'UNSUPPORTED_TYPE' }),
+    } as Response);
+    const file = new File([new Uint8Array([1])], 'a.exe', { type: 'application/octet-stream' });
+    expect(await uploadAttachment('r1', 'm1', file)).toEqual({ ok: false, error: 'UNSUPPORTED_TYPE' });
+  });
+});
+
+describe('attachmentDownloadUrl', () => {
+  it('builds an absolute URL with the member token as a query param', () => {
+    const url = attachmentDownloadUrl(
+      { fileId: 'f0', name: 'c.png', size: 3, mime: 'image/png', kind: 'image', url: '/attachments/r1/f0/c.png' },
+      'm1',
+    );
+    expect(url).toContain('http://localhost:3000');
+    expect(url).toContain('?token=m1');
   });
 });

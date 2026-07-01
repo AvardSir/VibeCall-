@@ -32,7 +32,9 @@ function toDelivered(message: ChatMessage): ChatItem {
     senderIdentity: message.senderIdentity,
     senderName: message.senderName,
     sentAt: message.sentAt,
-    text: message.text,
+    // ChatMessage.text is optional once attachments carry a message (M5); ChatItem.text stays a
+    // required string for now — attachment rendering is a later task, so default to ''.
+    text: message.text ?? '',
     status: 'delivered',
   };
 }

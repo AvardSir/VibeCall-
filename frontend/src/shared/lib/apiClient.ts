@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import urlJoin from 'url-join';
-import type { CreateRoomResult, JoinError, JoinResult, RoomStatus } from '../types';
+import type { Attachment, CreateRoomResult, JoinError, JoinResult, RoomStatus, UploadResult } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
@@ -10,6 +10,7 @@ const roomStatusUrl = (roomId: string): string => urlJoin(roomsUrl(), encodeURIC
 const joinUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'join');
 const endUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'end');
 const removeUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'remove');
+const attachmentsUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'attachments');
 
 // Runtime schema kept ONLY on the joinRoom SUCCESS path: accessToken/livekitUrl feed straight into
 // the LiveKit SDK, so a malformed reply must fail loudly rather than become a cryptic media error.
@@ -23,6 +24,7 @@ const joinResponseSchema = z.object({
   identity: z.string(),
   displayName: z.string(),
   roomId: z.string(),
+  memberToken: z.string(),
 });
 
 export async function createRoom(): Promise<CreateRoomResult> {
@@ -77,4 +79,32 @@ export async function joinRoom(roomId: string, name: string, hostToken?: string)
   // Error branch is low-stakes → documented cast, no schema (matches the post-MR3 convention).
   const body = (await res.json().catch(() => ({}))) as { error?: JoinError };
   return { ok: false, error: body.error ?? 'INTERNAL' };
+}
+
+// Low-stakes success path: the attachment body only carries display/download metadata, so a
+// light cast is enough (no schema), matching the post-MR3 convention.
+export async function uploadAttachment(roomId: string, memberToken: string, file: File): Promise<UploadResult> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(attachmentsUrl(roomId), {
+    method: 'POST',
+    headers: { 'x-member-token': memberToken },
+    body: form,
+  });
+  if (res.ok) {
+    const data = (await res.json()) as Attachment;
+    return { ok: true, data };
+  }
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  const err = body.error;
+  return {
+    ok: false,
+    error: err === 'UNSUPPORTED_TYPE' || err === 'FILE_TOO_LARGE' || err === 'FORBIDDEN' ? err : 'INTERNAL',
+  };
+}
+
+// Absolute URL: attachment.url is a backend-relative path, so a native <img>/<a> using it as-is
+// would resolve against the Vite dev server, not the backend — hence the BASE_URL prefix.
+export function attachmentDownloadUrl(attachment: Attachment, memberToken: string): string {
+  return `${urlJoin(BASE_URL, attachment.url)}?token=${encodeURIComponent(memberToken)}`;
 }

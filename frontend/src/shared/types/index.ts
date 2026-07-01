@@ -11,6 +11,7 @@ export type JoinResponse = {
   identity: string;
   displayName: string;
   roomId: string;
+  memberToken: string;
 };
 
 export type CreateRoomResponse = { roomId: string; hostToken: string };
@@ -27,13 +28,30 @@ export type ParticipantRole = 'host' | 'guest';
 
 export type ChatErrorCode = 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' | 'NOT_A_MEMBER';
 
+export type AttachmentKind = 'image' | 'file';
+
+// Must stay identical to the backend Attachment in backend/src/attachments.ts.
+export type Attachment = {
+  fileId: string;
+  name: string;
+  size: number;
+  mime: string;
+  kind: AttachmentKind;
+  url: string;
+};
+
+export type UploadErrorCode = 'UNSUPPORTED_TYPE' | 'FILE_TOO_LARGE' | 'FORBIDDEN' | 'INTERNAL';
+
+export type UploadResult = ApiResponse<Attachment, UploadErrorCode>;
+
 export type ChatMessage = {
   id: string;
   roomName: string;
   senderIdentity: string;
   senderName: string;
   sentAt: number;
-  text: string;
+  text?: string;
+  attachments: Attachment[];
 };
 
 export type CallParticipant = {

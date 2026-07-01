@@ -24,7 +24,7 @@ describe('ChatPanel', () => {
   it('renders messages from the store', () => {
     useChatStore.getState().openPanel();
     useChatStore.getState().setHistory([
-      { id: 'a', roomName: 'main', senderIdentity: 'p_x', senderName: 'X', sentAt: 1, text: 'history msg' },
+      { id: 'a', roomName: 'main', senderIdentity: 'p_x', senderName: 'X', sentAt: 1, text: 'history msg', attachments: [] },
     ]);
     render(<ChatPanel role="guest" />);
     expect(screen.getByText('history msg')).toBeInTheDocument();
