@@ -23,7 +23,7 @@ export type AppDeps = {
   grace: Pick<GraceService, 'cancelGrace'>;
   io: ChatServer;
   webhookHandler: RequestHandler;
-  attachments: Pick<AttachmentService, 'validateAndStore'>;
+  attachments: Pick<AttachmentService, 'validateAndStore' | 'resolvePath'>;
 };
 
 export function createApp(deps: AppDeps): Express {
