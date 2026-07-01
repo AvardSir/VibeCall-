@@ -11,6 +11,7 @@ import { useConnectionStore } from '../stores/useConnectionStore';
 import { useMediaStore } from '../stores/useMediaStore';
 import { useChatStore } from '../stores/useChatStore';
 import { useParticipantsStore } from '../stores/useParticipantsStore';
+import { SocketProvider } from '../shared/lib/SocketProvider';
 
 type View = 'loading' | 'prejoin' | 'full' | 'not-found' | 'connecting' | 'in-call' | 'connect-error';
 
@@ -104,7 +105,7 @@ export function RoomPage(): JSX.Element {
   if (view === 'in-call' && session) {
     const participantUrl = `${window.location.origin}/r/${session.roomId}`;
     return (
-      <>
+      <SocketProvider>
         <CallShell
           accessToken={session.accessToken}
           serverUrl={session.livekitUrl}
@@ -115,7 +116,7 @@ export function RoomPage(): JSX.Element {
           onRoomFull={() => setView('full')}
         />
         <ChatPanel role={session.role} />
-      </>
+      </SocketProvider>
     );
   }
   return <PreJoinScreen role={intendedRole} error={joinError} onEnter={(name) => void handleEnter(name)} />;
