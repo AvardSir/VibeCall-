@@ -1,6 +1,5 @@
 import { Server } from 'socket.io';
 import type { Socket, DefaultEventsMap } from 'socket.io';
-import type { Server as HttpServer } from 'node:http';
 import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { ChatService, ChatMessage, ChatErrorCode } from './chat.js';
@@ -91,8 +90,8 @@ export function handleSendMessage(
   io.to(binding.roomName).emit('chat_message', message);
 }
 
-export function createSocketServer(httpServer: HttpServer, deps: ChatGatewayDeps): ChatServer {
-  const io = new Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>(httpServer, {
+export function createSocketServer(deps: ChatGatewayDeps): ChatServer {
+  const io = new Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>({
     cors: { origin: deps.config.corsOrigin },
   });
 

@@ -8,7 +8,6 @@ import {
   emitRoomEnded,
 } from './socket.js';
 import type { ChatGatewayDeps, ChatSocketBinding, ChatSocket, ChatServer } from './socket.js';
-import type { Server as HttpServer } from 'node:http';
 import { createChatService } from './chat.js';
 import { logger } from './logger.js';
 
@@ -77,10 +76,9 @@ function makeDeps(participants: { identity: string; name: string }[], roomId = '
 function extractSendMessageListener(deps: ChatGatewayDeps, binding: ChatSocketBinding) {
   capturedConnectionHandler = undefined;
 
-  // Fake http.Server — createSocketServer passes it to `new Server(httpServer, ...)`.
-  // The mock ignores the arguments, so {} is fine.
-  const fakeHttpServer = {} as HttpServer;
-  createSocketServer(fakeHttpServer, deps);
+  // createSocketServer now constructs the Server detached (no http server passed in) — it is
+  // attached to a real http server later, in server.ts, via `io.attach(httpServer)`.
+  createSocketServer(deps);
 
   // The Server mock captures the connection handler registered by createSocketServer.
   const connectionHandler: ConnectionHandler | undefined = capturedConnectionHandler;
