@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { handleJoinChat, handleSendMessage, createSocketServer } from './socket.js';
+import type { Mock } from 'vitest';
+import {
+  handleJoinChat,
+  handleSendMessage,
+  createSocketServer,
+  emitGraceTick,
+  emitRoomEnded,
+} from './socket.js';
 import type { ChatGatewayDeps, ChatSocketBinding, ChatSocket, ChatServer } from './socket.js';
 import type { Server as HttpServer } from 'node:http';
 import { createChatService } from './chat.js';
@@ -251,5 +258,22 @@ describe('createSocketServer — send_message listener error handling', () => {
     expect(logger.error).toHaveBeenCalledOnce();
     const call = vi.mocked(logger.error).mock.calls[0];
     expect((call?.[0] as { err: unknown }).err).toBe(throwingError);
+  });
+});
+
+describe('lifecycle broadcast helpers', () => {
+  it('emitGraceTick broadcasts to the room channel', () => {
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) } as never;
+    emitGraceTick(io, 'r1', 42);
+    expect((io as { to: Mock }).to).toHaveBeenCalledWith('r1');
+    expect(emit).toHaveBeenCalledWith('grace_tick', { secondsLeft: 42 });
+  });
+
+  it('emitRoomEnded broadcasts the reason to the room channel', () => {
+    const emit = vi.fn();
+    const io = { to: vi.fn(() => ({ emit })) } as never;
+    emitRoomEnded(io, 'r1', 'host_ended');
+    expect(emit).toHaveBeenCalledWith('room_ended', { reason: 'host_ended' });
   });
 });

@@ -15,10 +15,16 @@ export type ChatSocketBinding = { identity: string; displayName: string; roomNam
 // (frontend/src/shared/lib/socketEvents.ts) — this repo is not an npm workspace and follows a
 // "duplicate + cross-ref" convention. A shared socket-contract module is a planned follow-up
 // (see docs/superpowers/plans/2026-06-30-mr3-review-fixes.md → Deferred follow-ups). Keep both in sync.
+export type RoomEndReason = 'host_ended' | 'grace_expired';
+
 export type ServerToClientEvents = {
   chat_history: (messages: ChatMessage[]) => void;
   chat_message: (message: ChatMessage) => void;
   message_failed: (e: { code: ChatErrorCode }) => void;
+  grace_tick: (payload: { secondsLeft: number }) => void;
+  grace_cancelled: () => void;
+  room_ended: (payload: { reason: RoomEndReason }) => void;
+  participant_removed: (payload: { identity: string }) => void;
 };
 export type ClientToServerEvents = {
   join_chat: (payload: JoinChatPayload) => void;
@@ -106,4 +112,20 @@ export function createSocketServer(httpServer: HttpServer, deps: ChatGatewayDeps
   });
 
   return io;
+}
+
+export function emitGraceTick(io: ChatServer, roomId: string, secondsLeft: number): void {
+  io.to(roomId).emit('grace_tick', { secondsLeft });
+}
+
+export function emitGraceCancelled(io: ChatServer, roomId: string): void {
+  io.to(roomId).emit('grace_cancelled');
+}
+
+export function emitRoomEnded(io: ChatServer, roomId: string, reason: RoomEndReason): void {
+  io.to(roomId).emit('room_ended', { reason });
+}
+
+export function emitParticipantRemoved(io: ChatServer, roomId: string, identity: string): void {
+  io.to(roomId).emit('participant_removed', { identity });
 }
