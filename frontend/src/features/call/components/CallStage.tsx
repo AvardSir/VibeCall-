@@ -22,7 +22,7 @@ export function CallStage({ activeSharerId, onRemoveGuest }: CallStageProps): JS
     );
   }
   return (
-    <div className="flex flex-1 items-center justify-center">
+    <div className="flex min-h-0 flex-1 items-center justify-center">
       <VideoGrid onRemoveGuest={onRemoveGuest} />
     </div>
   );

@@ -97,7 +97,7 @@ export function CallShell({
       onConnected={() => setPhase('connected')}
       onError={handleError}
       onDisconnected={onLeave}
-      className="relative flex min-h-full flex-col"
+      className="relative flex h-full flex-col overflow-hidden"
     >
       {graceSecondsLeft !== null ? <GraceOverlay secondsLeft={graceSecondsLeft} /> : null}
       <CallStage activeSharerId={activeSharerId} onRemoveGuest={onRemoveGuest} />
