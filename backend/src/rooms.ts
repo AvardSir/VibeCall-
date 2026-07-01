@@ -1,10 +1,14 @@
 import { randomBytes } from 'node:crypto';
 
+export type RoomStatus = 'active' | 'grace' | 'ending' | 'ended';
+
 export type Room = {
   roomId: string; // participant-facing id (no secret); ≥128-bit entropy (NFR-7)
   hostToken: string; // secret; grants the host role; ≥128-bit entropy (NFR-6)
   hostIdentity: string | null; // recorded on host join — foundation for M4 (grace, remove)
   createdAt: number;
+  status: RoomStatus; // lifecycle state (M4); starts 'active'
+  graceEndsAt: number | null; // epoch ms the grace period ends, else null
 };
 
 export type RoomRegistry = {
@@ -12,6 +16,10 @@ export type RoomRegistry = {
   get(roomId: string): Room | undefined;
   verifyHostToken(roomId: string, token: string): boolean;
   setHostIdentity(roomId: string, identity: string): void;
+  setStatus(roomId: string, status: RoomStatus): void;
+  markEnded(roomId: string): void;
+  startGraceState(roomId: string, endsAt: number): void;
+  clearGraceState(roomId: string): void;
 };
 
 export type RoomRegistryOptions = {
@@ -36,6 +44,8 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
         hostToken: newToken(),
         hostIdentity: null,
         createdAt: now(),
+        status: 'active',
+        graceEndsAt: null,
       };
       rooms.set(room.roomId, room);
       return room;
@@ -51,6 +61,31 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
     setHostIdentity(roomId: string, identity: string): void {
       const room = rooms.get(roomId);
       if (room) room.hostIdentity = identity;
+    },
+    setStatus(roomId: string, status: RoomStatus): void {
+      const room = rooms.get(roomId);
+      if (room) room.status = status;
+    },
+    markEnded(roomId: string): void {
+      const room = rooms.get(roomId);
+      if (room) {
+        room.status = 'ended';
+        room.graceEndsAt = null;
+      }
+    },
+    startGraceState(roomId: string, endsAt: number): void {
+      const room = rooms.get(roomId);
+      if (room) {
+        room.status = 'grace';
+        room.graceEndsAt = endsAt;
+      }
+    },
+    clearGraceState(roomId: string): void {
+      const room = rooms.get(roomId);
+      if (room) {
+        room.status = 'active';
+        room.graceEndsAt = null;
+      }
     },
   };
 }
