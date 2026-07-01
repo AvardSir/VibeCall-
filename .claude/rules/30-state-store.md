@@ -55,4 +55,8 @@ export const useMediaStore = create<MediaState>()((set) => ({
   from the backend; the store mirrors it for rendering and is reconciled on server events.
 - The store holds UI state only — **no business rules** (limits, validation, role checks). Those
   belong to the backend / domain layer.
+- **Live connections are not UI state — keep them out of Zustand.** A Socket.IO socket (or any
+  long-lived client/connection) belongs in a React context provider, not a store (see
+  `20-frontend-structure.md` → "Shared clients"). The store mirrors *data* derived from it (messages,
+  unread count), never the socket itself.
 - Reset the relevant stores when leaving a room / room ends.
