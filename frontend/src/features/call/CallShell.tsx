@@ -7,11 +7,13 @@ import { useConnectionStore } from '../../stores/useConnectionStore';
 import { useMediaStore } from '../../stores/useMediaStore';
 import { removeParticipant } from '../../shared/lib/apiClient';
 import type { ParticipantRole, RoomEndReason } from '../../shared/types';
-import { VideoGrid } from './components/VideoGrid';
+import { CallStage } from './components/CallStage';
 import { ControlsBar } from './components/ControlsBar';
 import { GraceOverlay } from './components/GraceOverlay';
 import { RemoveGuestDialog } from './components/RemoveGuestDialog';
 import { useRoomLifecycle } from './hooks/useRoomLifecycle';
+import { useShareState } from './hooks/useShareState';
+import { useParticipantsStore } from '../../stores/useParticipantsStore';
 
 export type CallShellProps = {
   accessToken: string;
@@ -50,9 +52,16 @@ export function CallShell({
   const isMicOn = useMediaStore((s) => s.isMicOn);
   const isCamOn = useMediaStore((s) => s.isCamOn);
   const graceSecondsLeft = useConnectionStore((s) => s.graceSecondsLeft);
+  const activeSharerId = useParticipantsStore((s) => s.activeSharerId);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
 
   useRoomLifecycle({ identity, onRoomEnded, onRemoved });
+  useShareState(); // the single share_state → store subscription for the room
+
+  const onRemoveGuest =
+    role === 'host'
+      ? (targetIdentity: string, name: string): void => setRemoveTarget({ identity: targetIdentity, name })
+      : undefined;
 
   const handleError = useCallback(
     (error: Error): void => {
@@ -91,13 +100,7 @@ export function CallShell({
       className="relative flex min-h-full flex-col"
     >
       {graceSecondsLeft !== null ? <GraceOverlay secondsLeft={graceSecondsLeft} /> : null}
-      <div className="flex flex-1 items-center justify-center">
-        <VideoGrid
-          onRemoveGuest={
-            role === 'host' ? (targetIdentity, name) => setRemoveTarget({ identity: targetIdentity, name }) : undefined
-          }
-        />
-      </div>
+      <CallStage activeSharerId={activeSharerId} onRemoveGuest={onRemoveGuest} />
       <ControlsBar onLeave={onLeave} onEndCall={onEndCall} role={role} participantUrl={participantUrl} />
       <RoomAudioRenderer />
       {removeTarget ? (
