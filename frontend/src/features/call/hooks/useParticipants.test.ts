@@ -90,4 +90,14 @@ describe('useParticipants', () => {
     room.emit();
     expect(useParticipantsStore.getState().participants.map((p) => p.identity)).toEqual(['local']);
   });
+
+  it('dedupes participants sharing an identity (first occurrence — the local one — wins)', () => {
+    renderHook(() => useParticipants());
+    // Defensive case: a remote entry reports the same identity as the local participant.
+    room.remoteParticipants.set('dup', makeParticipant('local', 'Ghost', false, false, 3000));
+    room.emit();
+    const { participants } = useParticipantsStore.getState();
+    expect(participants).toHaveLength(1);
+    expect(participants[0]).toMatchObject({ identity: 'local', name: 'Me', isLocal: true });
+  });
 });

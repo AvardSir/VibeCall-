@@ -4,17 +4,15 @@ export type ToggleProps = {
   label: string;
   pressed: boolean;
   disabled?: boolean;
-  tooltip?: string;
   onChange: (pressed: boolean) => void;
 };
 
-export function Toggle({ label, pressed, disabled, tooltip, onChange }: ToggleProps): JSX.Element {
+export function Toggle({ label, pressed, disabled, onChange }: ToggleProps): JSX.Element {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={pressed}
-      title={tooltip}
       disabled={disabled}
       onClick={() => onChange(!pressed)}
       className="inline-flex items-center gap-2 text-sm text-slate-300 transition disabled:opacity-40"

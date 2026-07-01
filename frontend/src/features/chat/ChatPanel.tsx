@@ -18,12 +18,12 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
 
   return (
     <aside
-      aria-label={t('title')}
+      aria-labelledby="chat-panel-title"
       className={`fixed right-0 top-0 z-20 flex h-full w-80 flex-col border-l border-surface-muted bg-surface transition-transform ${
         isPanelOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
     >
-      <header className="border-b border-surface-muted p-3 text-sm font-medium text-slate-200">
+      <header id="chat-panel-title" className="border-b border-surface-muted p-3 text-sm font-medium text-slate-200">
         {t('title')}
       </header>
       <MessageList items={messages} selfIdentity={selfIdentity} />

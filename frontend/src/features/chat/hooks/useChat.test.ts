@@ -12,21 +12,19 @@ const fake = {
   on(event: string, handler: Handler) {
     this.handlers.set(event, handler);
   },
+  off(event: string, handler: Handler): void {
+    const registered = this.handlers.get(event);
+    if (registered === handler) this.handlers.delete(event);
+  },
   emit(event: string, payload: unknown) {
     this.emitted.push({ event, payload });
   },
-  removeAllListeners() {
-    this.handlers.clear();
-  },
-  disconnect: vi.fn(),
   trigger(event: string, payload: unknown) {
     this.handlers.get(event)?.(payload);
   },
 };
 
-vi.mock('../../../shared/lib/socketClient', () => ({
-  createSocket: () => fake,
-}));
+vi.mock('../../../shared/hooks/useSocket', () => ({ useSocket: () => fake }));
 
 describe('useChat', () => {
   beforeEach(() => {
