@@ -129,6 +129,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
     if (!registry.verifyHostToken(roomId, hostToken)) throw new AppError('NOT_FOUND');
 
     emitParticipantRemoved(io, roomId, targetIdentity); // guest learns the reason before the kick
+    registry.revokeMemberToken(roomId, targetIdentity); // cut off attachment upload/download immediately
     await admin.removeParticipant(roomId, targetIdentity);
     res.sendStatus(204);
   }
