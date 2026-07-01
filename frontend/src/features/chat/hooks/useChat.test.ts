@@ -32,7 +32,7 @@ describe('useChat', () => {
     fake.emitted = [];
     useChatStore.getState().reset();
     useConnectionStore.getState().reset();
-    useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me', roomId: 'r_test' });
+    useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me', roomId: 'r_test', memberToken: 'mt' });
   });
 
   it('defers join_chat until the call is connected, then joins and loads history', () => {

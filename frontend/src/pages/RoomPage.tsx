@@ -115,6 +115,7 @@ export function RoomPage(): JSX.Element {
       identity: result.data.identity,
       displayName: result.data.displayName,
       roomId: result.data.roomId,
+      memberToken: result.data.memberToken,
     });
     setView('in-call');
   }
