@@ -64,11 +64,19 @@ describe('POST /rooms/:roomId/join', () => {
     const room = registry.create();
     const res = await request(app).post(`/rooms/${room.roomId}/join`).send({ name: 'Ann' });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ accessToken: 'guest.jwt', role: 'guest', displayName: 'Ann', roomId: room.roomId });
+    expect(res.body).toMatchObject({ accessToken: 'guest.jwt', role: 'guest', displayName: 'Ann', roomId: room.roomId, livekitUrl: 'ws://localhost:7880' });
     expect(res.body.identity).toMatch(/^p_/);
     expect(minter.mintGuestToken).toHaveBeenCalledWith(
       expect.objectContaining({ displayName: 'Ann', room: room.roomId }),
     );
+  });
+
+  it('two joins with the same display name receive distinct identities', async () => {
+    const { app, registry } = makeApp(2);
+    const room = registry.create();
+    const a = await request(app).post(`/rooms/${room.roomId}/join`).send({ name: 'Ann' });
+    const b = await request(app).post(`/rooms/${room.roomId}/join`).send({ name: 'Ann' });
+    expect(a.body.identity).not.toBe(b.body.identity);
   });
 
   it('issues a host token for a valid host token', async () => {
@@ -96,6 +104,7 @@ describe('POST /rooms/:roomId/join', () => {
     const { app } = makeApp(0);
     const res = await request(app).post('/rooms/unknown/join').send({ name: 'Ann' });
     expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'NOT_FOUND' });
   });
 
   it('rejects join at capacity with FULL', async () => {
