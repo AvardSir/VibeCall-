@@ -34,6 +34,11 @@ describe('createRoomRegistry', () => {
     expect(registry.get(room.roomId)?.hostIdentity).toBe('p_host');
   });
 
+  it('setHostIdentity on an unknown room is a no-op (does not throw)', () => {
+    const registry = createRoomRegistry();
+    expect(() => registry.setHostIdentity('ghost', 'p_x')).not.toThrow();
+  });
+
   it('uses injected generators deterministically', () => {
     let n = 0;
     const registry = createRoomRegistry({ now: () => 123, newToken: () => `t${n++}` });
