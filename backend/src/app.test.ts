@@ -193,6 +193,17 @@ describe('POST /rooms/:roomId/remove', () => {
     expect(admin.removeParticipant).toHaveBeenCalledWith(room.roomId, 'p_guest');
     expect(io.to).toHaveBeenCalledWith(room.roomId); // participant_removed broadcast
   });
+  it('revokes the removed guest member token so it no longer authorizes attachment access', async () => {
+    const { app, registry } = makeApp(3);
+    const room = registry.create();
+    const memberToken = registry.recordMemberToken(room.roomId, 'p_guest');
+    expect(registry.verifyMemberToken(room.roomId, memberToken)).toBe(true);
+    const res = await request(app)
+      .post(`/rooms/${room.roomId}/remove`)
+      .send({ hostToken: room.hostToken, targetIdentity: 'p_guest' });
+    expect(res.status).toBe(204);
+    expect(registry.verifyMemberToken(room.roomId, memberToken)).toBe(false);
+  });
   it('rejects a wrong host token with 404', async () => {
     const { app, registry, admin } = makeApp(3);
     const room = registry.create();

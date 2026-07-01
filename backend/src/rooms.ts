@@ -23,6 +23,7 @@ export type RoomRegistry = {
   clearGraceState(roomId: string): void;
   recordMemberToken(roomId: string, identity: string): string;
   verifyMemberToken(roomId: string, token: string): boolean;
+  revokeMemberToken(roomId: string, identity: string): void;
 };
 
 export type RoomRegistryOptions = {
@@ -103,6 +104,11 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
       if (!room) return false;
       for (const t of room.memberTokens.values()) if (t === token) return true;
       return false;
+    },
+    revokeMemberToken(roomId: string, identity: string): void {
+      const room = rooms.get(roomId);
+      if (!room) return;
+      room.memberTokens.delete(identity);
     },
   };
 }

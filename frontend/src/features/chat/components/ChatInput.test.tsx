@@ -78,7 +78,7 @@ describe('ChatInput', () => {
     const input = screen.getByTestId('attach-input');
     await userEvent.upload(input, new File(['x'], 'a.png', { type: 'image/png' }));
     expect(screen.getByText('a.png')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove: a.png' }));
     expect(screen.queryByText('a.png')).not.toBeInTheDocument();
   });
 });

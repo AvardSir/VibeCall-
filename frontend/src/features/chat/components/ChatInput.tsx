@@ -71,7 +71,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
               </Text>
               <button
                 type="button"
-                aria-label={t('removeAttachment')}
+                aria-label={`${t('removeAttachment')}: ${staged.file.name}`}
                 onClick={() => removeStaged(staged.id)}
                 className="text-slate-400 hover:text-slate-200"
               >

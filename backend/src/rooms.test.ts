@@ -86,4 +86,22 @@ describe('createRoomRegistry', () => {
     const registry = createRoomRegistry();
     expect(registry.recordMemberToken('ghost', 'p_1')).toBe('');
   });
+
+  it('revokes a member token so it no longer verifies', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    const token = registry.recordMemberToken(room.roomId, 'p_1');
+    expect(registry.verifyMemberToken(room.roomId, token)).toBe(true);
+    registry.revokeMemberToken(room.roomId, 'p_1');
+    expect(registry.verifyMemberToken(room.roomId, token)).toBe(false);
+  });
+
+  it('revokeMemberToken is a no-op for an unknown room or identity', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    const token = registry.recordMemberToken(room.roomId, 'p_1');
+    expect(() => registry.revokeMemberToken('ghost', 'p_1')).not.toThrow();
+    expect(() => registry.revokeMemberToken(room.roomId, 'p_unknown')).not.toThrow();
+    expect(registry.verifyMemberToken(room.roomId, token)).toBe(true);
+  });
 });
