@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ICONS, type IconName } from './index';
 
-const NAMES: IconName[] = ['micOn', 'micOff', 'camOn', 'camOff', 'hangup', 'chat', 'arrow', 'send', 'screenShare', 'link'];
+const NAMES: IconName[] = ['micOn', 'micOff', 'camOn', 'camOff', 'hangup', 'chat', 'arrow', 'send', 'screenShare', 'link', 'attach'];
 
 describe('icon barrel', () => {
   it('exports valid SVG markup for every glyph', () => {
