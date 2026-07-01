@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getRoomStatus, joinRoom } from '../shared/lib/apiClient';
@@ -38,6 +38,9 @@ export function RoomPage(): JSX.Element {
   const resetChat = useChatStore((s) => s.reset);
   const resetParticipants = useParticipantsStore((s) => s.reset);
 
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
   useEffect(() => {
     let cancelled = false;
     getRoomStatus(roomId)
@@ -64,6 +67,7 @@ export function RoomPage(): JSX.Element {
     setView('connecting');
     setPhase('connecting');
     const result = await joinRoom(roomId, name, hostToken);
+    if (!mountedRef.current) return;
     if (!result.ok) {
       if (result.error === 'FULL') setView('full');
       else if (result.error === 'NOT_FOUND') setView('not-found');
