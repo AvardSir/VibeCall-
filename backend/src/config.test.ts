@@ -32,4 +32,9 @@ describe('loadConfig', () => {
     expect(loadConfig(base).graceTimeoutSeconds).toBe(60);
     expect(loadConfig({ ...base, GRACE_TIMEOUT_SECONDS: '5' }).graceTimeoutSeconds).toBe(5);
   });
+
+  it('defaults the attachment storage path and honours the override', () => {
+    expect(loadConfig(base).attachmentStoragePath).toBe('./uploads');
+    expect(loadConfig({ ...base, ATTACHMENT_STORAGE_PATH: '/data/up' }).attachmentStoragePath).toBe('/data/up');
+  });
 });

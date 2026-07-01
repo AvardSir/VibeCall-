@@ -1,6 +1,14 @@
 import { StatusCodes } from 'http-status-codes';
 
-export type ErrorCode = 'FULL' | 'INVALID_NAME' | 'NOT_FOUND' | 'ENDED' | 'INTERNAL';
+export type ErrorCode =
+  | 'FULL'
+  | 'INVALID_NAME'
+  | 'NOT_FOUND'
+  | 'ENDED'
+  | 'INTERNAL'
+  | 'UNSUPPORTED_TYPE'
+  | 'FILE_TOO_LARGE'
+  | 'FORBIDDEN';
 
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
   FULL: StatusCodes.CONFLICT,
@@ -8,6 +16,9 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   NOT_FOUND: StatusCodes.NOT_FOUND,
   ENDED: StatusCodes.GONE,
   INTERNAL: StatusCodes.INTERNAL_SERVER_ERROR,
+  UNSUPPORTED_TYPE: StatusCodes.UNSUPPORTED_MEDIA_TYPE,
+  FILE_TOO_LARGE: StatusCodes.REQUEST_TOO_LONG,
+  FORBIDDEN: StatusCodes.FORBIDDEN,
 };
 
 export class AppError extends Error {
