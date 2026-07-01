@@ -32,16 +32,22 @@ function makeApp(count: number) {
     to: vi.fn(() => ({ emit: vi.fn() })),
   };
   const webhookHandler = vi.fn((_req: Request, res: Response) => res.sendStatus(200));
+  const attachments = {
+    validateAndStore: vi.fn().mockResolvedValue({
+      fileId: 'file123', name: 'c.png', size: 3, mime: 'image/png', kind: 'image', url: '/attachments/room/file123/c.png',
+    }),
+  };
   return {
     // `io` is a minimal fake (only `to().emit()` is used by the controller), not a full
     // socket.io Server — cast at this one boundary rather than widening the real ChatServer type.
-    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler }),
+    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler, attachments }),
     registry,
     admin,
     minter,
     grace,
     io,
     webhookHandler,
+    attachments,
   };
 }
 

@@ -23,6 +23,7 @@
     "express": "5.2.1",
     "http-status-codes": "2.3.0",
     "livekit-server-sdk": "2.15.5",
+    "multer": "2.2.0",
     "pino": "10.3.1",
     "socket.io": "4.8.3",
     "zod": "4.4.3"
@@ -31,6 +32,7 @@
     "@eslint/js": "10.0.1",
     "@types/cors": "2.8.19",
     "@types/express": "5.0.6",
+    "@types/multer": "2.1.0",
     "@types/node": "26.0.1",
     "@types/supertest": "7.2.0",
     "eslint": "10.6.0",
