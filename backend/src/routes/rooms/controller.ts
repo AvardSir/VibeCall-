@@ -81,6 +81,8 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
         : await minter.mintGuestToken({ identity, displayName: name, room: roomId });
     if (role === 'host') registry.setHostIdentity(roomId, identity);
 
+    const memberToken = registry.recordMemberToken(roomId, identity);
+
     res.json({
       accessToken,
       livekitUrl: config.livekitUrl,
@@ -88,6 +90,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
       identity,
       displayName: name,
       roomId,
+      memberToken,
     });
   }
 
