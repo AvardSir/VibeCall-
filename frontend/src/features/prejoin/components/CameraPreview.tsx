@@ -12,11 +12,14 @@ export function CameraPreview({ stream }: CameraPreviewProps): JSX.Element {
   const cameraPermission = useMediaStore((s) => s.cameraPermission);
   const isMicOn = useMediaStore((s) => s.isMicOn);
 
+  const showVideo = Boolean(isCamOn && cameraPermission === 'granted' && stream);
+
+  // Re-attach on every (re)mount of the <video>, not only when `stream` changes:
+  // toggling the camera off unmounts the element and on mounts a fresh one, so the
+  // assignment must also depend on `showVideo` or the new element never gets the stream.
   useEffect(() => {
     if (videoRef.current && stream) videoRef.current.srcObject = stream;
-  }, [stream]);
-
-  const showVideo = isCamOn && cameraPermission === 'granted' && stream;
+  }, [stream, showVideo]);
 
   return (
     <div className="relative h-[170px] w-[224px] shrink-0 overflow-hidden rounded-[12px] bg-black">
