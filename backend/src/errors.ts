@@ -1,10 +1,11 @@
 import { StatusCodes } from 'http-status-codes';
 
-export type ErrorCode = 'FULL' | 'INVALID_NAME' | 'INTERNAL';
+export type ErrorCode = 'FULL' | 'INVALID_NAME' | 'NOT_FOUND' | 'INTERNAL';
 
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
   FULL: StatusCodes.CONFLICT,
   INVALID_NAME: StatusCodes.BAD_REQUEST,
+  NOT_FOUND: StatusCodes.NOT_FOUND,
   INTERNAL: StatusCodes.INTERNAL_SERVER_ERROR,
 };
 
