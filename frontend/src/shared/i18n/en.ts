@@ -10,10 +10,16 @@ export const en = {
     languageEnglish: 'English',
     languageRussian: 'Russian',
   },
+  landing: {
+    tagline: 'Group video calls for up to four people. No sign-up required.',
+    startCall: 'Start a call',
+    startCallError: 'Unable to start a call right now. Please try again.',
+  },
   prejoin: {
     nameLabel: 'Your name',
     nameHelp: '2–30 characters. Letters, numbers, spaces, hyphens and apostrophes.',
     enterCall: 'Enter call →',
+    join: 'Join',
     micToggle: 'Microphone',
     cameraToggle: 'Camera',
     awaitingPermission: 'Allow camera and microphone access to continue.',
@@ -35,6 +41,9 @@ export const en = {
     micTooltipOn: 'Mute microphone',
     micTooltipOff: 'Unmute microphone',
     leaveTooltip: 'Leave the call',
+    copyLink: 'Copy link',
+    linkCopied: 'Link copied!',
+    copyFailed: 'Unable to copy. Please copy the link from the address shown below:',
   },
   chat: {
     title: 'Chat',
@@ -50,5 +59,8 @@ export const en = {
     fullTitle: 'This call is full.',
     fullBody: 'Only four participants can join at a time.',
     backToHome: 'Back to home',
+    notFoundTitle: 'This call was not found.',
+    notFoundBody: 'The link may be incorrect or expired.',
+    startNewCall: 'Start a new call',
   },
 } as const;
