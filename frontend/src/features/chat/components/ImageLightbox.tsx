@@ -33,9 +33,10 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps): JSX.El
       role="dialog"
       aria-modal="true"
       onClick={handleBackdropClick}
-      // transform-gpu + isolate promote the dim layer to its own compositing layer so a hardware
-      // <video> (webcam tiles) can't momentarily paint over it during a repaint (dimming flicker).
-      className="fixed inset-0 z-40 flex transform-gpu isolate items-center justify-center bg-black/80"
+      // Opaque backdrop: the webcam <video> tiles are hardware-composited, and a translucent overlay
+      // over them flickered during browser (Ctrl +/-) zoom re-rasterization. A fully opaque backdrop
+      // leaves no video showing through, so there is nothing to flicker.
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black"
     >
       <button
         ref={closeButtonRef}
