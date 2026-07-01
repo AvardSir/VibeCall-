@@ -86,6 +86,7 @@ describe('POST /rooms/:roomId/join', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ accessToken: 'guest.jwt', role: 'guest', displayName: 'Ann', roomId: room.roomId, livekitUrl: 'ws://localhost:7880' });
     expect(res.body.identity).toMatch(/^p_/);
+    expect(res.body.memberToken).toMatch(/^[A-Za-z0-9_-]{22}$/);
     expect(minter.mintGuestToken).toHaveBeenCalledWith(
       expect.objectContaining({ displayName: 'Ann', room: room.roomId }),
     );
