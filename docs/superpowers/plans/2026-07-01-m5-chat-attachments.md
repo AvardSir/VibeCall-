@@ -42,7 +42,7 @@ M5 and M4 both touch: `errors.ts` (ErrorCode union), `socket.ts` (events/deps), 
 All decisions below are locked (brainstorm 2026-07-01); none remain open.
 
 - **D1 — HTTP upload → socket metadata** (spec-confirmed). Files never traverse the socket; `send_message` carries the full `Attachment[]` returned by the upload endpoint.
-- **D2 — `memberToken` infrastructure is built in M5.** Decided 2026-07-01 (brainstorm): issue an opaque per-participant token at `/join` (spec §3.5). It doesn't exist yet. Minimal approach: the registry tracks per-room `memberTokens` (a `Set<string>` is sufficient — no identity mapping is needed for M5 auth); `join` issues one (`randomBytes(16).base64url`), stores it, and returns it; the FE keeps it in `useConnectionStore.localParticipant.memberToken`. Upload verifies the header token, download verifies the query token, both via `registry.verifyMemberToken(roomId, token)`.
+- **D2 — `memberToken` infrastructure is built in M5.** Decided 2026-07-01 (brainstorm): issue an opaque per-participant token at `/join` (spec §3.5). It doesn't exist yet. Approach: each `Room` tracks `memberTokens: Map<identity, token>` (keyed by identity so a re-join by the same participant replaces rather than accumulates); `join` issues one (`randomBytes(16).base64url`), stores it, and returns it; the FE keeps it in `useConnectionStore.localParticipant.memberToken`. Upload verifies the header token, download verifies the query token, both via `registry.verifyMemberToken(roomId, token)` (true iff any member of that room holds the token).
 - **D3 — `multer` for multipart**, memory storage (`multer.memoryStorage()`), so the service controls disk writes + validation before persisting. Add `multer` + `@types/multer` to backend deps.
 - **D4/D5 — validate type by BOTH extension and MIME, on BOTH client and server.** Client gates staging (instant error, no round-trip); server re-validates (defense vs. spoof).
 - **D6/D8 — token appended at render time.** Thumbnails: `<img src={attachment.url + '?token=' + memberToken}>`. File chips: `<a href={url + '?token=' + memberToken} download>`. Token is room-scoped + ephemeral; visible in devtools is acceptable per scope.
@@ -293,7 +293,7 @@ describe('attachmentService.validateAndStore', () => {
 
 **Files:** Modify `backend/src/chat.ts`, `chat.test.ts`.
 
-**Interfaces:** `ChatMessage` gains `attachments: Attachment[]` (imports `Attachment` from `attachments.js`). `build()` input gains `attachments?: Attachment[]` (default `[]`). Validation: text may be empty **iff** `attachments.length > 0`. Add a validator `validateMessage({ text, attachmentCount })` (or extend the existing) that returns `EMPTY_MESSAGE` only when both text is blank AND `attachmentCount === 0`, and `TEXT_TOO_LONG` when `text.length > 1000`.
+**Interfaces:** `ChatMessage` gains `attachments: Attachment[]` (imports `Attachment` from `attachments.js`). `build()` input gains `attachments?: Attachment[]` (default `[]`). Validation: text may be empty **iff** `attachments.length > 0`. Add a validator `validateMessage({ text, attachmentCount }): { ok: true; value: string } | { ok: false; code: 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' }` that returns `EMPTY_MESSAGE` only when both text is blank AND `attachmentCount === 0`, `TEXT_TOO_LONG` when `text.length > 1000`, else `{ ok: true, value: text }` (Task 6 consumes `validation.value`).
 
 - [ ] **Step 1: Failing tests** — append to `chat.test.ts`:
 
@@ -511,7 +511,7 @@ it('exposes M5 chat attachment keys with parity', () => {
 **Interfaces:**
 - `AttachmentKind = 'image' | 'file'`; `Attachment = { fileId, name, size, mime, kind, url }`; `ChatMessage.attachments: Attachment[]`; `JoinResponse.memberToken: string`; `UploadResult = { ok: true; data: Attachment } | { ok: false; error: 'UNSUPPORTED_TYPE' | 'FILE_TOO_LARGE' | 'FORBIDDEN' | 'INTERNAL' }`.
 - `socketEvents.ts`: `send_message` payload gains `attachments?: Attachment[]`.
-- `apiClient.ts`: `uploadAttachment(roomId, memberToken, file): Promise<UploadResult>` — `FormData`, `x-member-token` header, POST `/rooms/:roomId/attachments`; 201→`{ok:true,data}` (light cast per the post-MR3 convention — no schema on this low-stakes path), non-ok→map body `error` else `INTERNAL`. **Also** update `joinResponseSchema` to include `memberToken: z.string()` (join is the one schema-validated payload).
+- `apiClient.ts`: `uploadAttachment(roomId, memberToken, file): Promise<UploadResult>` — `FormData`, `x-member-token` header, POST `/rooms/:roomId/attachments`; 201→`{ok:true,data}` (light cast per the post-MR3 convention — no schema on this low-stakes path), non-ok→map body `error` else `INTERNAL`. Also `attachmentDownloadUrl(attachment: Attachment, memberToken: string): string` — returns an **absolute** URL (`urlJoin(BASE_URL, attachment.url)` + `?token=<encoded memberToken>`); the backend `attachment.url` is a path (`/attachments/...`), so it MUST be prefixed with `BASE_URL` or a native `<img>`/`<a>` would hit the Vite dev server, not the backend. **Also** update `joinResponseSchema` to include `memberToken: z.string()` (join is the one schema-validated payload).
 
 - [ ] **Step 1: Failing test** — `apiClient.test.ts`:
 
@@ -550,7 +550,15 @@ export async function uploadAttachment(roomId: string, memberToken: string, file
 }
 ```
 
-Add `memberToken: z.string()` to `joinResponseSchema` and `memberToken` to `JoinResponse`.
+Add `attachmentDownloadUrl` (absolute URL builder):
+
+```ts
+export function attachmentDownloadUrl(attachment: Attachment, memberToken: string): string {
+  return `${urlJoin(BASE_URL, attachment.url)}?token=${encodeURIComponent(memberToken)}`;
+}
+```
+
+Add `memberToken: z.string()` to `joinResponseSchema` and `memberToken` to `JoinResponse`. Add a test asserting `attachmentDownloadUrl({ ...att, url: '/attachments/r1/f0/c.png' }, 'm1')` contains both `BASE_URL` and `?token=m1`.
 
 - [ ] **Step 4: Run** `npx vitest run src/shared/lib/apiClient.test.ts && npm run typecheck` → PASS/clean. **Step 5: Commit** — `git commit -m "feat(frontend): Attachment types + memberToken + uploadAttachment client"`.
 
