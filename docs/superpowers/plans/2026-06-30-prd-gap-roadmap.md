@@ -56,6 +56,8 @@ Ordered by value + dependency. M1 and M5 directly address the user's stated pain
 | **M4** | **Host lifecycle: end call, remove guest, grace, status screens** | FR-3, FR-4, FR-6, FR-19; US-11/12/13/14; §7 screens | BE + FE | M3 | End call (destroy room), Leave/Rejoin, Remove-guest (modal + LiveKit kick), 60s host grace overlay + countdown, all status screens (ended/removed/left/host-ended/not-found) |
 | **M5** | **Chat attachments + image lightbox** | FR-26, FR-27; US-10; validation table row 3 | BE + FE | — (only existing chat) | Paperclip → stage ≤5 files (type/size validated), image thumbnails + file chips, full-size image overlay (Esc/backdrop close), Sending…/Not delivered status |
 | **M6** | **Screen share** | FR-16; US-8 | BE + FE | M2 | Share button + one-sharer arbitration, shared content as "contain" main area with label, participant tiles → thumbnail strip, Stop sharing, error/auto-dismiss |
+| **M7a** | **Figma pixel-perfect: foundation** | Visual conformance (no new FR) — audit §5 items 1,2,3,5,6,9,10 | FE only | — (incorporates commit `385f7c9`) | Roboto Flex + Figma type scale; `@theme` tokens (accent-active, danger-strong, text-muted, white overlays); `Button` (primary/secondary/danger, 48px, `rounded-[10px]`); pre-join card rebuilt pixel-perfect (412px card + name input + inline error); Figma icon SVGs exported & bundled; `Tooltip` + inline-error sizing. Every Figma-covered **static** surface matches Figma |
+| **M7b** | **Figma pixel-perfect: in-call rebuilds** | Visual conformance (no new FR) — audit §5 items 4,7,8 | FE only | M7a + M5 + M6 | V2 controls bar (48px round icon controls: mic/cam white, end/leave red, chat dark→blue, screen-share slot, copy-link → bottom-right group); grid geometry (gap-4, per-count widths 1220/1382/1168, `aspect-video`, 1/2/3/4 layouts); chat panel + message items + input rebuilt to Figma (340px panel, close-arrow header, separator, fade gradient, bubble radii, inline timestamp, single-line send-icon input). Every Figma-covered **in-call** surface pixel-perfect |
 
 **Cross-cutting (folded into the milestone that first needs it, not a separate plan):**
 - Unsupported-browser screen (FR-31) → M1 or M3 (first-screen check).
@@ -73,10 +75,24 @@ Ordered by value + dependency. M1 and M5 directly address the user's stated pain
 3. **M3 — Host/Guest + landing.** The foundation the host features hang off.
 4. **M4 — Host lifecycle.** Builds on M3.
 5. **M5 — Chat attachments.** Independent; can be pulled earlier if "photos in chat" is the priority.
-6. **M6 — Screen share.** Last; reuses M2's tile rendering for the thumbnail strip.
+6. **M6 — Screen share.** Reuses M2's tile rendering for the thumbnail strip.
+7. **M7a — Figma foundation.** After the functional milestones land; corrects the design-system
+   primitives (font, type scale, tokens, `Button`, pre-join card, icons, tooltip) every screen
+   composes. Self-contained (FE only); incorporates the already-built base on branch
+   `feat/figma-design-audit` (commit `385f7c9`) rather than redoing it.
+8. **M7b — Figma in-call rebuilds.** Last. Depends on M7a (design system) **and** M5 + M6, because
+   the controls-bar / grid / chat-panel rebuilds touch the *final* chat and controls/share code.
 
 > M5 (attachments / "фото в чате") is independent of M2–M4 and may be reprioritized to right after
 > M1 if that pain matters more than the video grid.
+>
+> **M7 (pixel-perfect Figma conformance) runs last, split into M7a + M7b.** Its source of truth is
+> the **Figma Conformance Audit** (`docs/superpowers/design/2026-07-01-figma-conformance-audit.md`) —
+> a complete, MCP-verified gap analysis with a ranked §5 fix backlog and exact per-component values.
+> M7 is the delivery vehicle for that backlog; it adds **no new PRD behavior**, only visual fidelity
+> on the screens Figma covers. Screens Figma lacks stay styled per PRD (audit §6) and are out of M7
+> scope. The 4-up grid has no V2 Figma frame → M7b uses the audit's V1-geometry fallback (2×2,
+> 576×324, gap 16, content 1168×664) with a comment noting it was not confirmed in V2.
 
 ---
 
