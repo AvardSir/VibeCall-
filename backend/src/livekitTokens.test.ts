@@ -29,6 +29,7 @@ function decodeGrant(jwt: string): Record<string, unknown> {
 }
 
 describe('mintHostToken', () => {
+  // 32-char secret: LiveKit AccessToken signing requirement
   const minter = createTokenMinter({ livekitApiKey: 'devkey', livekitApiSecret: 'a'.repeat(32) });
 
   it('grants roomAdmin to the host', async () => {
@@ -37,11 +38,16 @@ describe('mintHostToken', () => {
     expect(grant.roomAdmin).toBe(true);
     expect(grant.room).toBe('r1');
     expect(grant.canPublish).toBe(true);
+    expect(grant.roomJoin).toBe(true);
+    expect(grant.canSubscribe).toBe(true);
   });
 
   it('does not grant roomAdmin to a guest', async () => {
     const jwt = await minter.mintGuestToken({ identity: 'p_g', displayName: 'Guest', room: 'r1' });
     const grant = decodeGrant(jwt).video as Record<string, unknown>;
     expect(grant.roomAdmin).toBeFalsy();
+    expect(grant.roomJoin).toBe(true);
+    expect(grant.canSubscribe).toBe(true);
+    expect(grant.room).toBe('r1');
   });
 });
