@@ -12,7 +12,7 @@ import { createRoomRegistry } from './rooms.js';
 import { createApp } from './app.js';
 import { createChatService } from './chat.js';
 import { createAttachmentService } from './attachments.js';
-import { createSocketServer, emitGraceTick, emitGraceCancelled, emitRoomEnded } from './socket.js';
+import { createSocketServer, emitGraceTick, emitGraceCancelled, emitRoomEnded, broadcastShareState } from './socket.js';
 import type { ChatServer } from './socket.js';
 import { createGraceService } from './grace.js';
 import { createWebhookHandler } from './webhooks.js';
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   // `io` and `grace` reference each other (grace broadcasts over `io`; `end`/`remove` cancel
   // grace over the same `io`), so `io` is created first (detached from any http server), then
   // handed to the grace service, and both are passed into the Express app afterwards.
-  const io: ChatServer = createSocketServer({ config, admin, chat });
+  const io: ChatServer = createSocketServer({ config, admin, chat, registry });
   const grace = createGraceService({
     registry,
     admin,
@@ -68,7 +68,12 @@ async function main(): Promise<void> {
   });
 
   const receiver = new WebhookReceiver(config.livekitApiKey, config.livekitApiSecret);
-  const webhookHandler = createWebhookHandler({ receiver, registry, grace });
+  const webhookHandler = createWebhookHandler({
+    receiver,
+    registry,
+    grace,
+    onShareCleared: (roomName) => broadcastShareState(io, roomName, null),
+  });
 
   const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler, attachments, chat });
   const httpServer = buildHttpServer(app, io);

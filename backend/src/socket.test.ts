@@ -3,12 +3,16 @@ import type { Mock } from 'vitest';
 import {
   handleJoinChat,
   handleSendMessage,
+  handleClaimShare,
+  handleReleaseShare,
+  broadcastShareState,
   createSocketServer,
   emitGraceTick,
   emitRoomEnded,
 } from './socket.js';
 import type { ChatGatewayDeps, ChatSocketBinding, ChatSocket, ChatServer } from './socket.js';
 import { createChatService } from './chat.js';
+import type { ShareClaimResult } from './rooms.js';
 import { logger } from './logger.js';
 import type { Attachment } from './attachments.js';
 
@@ -67,6 +71,7 @@ function makeDeps(participants: { identity: string; name: string }[], roomId = '
       listParticipants: vi.fn(async (id: string) => (id === roomId ? participants : [])),
     },
     chat: createChatService({ now: () => 1000, newId: () => `m${++seq}` }),
+    registry: { claimShare: vi.fn((): ShareClaimResult => ({ ok: true })), releaseShare: vi.fn(() => true) },
   };
 }
 
@@ -303,6 +308,78 @@ describe('createSocketServer — send_message listener error handling', () => {
     expect(logger.error).toHaveBeenCalledOnce();
     const call = vi.mocked(logger.error).mock.calls[0];
     expect((call?.[0] as { err: unknown }).err).toBe(throwingError);
+  });
+});
+
+describe('screen-share arbitration handlers', () => {
+  it('grants a share to the first claimant and broadcasts the active sharer', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    deps.registry.claimShare = vi.fn((): ShareClaimResult => ({ ok: true }));
+    const { socket, emitted } = makeSocket();
+    socket.data.binding = { identity: 'p_1', displayName: 'Ann', roomName: 'r1' };
+    const { io, broadcasts } = makeIo();
+
+    handleClaimShare(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(emitted).toContainEqual({ event: 'share_granted', payload: undefined });
+    expect(broadcasts.at(-1)).toEqual({ room: 'r1', event: 'share_state', payload: { activeSharerId: 'p_1' } });
+    expect(deps.registry.claimShare).toHaveBeenCalledWith('r1', 'p_1');
+  });
+
+  it('denies a share when busy (no broadcast)', () => {
+    const deps = makeDeps([{ identity: 'p_2', name: 'Bob' }]);
+    deps.registry.claimShare = vi.fn((): ShareClaimResult => ({ ok: false, code: 'BUSY' }));
+    const { socket, emitted } = makeSocket();
+    socket.data.binding = { identity: 'p_2', displayName: 'Bob', roomName: 'r1' };
+    const { io, broadcasts } = makeIo();
+
+    handleClaimShare(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(emitted).toContainEqual({ event: 'share_denied', payload: { reason: 'busy' } });
+    expect(broadcasts).toEqual([]);
+  });
+
+  it('denies an unbound socket without touching the registry', () => {
+    const deps = makeDeps([]);
+    deps.registry.claimShare = vi.fn((): ShareClaimResult => ({ ok: true }));
+    const { socket, emitted } = makeSocket();
+    const { io, broadcasts } = makeIo();
+
+    handleClaimShare(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(emitted).toContainEqual({ event: 'share_denied', payload: { reason: 'busy' } });
+    expect(deps.registry.claimShare).not.toHaveBeenCalled();
+    expect(broadcasts).toEqual([]);
+  });
+
+  it('release broadcasts a cleared share only when the caller held it', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    deps.registry.releaseShare = vi.fn(() => true);
+    const { socket } = makeSocket();
+    socket.data.binding = { identity: 'p_1', displayName: 'Ann', roomName: 'r1' };
+    const { io, broadcasts } = makeIo();
+
+    handleReleaseShare(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(broadcasts.at(-1)).toEqual({ room: 'r1', event: 'share_state', payload: { activeSharerId: null } });
+  });
+
+  it('release does not broadcast when the caller did not hold the share', () => {
+    const deps = makeDeps([{ identity: 'p_2', name: 'Bob' }]);
+    deps.registry.releaseShare = vi.fn(() => false);
+    const { socket } = makeSocket();
+    socket.data.binding = { identity: 'p_2', displayName: 'Bob', roomName: 'r1' };
+    const { io, broadcasts } = makeIo();
+
+    handleReleaseShare(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(broadcasts).toEqual([]);
+  });
+
+  it('broadcastShareState emits to the room channel', () => {
+    const { io, broadcasts } = makeIo();
+    broadcastShareState(io as unknown as ChatServer, 'r1', null);
+    expect(broadcasts.at(-1)).toEqual({ room: 'r1', event: 'share_state', payload: { activeSharerId: null } });
   });
 });
 

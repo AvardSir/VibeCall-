@@ -10,7 +10,10 @@ export type Room = {
   status: RoomStatus; // lifecycle state (M4); starts 'active'
   graceEndsAt: number | null; // epoch ms the grace period ends, else null
   memberTokens: Map<string, string>; // identity → token; authorizes attachment upload/download (M5)
+  activeSharerId: string | null; // identity of the current screen sharer, else null (M6)
 };
+
+export type ShareClaimResult = { ok: true } | { ok: false; code: 'BUSY' | 'NOT_FOUND' };
 
 export type RoomRegistry = {
   create(): Room;
@@ -24,6 +27,9 @@ export type RoomRegistry = {
   recordMemberToken(roomId: string, identity: string): string;
   verifyMemberToken(roomId: string, token: string): boolean;
   revokeMemberToken(roomId: string, identity: string): void;
+  claimShare(roomId: string, identity: string): ShareClaimResult;
+  releaseShare(roomId: string, identity: string): boolean;
+  clearShare(roomId: string): boolean;
 };
 
 export type RoomRegistryOptions = {
@@ -51,6 +57,7 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
         status: 'active',
         graceEndsAt: null,
         memberTokens: new Map(),
+        activeSharerId: null,
       };
       rooms.set(room.roomId, room);
       return room;
@@ -109,6 +116,25 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
       const room = rooms.get(roomId);
       if (!room) return;
       room.memberTokens.delete(identity);
+    },
+    claimShare(roomId: string, identity: string): ShareClaimResult {
+      const room = rooms.get(roomId);
+      if (!room) return { ok: false, code: 'NOT_FOUND' };
+      if (room.activeSharerId !== null && room.activeSharerId !== identity) return { ok: false, code: 'BUSY' };
+      room.activeSharerId = identity;
+      return { ok: true };
+    },
+    releaseShare(roomId: string, identity: string): boolean {
+      const room = rooms.get(roomId);
+      if (!room || room.activeSharerId !== identity) return false;
+      room.activeSharerId = null;
+      return true;
+    },
+    clearShare(roomId: string): boolean {
+      const room = rooms.get(roomId);
+      if (!room || room.activeSharerId === null) return false;
+      room.activeSharerId = null;
+      return true;
     },
   };
 }
