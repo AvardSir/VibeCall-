@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '../../shared/i18n';
 import { ChatPanel } from './ChatPanel';
 import { useChatStore } from '../../stores/useChatStore';
@@ -28,5 +28,31 @@ describe('ChatPanel', () => {
     ]);
     render(<ChatPanel role="guest" />);
     expect(screen.getByText('history msg')).toBeInTheDocument();
+  });
+
+  it('opens the lightbox on thumbnail click and closes it via the close button', () => {
+    useChatStore.getState().openPanel();
+    useChatStore.getState().setHistory([
+      {
+        id: 'a',
+        roomName: 'main',
+        senderIdentity: 'p_x',
+        senderName: 'X',
+        sentAt: 1,
+        text: '',
+        attachments: [
+          { fileId: 'f0', name: 'c.png', size: 100, mime: 'image/png', kind: 'image', url: '/attachments/r_test/f0/c.png' },
+        ],
+      },
+    ]);
+    render(<ChatPanel role="guest" />);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('img', { name: 'c.png' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

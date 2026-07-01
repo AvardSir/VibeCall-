@@ -56,4 +56,17 @@ describe('ImageLightbox', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('restores focus to the previously-focused element on unmount', () => {
+    render(<button type="button">trigger</button>);
+    const trigger = screen.getByRole('button', { name: 'trigger' });
+    trigger.focus();
+    expect(trigger).toHaveFocus();
+
+    const { unmount } = render(<ImageLightbox src="x" alt="c" onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /close/i })).toHaveFocus();
+
+    unmount();
+    expect(trigger).toHaveFocus();
+  });
 });
