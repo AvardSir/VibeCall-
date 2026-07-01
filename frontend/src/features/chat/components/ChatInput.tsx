@@ -134,9 +134,9 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
             type="button"
             aria-label={t('attach')}
             onClick={openFilePicker}
-            className="rounded-lg px-2 py-2 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-surface-muted dark:hover:text-slate-100"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-surface-muted dark:hover:text-slate-100"
           >
-            📎
+            <Icon name="attach" className="h-5 w-5" />
           </button>
         </Tooltip>
         <input
