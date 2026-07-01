@@ -5,12 +5,15 @@ import { ConnectionError, ConnectionErrorReason } from 'livekit-client';
 import '@livekit/components-styles';
 import { useConnectionStore } from '../../stores/useConnectionStore';
 import { useMediaStore } from '../../stores/useMediaStore';
+import type { ParticipantRole } from '../../shared/types';
 import { VideoGrid } from './components/VideoGrid';
 import { ControlsBar } from './components/ControlsBar';
 
 export type CallShellProps = {
   accessToken: string;
   serverUrl: string;
+  role: ParticipantRole;
+  participantUrl: string;
   onLeave: () => void;
   onConnectError: () => void;
   onRoomFull: () => void;
@@ -19,6 +22,8 @@ export type CallShellProps = {
 export function CallShell({
   accessToken,
   serverUrl,
+  role,
+  participantUrl,
   onLeave,
   onConnectError,
   onRoomFull,
@@ -57,7 +62,7 @@ export function CallShell({
       <div className="flex flex-1 items-center justify-center">
         <VideoGrid />
       </div>
-      <ControlsBar onLeave={onLeave} />
+      <ControlsBar onLeave={onLeave} role={role} participantUrl={participantUrl} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );

@@ -7,10 +7,16 @@ import { Button } from '../../../shared/ui/Button';
 import { Tooltip } from '../../../shared/ui/Tooltip';
 import { useMediaStore } from '../../../stores/useMediaStore';
 import { useChatStore } from '../../../stores/useChatStore';
+import type { ParticipantRole } from '../../../shared/types';
+import { CopyLinkButton } from './CopyLinkButton';
 
-export type ControlsBarProps = { onLeave: () => void };
+export type ControlsBarProps = {
+  onLeave: () => void;
+  role: ParticipantRole;
+  participantUrl: string;
+};
 
-export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
+export function ControlsBar({ onLeave, role, participantUrl }: ControlsBarProps): JSX.Element {
   const { t } = useTranslation('call');
   const { t: tc } = useTranslation('chat');
   const { localParticipant } = useLocalParticipant();
@@ -54,6 +60,7 @@ export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
           </span>
         )}
       </button>
+      {role === 'host' ? <CopyLinkButton url={participantUrl} /> : null}
       <Tooltip label={t('leaveTooltip')}>
         <Button variant="ghost" onClick={onLeave}>
           {t('leave')}
