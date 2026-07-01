@@ -16,7 +16,13 @@ const GRID_LAYOUT: Record<number, string> = {
   4: 'grid-cols-2 grid-rows-2',
 };
 
-export function VideoGrid(): JSX.Element {
+export type VideoGridProps = {
+  // Opens the remove-guest confirmation for a remote tile. Omitted entirely for a guest viewer —
+  // only the host can remove participants (mirrors the M3 role-gated CopyLinkButton pattern).
+  onRemoveGuest?: (identity: string, name: string) => void;
+};
+
+export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
   const { t } = useTranslation('call');
   useParticipants();
   const participants = useParticipantsStore((s) => s.participants);
@@ -43,6 +49,9 @@ export function VideoGrid(): JSX.Element {
                 isCameraEnabled={p.isCameraEnabled}
                 isMicrophoneEnabled={p.isMicrophoneEnabled}
                 cameraTrackRef={trackByIdentity.get(p.identity)}
+                onRemove={
+                  !p.isLocal && onRemoveGuest ? () => onRemoveGuest(p.identity, p.name) : undefined
+                }
               />
             </div>
           );

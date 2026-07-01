@@ -17,16 +17,20 @@ import { ControlsBar } from './ControlsBar';
 
 type RenderOptions = {
   onLeave?: () => void;
+  onEndCall?: () => void;
   role?: ParticipantRole;
   participantUrl?: string;
 };
 
 function renderControls({
   onLeave = vi.fn(),
+  onEndCall = vi.fn(),
   role = 'host',
   participantUrl = 'https://app/r/r1',
 }: RenderOptions = {}) {
-  return render(<ControlsBar onLeave={onLeave} role={role} participantUrl={participantUrl} />);
+  return render(
+    <ControlsBar onLeave={onLeave} onEndCall={onEndCall} role={role} participantUrl={participantUrl} />,
+  );
 }
 
 beforeEach(() => {
@@ -36,9 +40,9 @@ beforeEach(() => {
 });
 
 describe('ControlsBar', () => {
-  it('fires onLeave when Leave is clicked', () => {
+  it('fires onLeave when Leave is clicked (guest)', () => {
     const onLeave = vi.fn();
-    renderControls({ onLeave });
+    renderControls({ onLeave, role: 'guest' });
     fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
     expect(onLeave).toHaveBeenCalledOnce();
   });
@@ -59,8 +63,8 @@ describe('ControlsBar', () => {
     expect(screen.getByText('Unmute microphone')).toBeInTheDocument();
   });
 
-  it('shows a tooltip on the Leave button', () => {
-    renderControls();
+  it('shows a tooltip on the Leave button (guest)', () => {
+    renderControls({ role: 'guest' });
     expect(screen.getByText('Leave the call')).toBeInTheDocument();
     // The custom tooltip is a sibling, so the button's accessible name is unchanged.
     expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument();
@@ -74,5 +78,25 @@ describe('ControlsBar', () => {
   it('hides Copy link from a guest', () => {
     renderControls({ role: 'guest', participantUrl: 'https://app/r/r1' });
     expect(screen.queryByRole('button', { name: /copy link/i })).not.toBeInTheDocument();
+  });
+
+  it('shows a red End call button (with tooltip) to the host instead of Leave', () => {
+    renderControls({ role: 'host' });
+    expect(screen.getByRole('button', { name: 'End call' })).toBeInTheDocument();
+    expect(screen.getByText('End the call for everyone')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Leave' })).not.toBeInTheDocument();
+  });
+
+  it('fires onEndCall when the host clicks End call', () => {
+    const onEndCall = vi.fn();
+    renderControls({ role: 'host', onEndCall });
+    fireEvent.click(screen.getByRole('button', { name: 'End call' }));
+    expect(onEndCall).toHaveBeenCalledOnce();
+  });
+
+  it('shows Leave (not End call) to a guest', () => {
+    renderControls({ role: 'guest' });
+    expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'End call' })).not.toBeInTheDocument();
   });
 });

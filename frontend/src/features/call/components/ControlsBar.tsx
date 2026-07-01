@@ -12,11 +12,12 @@ import { CopyLinkButton } from './CopyLinkButton';
 
 export type ControlsBarProps = {
   onLeave: () => void;
+  onEndCall: () => void;
   role: ParticipantRole;
   participantUrl: string;
 };
 
-export function ControlsBar({ onLeave, role, participantUrl }: ControlsBarProps): JSX.Element {
+export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: ControlsBarProps): JSX.Element {
   const { t } = useTranslation('call');
   const { t: tc } = useTranslation('chat');
   const { localParticipant } = useLocalParticipant();
@@ -68,11 +69,23 @@ export function ControlsBar({ onLeave, role, participantUrl }: ControlsBarProps)
         )}
       </button>
       {role === 'host' ? <CopyLinkButton url={participantUrl} /> : null}
-      <Tooltip label={t('leaveTooltip')}>
-        <Button variant="ghost" onClick={onLeave}>
-          {t('leave')}
-        </Button>
-      </Tooltip>
+      {role === 'host' ? (
+        <Tooltip label={t('endCallTooltip')}>
+          <button
+            type="button"
+            onClick={onEndCall}
+            className="ml-6 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition hover:bg-danger/90"
+          >
+            {t('endCall')}
+          </button>
+        </Tooltip>
+      ) : (
+        <Tooltip label={t('leaveTooltip')}>
+          <Button variant="ghost" onClick={onLeave}>
+            {t('leave')}
+          </Button>
+        </Tooltip>
+      )}
     </div>
   );
 }
