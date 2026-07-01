@@ -60,4 +60,6 @@ export type CallParticipant = {
   isLocal: boolean;
   isCameraEnabled: boolean;
   isMicrophoneEnabled: boolean;
+  // True while LiveKit reports this participant as an active speaker (drives the speaking ring).
+  isSpeaking?: boolean;
 };
