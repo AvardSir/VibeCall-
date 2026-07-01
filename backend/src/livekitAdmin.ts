@@ -5,9 +5,9 @@ import { logger } from './logger.js';
 export type ParticipantSummary = { identity: string; name: string };
 
 export type LivekitAdmin = {
-  ensureRoom(): Promise<void>;
-  listParticipantCount(): Promise<number>;
-  listParticipants(): Promise<ParticipantSummary[]>;
+  ensureRoom(roomId: string): Promise<void>;
+  listParticipantCount(roomId: string): Promise<number>;
+  listParticipants(roomId: string): Promise<ParticipantSummary[]>;
 };
 
 export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
@@ -17,29 +17,29 @@ export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
     config.livekitApiSecret,
   );
 
-  async function fetchParticipants(): Promise<ParticipantSummary[]> {
-    const participants = await client.listParticipants(config.fixedRoomName);
+  async function fetchParticipants(roomId: string): Promise<ParticipantSummary[]> {
+    const participants = await client.listParticipants(roomId);
     return participants.map((p) => ({ identity: p.identity, name: p.name }));
   }
 
   return {
-    async ensureRoom() {
+    async ensureRoom(roomId) {
       // Idempotent: createRoom on an existing room is a no-op upsert.
       await client.createRoom({
-        name: config.fixedRoomName,
+        name: roomId,
         maxParticipants: config.maxParticipants,
         emptyTimeout: config.emptyTimeoutSeconds,
       });
-      logger.info({ room: config.fixedRoomName }, 'ensured fixed room exists');
+      logger.info({ room: roomId }, 'ensured room exists');
     },
 
-    async listParticipantCount() {
-      const participants = await fetchParticipants();
+    async listParticipantCount(roomId) {
+      const participants = await fetchParticipants(roomId);
       return participants.length;
     },
 
-    async listParticipants() {
-      return fetchParticipants();
+    async listParticipants(roomId) {
+      return fetchParticipants(roomId);
     },
   };
 }
