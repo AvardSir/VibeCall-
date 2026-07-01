@@ -10,6 +10,7 @@ import type { RoomRegistry } from './rooms.js';
 import type { GraceService } from './grace.js';
 import type { ChatServer } from './socket.js';
 import type { AttachmentService } from './attachments.js';
+import type { ChatService } from './chat.js';
 import { AppError } from './errors.js';
 import type { ErrorCode } from './errors.js';
 import { logger } from './logger.js';
@@ -23,7 +24,8 @@ export type AppDeps = {
   grace: Pick<GraceService, 'cancelGrace'>;
   io: ChatServer;
   webhookHandler: RequestHandler;
-  attachments: Pick<AttachmentService, 'validateAndStore' | 'resolvePath'>;
+  attachments: Pick<AttachmentService, 'validateAndStore' | 'resolvePath' | 'deleteRoomFolder'>;
+  chat: Pick<ChatService, 'clear'>;
 };
 
 export function createApp(deps: AppDeps): Express {

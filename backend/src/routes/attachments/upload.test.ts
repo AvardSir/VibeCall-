@@ -43,9 +43,13 @@ function makeApp() {
       url: '/attachments/room/file123/c.png',
     }),
     resolvePath: vi.fn().mockResolvedValue(null),
+    deleteRoomFolder: vi.fn().mockResolvedValue(undefined),
+  };
+  const chat = {
+    clear: vi.fn(),
   };
   return {
-    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler, attachments }),
+    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler, attachments, chat }),
     registry,
     attachments,
   };

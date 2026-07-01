@@ -39,12 +39,14 @@ async function main(): Promise<void> {
   const minter = createTokenMinter(config);
   const registry = createRoomRegistry();
   const chat = createChatService();
-  // Minimal construction for Task 7 (upload endpoint wiring); Task 9 adds the orphan sweep and
-  // any teardown/lifecycle hooks around this service.
   const attachments = createAttachmentService({
     storageRoot: config.attachmentStoragePath,
     maxBytes: MAX_ATTACHMENT_BYTES,
   });
+  // Best-effort startup sweep: the in-memory room registry is always empty at boot, so every
+  // folder under storageRoot is an orphan left behind by a prior process (NFR-10). Fire-and-log;
+  // a failed sweep must not block server startup.
+  void attachments.sweepOrphans([]).catch((err: unknown) => logger.error({ err }, 'attachment startup sweep failed'));
 
   // `io` and `grace` reference each other (grace broadcasts over `io`; `end`/`remove` cancel
   // grace over the same `io`), so `io` is created first (detached from any http server), then
@@ -57,12 +59,18 @@ async function main(): Promise<void> {
     onTick: (roomId, secondsLeft) => emitGraceTick(io, roomId, secondsLeft),
     onCancelled: (roomId) => emitGraceCancelled(io, roomId),
     onEnded: (roomId, reason) => emitRoomEnded(io, roomId, reason),
+    onCleanup: (roomId) => {
+      chat.clear(roomId);
+      void attachments
+        .deleteRoomFolder(roomId)
+        .catch((err: unknown) => logger.error({ err, room: roomId }, 'grace attachment cleanup failed'));
+    },
   });
 
   const receiver = new WebhookReceiver(config.livekitApiKey, config.livekitApiSecret);
   const webhookHandler = createWebhookHandler({ receiver, registry, grace });
 
-  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler, attachments });
+  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler, attachments, chat });
   const httpServer = buildHttpServer(app, io);
 
   httpServer.listen(config.port, () => {

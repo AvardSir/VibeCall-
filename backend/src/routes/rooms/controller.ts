@@ -5,9 +5,12 @@ import type { TokenMinter } from '../../livekitTokens.js';
 import type { RoomRegistry } from '../../rooms.js';
 import type { GraceService } from '../../grace.js';
 import type { ChatServer } from '../../socket.js';
+import type { AttachmentService } from '../../attachments.js';
+import type { ChatService } from '../../chat.js';
 import { generateIdentity } from '../../identity.js';
 import { AppError } from '../../errors.js';
 import { emitRoomEnded, emitParticipantRemoved } from '../../socket.js';
+import { logger } from '../../logger.js';
 import { parseJoinBody, parseEndBody, parseRemoveBody } from './schemeValidator.js';
 
 export type RoomsControllerDeps = {
@@ -17,6 +20,8 @@ export type RoomsControllerDeps = {
   minter: TokenMinter;
   grace: Pick<GraceService, 'cancelGrace'>;
   io: ChatServer;
+  attachments: Pick<AttachmentService, 'deleteRoomFolder'>;
+  chat: Pick<ChatService, 'clear'>;
 };
 
 export type RoomsController = {
@@ -28,7 +33,7 @@ export type RoomsController = {
 };
 
 export function createRoomsController(deps: RoomsControllerDeps): RoomsController {
-  const { config, registry, admin, minter, grace, io } = deps;
+  const { config, registry, admin, minter, grace, io, attachments, chat } = deps;
 
   async function create(_req: Request, res: Response): Promise<void> {
     const room = registry.create();
@@ -108,6 +113,10 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
     emitRoomEnded(io, roomId, 'host_ended'); // tell guests before teardown
     await admin.deleteRoom(roomId);
     registry.markEnded(roomId);
+    chat.clear(roomId);
+    void attachments
+      .deleteRoomFolder(roomId)
+      .catch((err: unknown) => logger.error({ err, room: roomId }, 'attachment cleanup on end failed'));
     res.sendStatus(204);
   }
 
