@@ -134,6 +134,7 @@ describe('handleJoinChat', () => {
 
     expect(socket.data.binding).toBeUndefined();
     expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'NOT_A_MEMBER' } }]);
+    expect(deps.admin.listParticipants).not.toHaveBeenCalled();
   });
 
   it('replays prior history to a new joiner', async () => {
