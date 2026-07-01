@@ -59,4 +59,33 @@ describe('createGraceService', () => {
     svc.startGrace('r1');
     expect(registry.startGraceState).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onCleanup with the roomId after markEnded and before onEnded', async () => {
+    const registry = {
+      get: vi.fn(() => ({ roomId: 'r1', status: 'active', graceEndsAt: null })),
+      startGraceState: vi.fn(),
+      clearGraceState: vi.fn(),
+      markEnded: vi.fn(),
+    };
+    const admin = { deleteRoom: vi.fn().mockResolvedValue(undefined) };
+    const callOrder: string[] = [];
+    registry.markEnded.mockImplementation(() => callOrder.push('markEnded'));
+    const onCleanup = vi.fn((_roomId: string) => callOrder.push('onCleanup'));
+    const onEnded = vi.fn(() => callOrder.push('onEnded'));
+    const svc = createGraceService({
+      registry: registry as never,
+      admin: admin as never,
+      graceSeconds: 3,
+      onTick: () => {},
+      onCancelled: () => {},
+      onEnded,
+      onCleanup,
+    });
+
+    svc.startGrace('r1');
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(onCleanup).toHaveBeenCalledWith('r1');
+    expect(callOrder).toEqual(['markEnded', 'onCleanup', 'onEnded']);
+  });
 });

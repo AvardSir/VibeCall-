@@ -9,6 +9,7 @@ export type GraceDeps = {
   onTick: (roomId: string, secondsLeft: number) => void;
   onCancelled: (roomId: string) => void;
   onEnded: (roomId: string, reason: 'grace_expired') => void;
+  onCleanup?: (roomId: string) => void;
   now?: () => number;
   setIntervalFn?: (handler: () => void, ms: number) => ReturnType<typeof setInterval>;
   clearIntervalFn?: (handle: ReturnType<typeof setInterval>) => void;
@@ -36,6 +37,7 @@ export function createGraceService(deps: GraceDeps): GraceService {
     // Best-effort LiveKit teardown; mark ended regardless so revisits resolve to S2.
     void deps.admin.deleteRoom(roomId).catch((err: unknown) => logger.error({ err, room: roomId }, 'grace deleteRoom failed'));
     deps.registry.markEnded(roomId);
+    deps.onCleanup?.(roomId);
     deps.onEnded(roomId, 'grace_expired');
   }
 

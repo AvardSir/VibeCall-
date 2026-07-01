@@ -37,11 +37,15 @@ function makeApp(count: number) {
       fileId: 'file123', name: 'c.png', size: 3, mime: 'image/png', kind: 'image', url: '/attachments/room/file123/c.png',
     }),
     resolvePath: vi.fn().mockResolvedValue(null),
+    deleteRoomFolder: vi.fn().mockResolvedValue(undefined),
+  };
+  const chat = {
+    clear: vi.fn(),
   };
   return {
     // `io` is a minimal fake (only `to().emit()` is used by the controller), not a full
     // socket.io Server — cast at this one boundary rather than widening the real ChatServer type.
-    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler, attachments }),
+    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler, attachments, chat }),
     registry,
     admin,
     minter,
@@ -49,6 +53,7 @@ function makeApp(count: number) {
     io,
     webhookHandler,
     attachments,
+    chat,
   };
 }
 
@@ -162,6 +167,14 @@ describe('POST /rooms/:roomId/end', () => {
     expect(admin.deleteRoom).toHaveBeenCalledWith(room.roomId);
     expect(registry.get(room.roomId)?.status).toBe('ended');
     expect(io.to).toHaveBeenCalledWith(room.roomId); // room_ended broadcast
+  });
+  it('clears chat history and deletes the attachment folder on end', async () => {
+    const { app, registry, chat, attachments } = makeApp(2);
+    const room = registry.create();
+    const res = await request(app).post(`/rooms/${room.roomId}/end`).send({ hostToken: room.hostToken });
+    expect(res.status).toBe(204);
+    expect(chat.clear).toHaveBeenCalledWith(room.roomId);
+    expect(attachments.deleteRoomFolder).toHaveBeenCalledWith(room.roomId);
   });
   it('rejects a wrong host token with 404', async () => {
     const { app, registry } = makeApp(2);
