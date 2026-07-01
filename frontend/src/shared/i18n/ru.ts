@@ -11,8 +11,6 @@ export const ru: Translations = {
     themeSwitchToLight: 'Переключить на светлую тему',
     themeSwitchToDark: 'Переключить на тёмную тему',
     language: 'Язык',
-    languageEnglish: 'Английский',
-    languageRussian: 'Русский',
   },
   landing: {
     tagline: 'Групповые видеозвонки до четырёх человек. Без регистрации.',

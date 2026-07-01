@@ -7,8 +7,6 @@ export const en = {
     themeSwitchToLight: 'Switch to light theme',
     themeSwitchToDark: 'Switch to dark theme',
     language: 'Language',
-    languageEnglish: 'English',
-    languageRussian: 'Russian',
   },
   landing: {
     tagline: 'Group video calls for up to four people. No sign-up required.',

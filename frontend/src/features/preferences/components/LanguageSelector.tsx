@@ -5,22 +5,14 @@ type Language = 'en' | 'ru';
 export type LanguageSelectorProps = {
   language: Language;
   groupLabel: string;
-  englishLabel: string;
-  russianLabel: string;
   onChange: (language: Language) => void;
 };
 
-export function LanguageSelector({
-  language,
-  groupLabel,
-  englishLabel,
-  russianLabel,
-  onChange,
-}: LanguageSelectorProps): JSX.Element {
+export function LanguageSelector({ language, groupLabel, onChange }: LanguageSelectorProps): JSX.Element {
   return (
     <div role="group" aria-label={groupLabel} className="flex items-center gap-0.5 rounded-full bg-black/5 p-0.5 dark:bg-white/10">
-      <LanguageButton code="en" text="EN" ariaLabel={englishLabel} active={language === 'en'} onClick={onChange} />
-      <LanguageButton code="ru" text="RU" ariaLabel={russianLabel} active={language === 'ru'} onClick={onChange} />
+      <LanguageButton code="en" text="EN" active={language === 'en'} onClick={onChange} />
+      <LanguageButton code="ru" text="RU" active={language === 'ru'} onClick={onChange} />
     </div>
   );
 }
@@ -28,16 +20,14 @@ export function LanguageSelector({
 type LanguageButtonProps = {
   code: Language;
   text: string;
-  ariaLabel: string;
   active: boolean;
   onClick: (language: Language) => void;
 };
 
-function LanguageButton({ code, text, ariaLabel, active, onClick }: LanguageButtonProps): JSX.Element {
+function LanguageButton({ code, text, active, onClick }: LanguageButtonProps): JSX.Element {
   return (
     <button
       type="button"
-      aria-label={ariaLabel}
       aria-pressed={active}
       onClick={() => onClick(code)}
       className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
