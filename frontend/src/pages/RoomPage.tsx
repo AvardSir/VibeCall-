@@ -119,9 +119,16 @@ export function RoomPage(): JSX.Element {
           serverUrl={session.livekitUrl}
           role={session.role}
           participantUrl={participantUrl}
+          roomId={session.roomId}
+          hostToken={hostToken}
+          identity={session.identity}
           onLeave={leave}
           onConnectError={() => setView('connect-error')}
           onRoomFull={() => setView('full')}
+          // TODO(Task 17): wire real end/lifecycle screens (host-ended / grace-expired / removed).
+          onEndCall={leave}
+          onRoomEnded={() => leave()}
+          onRemoved={() => leave()}
         />
         <ChatPanel role={session.role} />
       </SocketProvider>

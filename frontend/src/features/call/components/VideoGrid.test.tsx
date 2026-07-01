@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '../../../shared/i18n';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
 import type { CallParticipant } from '../../../shared/types';
@@ -9,7 +9,16 @@ import type { CallParticipant } from '../../../shared/types';
 vi.mock('../hooks/useParticipants', () => ({ useParticipants: () => undefined }));
 vi.mock('@livekit/components-react', () => ({ useTracks: () => [] }));
 vi.mock('./VideoTile', () => ({
-  VideoTile: ({ name }: { name: string }) => <div data-testid="video-tile">{name}</div>,
+  VideoTile: ({ name, onRemove }: { name: string; onRemove?: () => void }) => (
+    <div data-testid="video-tile">
+      {name}
+      {onRemove ? (
+        <button type="button" onClick={onRemove}>
+          Remove {name}
+        </button>
+      ) : null}
+    </div>
+  ),
 }));
 
 import { VideoGrid } from './VideoGrid';
@@ -57,5 +66,23 @@ describe('VideoGrid', () => {
     render(<VideoGrid />);
     expect(screen.getAllByTestId('video-tile')).toHaveLength(4);
     expect(screen.getByTestId('video-grid')).toHaveAttribute('data-count', '4');
+  });
+
+  it('does not wire a remove control on any tile when onRemoveGuest is omitted (guest viewer)', () => {
+    useParticipantsStore.getState().setParticipants(roster(3));
+    render(<VideoGrid />);
+    expect(screen.queryByRole('button', { name: /^remove/i })).not.toBeInTheDocument();
+  });
+
+  it('wires onRemoveGuest to remote tiles only, not the local tile (host viewer)', () => {
+    useParticipantsStore.getState().setParticipants(roster(3));
+    const onRemoveGuest = vi.fn();
+    render(<VideoGrid onRemoveGuest={onRemoveGuest} />);
+    // roster(3): index 0 is local (User 0); indices 1-2 are remote.
+    expect(screen.queryByRole('button', { name: 'Remove User 0' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove User 1' }));
+    expect(onRemoveGuest).toHaveBeenCalledWith('p_1', 'User 1');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove User 2' }));
+    expect(onRemoveGuest).toHaveBeenCalledWith('p_2', 'User 2');
   });
 });

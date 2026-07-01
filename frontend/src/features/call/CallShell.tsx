@@ -1,36 +1,58 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { JSX } from 'react';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ConnectionError, ConnectionErrorReason } from 'livekit-client';
 import '@livekit/components-styles';
 import { useConnectionStore } from '../../stores/useConnectionStore';
 import { useMediaStore } from '../../stores/useMediaStore';
-import type { ParticipantRole } from '../../shared/types';
+import { removeParticipant } from '../../shared/lib/apiClient';
+import type { ParticipantRole, RoomEndReason } from '../../shared/types';
 import { VideoGrid } from './components/VideoGrid';
 import { ControlsBar } from './components/ControlsBar';
+import { GraceOverlay } from './components/GraceOverlay';
+import { RemoveGuestDialog } from './components/RemoveGuestDialog';
+import { useRoomLifecycle } from './hooks/useRoomLifecycle';
 
 export type CallShellProps = {
   accessToken: string;
   serverUrl: string;
   role: ParticipantRole;
   participantUrl: string;
+  roomId: string;
+  hostToken?: string;
+  identity: string;
   onLeave: () => void;
   onConnectError: () => void;
   onRoomFull: () => void;
+  onEndCall: () => void;
+  onRoomEnded: (reason: RoomEndReason) => void;
+  onRemoved: () => void;
 };
+
+type RemoveTarget = { identity: string; name: string };
 
 export function CallShell({
   accessToken,
   serverUrl,
   role,
   participantUrl,
+  roomId,
+  hostToken,
+  identity,
   onLeave,
   onConnectError,
   onRoomFull,
+  onEndCall,
+  onRoomEnded,
+  onRemoved,
 }: CallShellProps): JSX.Element {
   const setPhase = useConnectionStore((s) => s.setPhase);
   const isMicOn = useMediaStore((s) => s.isMicOn);
   const isCamOn = useMediaStore((s) => s.isCamOn);
+  const graceSecondsLeft = useConnectionStore((s) => s.graceSecondsLeft);
+  const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
+
+  useRoomLifecycle({ identity, onRoomEnded, onRemoved });
 
   const handleError = useCallback(
     (error: Error): void => {
@@ -47,6 +69,15 @@ export function CallShell({
     [onRoomFull, onConnectError, setPhase],
   );
 
+  const handleRemoveConfirm = useCallback(async (): Promise<void> => {
+    if (!removeTarget) return;
+    try {
+      await removeParticipant(roomId, hostToken ?? '', removeTarget.identity);
+    } finally {
+      setRemoveTarget(null);
+    }
+  }, [removeTarget, roomId, hostToken]);
+
   return (
     <LiveKitRoom
       token={accessToken}
@@ -57,13 +88,25 @@ export function CallShell({
       onConnected={() => setPhase('connected')}
       onError={handleError}
       onDisconnected={onLeave}
-      className="flex min-h-full flex-col"
+      className="relative flex min-h-full flex-col"
     >
+      {graceSecondsLeft !== null ? <GraceOverlay secondsLeft={graceSecondsLeft} /> : null}
       <div className="flex flex-1 items-center justify-center">
-        <VideoGrid />
+        <VideoGrid
+          onRemoveGuest={
+            role === 'host' ? (targetIdentity, name) => setRemoveTarget({ identity: targetIdentity, name }) : undefined
+          }
+        />
       </div>
-      <ControlsBar onLeave={onLeave} role={role} participantUrl={participantUrl} />
+      <ControlsBar onLeave={onLeave} onEndCall={onEndCall} role={role} participantUrl={participantUrl} />
       <RoomAudioRenderer />
+      {removeTarget ? (
+        <RemoveGuestDialog
+          name={removeTarget.name}
+          onConfirm={() => void handleRemoveConfirm()}
+          onCancel={() => setRemoveTarget(null)}
+        />
+      ) : null}
     </LiveKitRoom>
   );
 }
