@@ -1,48 +1,55 @@
 import { z } from 'zod';
 import urlJoin from 'url-join';
-import type { JoinError, JoinResult, RoomStatus } from '../types';
+import type { CreateRoomResult, JoinError, JoinResult, RoomStatus } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
 // Endpoint URL builders kept in one place so paths are not scattered across call sites.
-// url-join normalizes separators (e.g. a trailing slash on BASE_URL) so segments never double up.
-const roomStatusUrl = (roomName: string): string =>
-  urlJoin(BASE_URL, 'rooms', encodeURIComponent(roomName));
-const joinUrl = (roomName: string): string => urlJoin(roomStatusUrl(roomName), 'join');
+const roomsUrl = (): string => urlJoin(BASE_URL, 'rooms');
+const roomStatusUrl = (roomId: string): string => urlJoin(roomsUrl(), encodeURIComponent(roomId));
+const joinUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'join');
 
-// Generic fetch wrapper — states the expected type, no runtime schema.
-// The two deliberate `as` casts below (here and in the error branch of joinRoom) are documented:
-// low-stakes paths where a runtime schema would be ceremony without safety benefit.
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = init !== undefined ? await fetch(url, init) : await fetch(url);
-  return (await res.json()) as T;
-}
-
-// Runtime schema kept only on the joinRoom SUCCESS path: the token fields feed directly into the
-// LiveKit SDK, so a blind cast there would turn a malformed backend reply into a cryptic media
-// failure. getRoomStatus and the error branch are low-stakes → schema-free.
+// Runtime schema kept ONLY on the joinRoom SUCCESS path: accessToken/livekitUrl feed straight into
+// the LiveKit SDK, so a malformed reply must fail loudly rather than become a cryptic media error.
+// createRoom and getRoomStatus are low-stakes (a bad roomId just surfaces as NOT_FOUND when used) →
+// schema-free per the "validate only security-critical payloads" rule (20-frontend-structure.md).
+// This preserves the post-MR3 apiClient convention — do NOT add schemas to createRoom/status/error.
 const joinResponseSchema = z.object({
   accessToken: z.string(),
   livekitUrl: z.string(),
-  role: z.literal('guest'),
+  role: z.enum(['host', 'guest']),
   identity: z.string(),
   displayName: z.string(),
+  roomId: z.string(),
 });
 
-export async function getRoomStatus(roomName: string): Promise<RoomStatus> {
-  return (await request<{ status: RoomStatus }>(roomStatusUrl(roomName))).status;
+export async function createRoom(): Promise<CreateRoomResult> {
+  const res = await fetch(roomsUrl(), { method: 'POST' });
+  if (!res.ok) return { ok: false, error: 'INTERNAL' };
+  // Low-stakes cast: roomId/hostToken only build a URL; a malformed one surfaces as NOT_FOUND when
+  // the link is used, so a runtime schema here would be ceremony without a safety benefit.
+  const data = (await res.json()) as { roomId: string; hostToken: string };
+  return { ok: true, data };
 }
 
-export async function joinRoom(roomName: string, name: string): Promise<JoinResult> {
-  const res = await fetch(joinUrl(roomName), {
+export async function getRoomStatus(roomId: string): Promise<RoomStatus> {
+  const res = await fetch(roomStatusUrl(roomId));
+  if (res.status === 404) return 'not-found';
+  return ((await res.json()) as { status: RoomStatus }).status;
+}
+
+export async function joinRoom(roomId: string, name: string, hostToken?: string): Promise<JoinResult> {
+  const payload = hostToken !== undefined ? { name, hostToken } : { name };
+  const res = await fetch(joinUrl(roomId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(payload),
   });
   if (res.ok) {
     const parsed = joinResponseSchema.safeParse(await res.json());
     return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: 'INTERNAL' };
   }
+  // Error branch is low-stakes → documented cast, no schema (matches the post-MR3 convention).
   const body = (await res.json().catch(() => ({}))) as { error?: JoinError };
   return { ok: false, error: body.error ?? 'INTERNAL' };
 }

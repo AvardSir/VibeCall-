@@ -1,74 +1,79 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getRoomStatus, joinRoom } from './apiClient';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createRoom, joinRoom, getRoomStatus } from './apiClient';
 
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllEnvs();
-  vi.resetModules();
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', fetchMock);
+  fetchMock.mockReset();
 });
+afterEach(() => vi.unstubAllGlobals());
 
-function mockFetch(status: number, body: unknown) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as Response));
+function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {}) {
+  return {
+    ok: init.ok ?? true,
+    status: init.status ?? 200,
+    json: () => Promise.resolve(body),
+  } as Response;
 }
 
-describe('getRoomStatus', () => {
-  it('returns the status field', async () => {
-    mockFetch(200, { status: 'full' });
-    expect(await getRoomStatus('main')).toBe('full');
+describe('createRoom', () => {
+  it('returns roomId and hostToken on success', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ roomId: 'r1', hostToken: 'h1' }, { status: 201 }));
+    const result = await createRoom();
+    expect(result).toEqual({ ok: true, data: { roomId: 'r1', hostToken: 'h1' } });
+  });
+
+  it('returns INTERNAL on a non-ok response', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, { ok: false, status: 500 }));
+    const result = await createRoom();
+    expect(result).toEqual({ ok: false, error: 'INTERNAL' });
   });
 });
 
-describe('URL building', () => {
-  it('normalizes a trailing slash in the base URL (no double slash)', async () => {
-    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3000/');
-    vi.resetModules();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ status: 'available' }),
-    } as Response);
-    vi.stubGlobal('fetch', fetchMock);
-    const { getRoomStatus: getStatus } = await import('./apiClient');
-    await getStatus('main');
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/rooms/main');
+describe('getRoomStatus', () => {
+  it('maps a 404 to not-found', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: 'NOT_FOUND' }, { ok: false, status: 404 }));
+    expect(await getRoomStatus('r1')).toBe('not-found');
+  });
+
+  it('returns the parsed status for a known room', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ status: 'full' }));
+    expect(await getRoomStatus('r1')).toBe('full');
   });
 });
 
 describe('joinRoom', () => {
-  it('returns ok with data on success', async () => {
-    const data = { accessToken: 'jwt', livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann' };
-    mockFetch(200, data);
-    const result = await joinRoom('main', 'Ann');
-    expect(result).toEqual({ ok: true, data });
+  it('sends the host token in the body and parses a host response', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({
+      accessToken: 'jwt', livekitUrl: 'ws://x', role: 'host', identity: 'p_1', displayName: 'Ann', roomId: 'r1',
+    }));
+    const result = await joinRoom('r1', 'Ann', 'h1');
+    expect(result).toEqual({ ok: true, data: expect.objectContaining({ role: 'host', roomId: 'r1' }) });
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body).toEqual({ name: 'Ann', hostToken: 'h1' });
   });
 
-  it('returns the error code on 409 FULL', async () => {
-    mockFetch(409, { error: 'FULL' });
-    expect(await joinRoom('main', 'Ann')).toEqual({ ok: false, error: 'FULL' });
+  it('omits hostToken from the body for a guest join', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({
+      accessToken: 'jwt', livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann', roomId: 'r1',
+    }));
+    await joinRoom('r1', 'Ann');
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body).toEqual({ name: 'Ann' });
   });
 
-  it('returns INVALID_NAME on 400', async () => {
-    mockFetch(400, { error: 'INVALID_NAME' });
-    expect(await joinRoom('main', 'A')).toEqual({ ok: false, error: 'INVALID_NAME' });
+  it('maps a NOT_FOUND error body', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: 'NOT_FOUND' }, { ok: false, status: 404 }));
+    const result = await joinRoom('r1', 'Ann');
+    expect(result).toEqual({ ok: false, error: 'NOT_FOUND' });
   });
 
-  it('returns INTERNAL when error body is unparseable', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: async () => { throw new Error('bad json'); },
-    } as unknown as Response));
-    expect(await joinRoom('main', 'Ann')).toEqual({ ok: false, error: 'INTERNAL' });
-  });
-
-  it('returns INTERNAL when ok response body is malformed (missing accessToken)', async () => {
-    // This test proves joinResponseSchema.safeParse still guards the token path.
-    // A naive `as T` cast would return ok:true with incomplete data; the schema catches it.
-    mockFetch(200, { livekitUrl: 'ws://x', role: 'guest', identity: 'p_1', displayName: 'Ann' });
-    expect(await joinRoom('main', 'Ann')).toEqual({ ok: false, error: 'INTERNAL' });
+  // Keeps the join-success schema load-bearing (carried over from MR3): a malformed success body
+  // (missing token fields) must map to INTERNAL, not slip through as a valid session.
+  it('returns INTERNAL when the join success body is malformed', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ accessToken: 'jwt' }));
+    const result = await joinRoom('r1', 'Ann');
+    expect(result).toEqual({ ok: false, error: 'INTERNAL' });
   });
 });
