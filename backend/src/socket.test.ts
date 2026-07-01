@@ -10,6 +10,7 @@ import {
 import type { ChatGatewayDeps, ChatSocketBinding, ChatSocket, ChatServer } from './socket.js';
 import { createChatService } from './chat.js';
 import { logger } from './logger.js';
+import type { Attachment } from './attachments.js';
 
 // ---------------------------------------------------------------------------
 // Fake socket.io Server so createSocketServer does not bind a real port.
@@ -230,6 +231,52 @@ describe('handleSendMessage', () => {
 
     expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'TEXT_TOO_LONG' } }]);
   });
+
+  it('relays a message with attachments and empty text', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'r1' });
+    const { io, broadcasts } = makeIo();
+    const attachment: Attachment = {
+      fileId: 'f0',
+      name: 'c.png',
+      size: 3,
+      mime: 'image/png',
+      kind: 'image',
+      url: '/attachments/r1/f0/c.png',
+    };
+
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, {
+      text: '',
+      attachments: [attachment],
+    });
+
+    expect(broadcasts).toHaveLength(1);
+    expect(broadcasts[0]!.room).toBe('r1');
+    expect(broadcasts[0]!.event).toBe('chat_message');
+    expect(broadcasts[0]!.payload).toMatchObject({ attachments: [attachment] });
+  });
+
+  it('rejects more than 5 attachments with TOO_MANY_ATTACHMENTS and does not broadcast', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket, emitted } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'r1' });
+    const { io, broadcasts } = makeIo();
+    const attachments: Attachment[] = Array.from({ length: 6 }, (_, i) => ({
+      fileId: `f${i}`,
+      name: 'c.png',
+      size: 1,
+      mime: 'image/png',
+      kind: 'image',
+      url: `/attachments/r1/f${i}/c.png`,
+    }));
+
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, {
+      text: 'hi',
+      attachments,
+    });
+
+    expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'TOO_MANY_ATTACHMENTS' } }]);
+    expect(broadcasts).toEqual([]);
+  });
 });
 
 describe('createSocketServer — send_message listener error handling', () => {
@@ -243,8 +290,8 @@ describe('createSocketServer — send_message listener error handling', () => {
 
   it('does not propagate an error thrown by handleSendMessage and logs it via logger.error', () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
-    const throwingError = new Error('validateText exploded');
-    deps.chat.validateText = () => {
+    const throwingError = new Error('validateMessage exploded');
+    deps.chat.validateMessage = () => {
       throw throwingError;
     };
 
