@@ -1,5 +1,8 @@
-export type RoomStatus = 'available' | 'full' | 'not-found';
+export type RoomStatus = 'available' | 'full' | 'not-found' | 'ended';
 export type JoinError = 'FULL' | 'INVALID_NAME' | 'NOT_FOUND' | 'INTERNAL';
+
+// Must stay identical to the backend RoomEndReason in backend/src/socket.ts.
+export type RoomEndReason = 'host_ended' | 'grace_expired';
 
 export type JoinResponse = {
   accessToken: string;

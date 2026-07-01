@@ -8,6 +8,8 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 const roomsUrl = (): string => urlJoin(BASE_URL, 'rooms');
 const roomStatusUrl = (roomId: string): string => urlJoin(roomsUrl(), encodeURIComponent(roomId));
 const joinUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'join');
+const endUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'end');
+const removeUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'remove');
 
 // Runtime schema kept ONLY on the joinRoom SUCCESS path: accessToken/livekitUrl feed straight into
 // the LiveKit SDK, so a malformed reply must fail loudly rather than become a cryptic media error.
@@ -35,9 +37,30 @@ export async function createRoom(): Promise<CreateRoomResult> {
 
 export async function getRoomStatus(roomId: string): Promise<RoomStatus> {
   const res = await fetch(roomStatusUrl(roomId));
+  if (res.status === 410) return 'ended';
   if (res.status === 404) return 'not-found';
   if (!res.ok) throw new Error('Unexpected room status response');
   return ((await res.json()) as { status: RoomStatus }).status;
+}
+
+// Low-stakes host actions: the response body carries no data we act on, so the boolean success
+// flag (res.ok) is all callers need — no schema, matching the post-MR3 convention.
+export async function endCall(roomId: string, hostToken: string): Promise<boolean> {
+  const res = await fetch(endUrl(roomId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hostToken }),
+  });
+  return res.ok;
+}
+
+export async function removeParticipant(roomId: string, hostToken: string, targetIdentity: string): Promise<boolean> {
+  const res = await fetch(removeUrl(roomId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hostToken, targetIdentity }),
+  });
+  return res.ok;
 }
 
 export async function joinRoom(roomId: string, name: string, hostToken?: string): Promise<JoinResult> {
