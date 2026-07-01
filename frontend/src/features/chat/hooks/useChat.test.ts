@@ -32,7 +32,7 @@ describe('useChat', () => {
     fake.emitted = [];
     useChatStore.getState().reset();
     useConnectionStore.getState().reset();
-    useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me' });
+    useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me', roomId: 'r_test' });
   });
 
   it('defers join_chat until the call is connected, then joins and loads history', () => {
@@ -46,7 +46,7 @@ describe('useChat', () => {
     act(() => useConnectionStore.getState().setPhase('connected'));
     expect(fake.emitted).toContainEqual({
       event: 'join_chat',
-      payload: { identity: 'p_self', role: 'guest' },
+      payload: { identity: 'p_self', role: 'guest', roomId: 'r_test' },
     });
 
     act(() =>

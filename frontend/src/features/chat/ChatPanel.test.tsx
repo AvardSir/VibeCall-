@@ -11,7 +11,7 @@ vi.mock('./hooks/useChat', () => ({ useChat: () => ({ sendMessage: vi.fn() }) })
 describe('ChatPanel', () => {
   beforeEach(() => {
     useChatStore.getState().reset();
-    useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me' });
+    useConnectionStore.getState().setLocalParticipant({ identity: 'p_self', displayName: 'Me', roomId: 'r_test' });
   });
 
   it('renders the empty state when open with no messages', () => {
