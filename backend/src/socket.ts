@@ -3,10 +3,12 @@ import type { Socket, DefaultEventsMap } from 'socket.io';
 import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { ChatService, ChatMessage, ChatErrorCode } from './chat.js';
+import type { Attachment } from './attachments.js';
 import { logger } from './logger.js';
 
 export type JoinChatPayload = { roomId: string; identity: string; role: 'host' | 'guest' };
-export type SendMessagePayload = { text: string };
+// NOTE: mirrored on the frontend (frontend/src/shared/lib/socketEvents.ts) — keep both in sync.
+export type SendMessagePayload = { text: string; attachments?: Attachment[] };
 
 export type ChatSocketBinding = { identity: string; displayName: string; roomName: string };
 
@@ -64,6 +66,8 @@ export async function handleJoinChat(
   socket.emit('chat_history', deps.chat.history(roomName));
 }
 
+const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+
 export function handleSendMessage(
   socket: ChatSocket,
   io: ChatServer,
@@ -75,7 +79,12 @@ export function handleSendMessage(
     socket.emit('message_failed', { code: 'NOT_A_MEMBER' });
     return;
   }
-  const validation = deps.chat.validateText(payload?.text);
+  const attachments = payload?.attachments ?? [];
+  if (attachments.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+    socket.emit('message_failed', { code: 'TOO_MANY_ATTACHMENTS' });
+    return;
+  }
+  const validation = deps.chat.validateMessage({ text: payload?.text ?? '', attachmentCount: attachments.length });
   if (!validation.ok) {
     socket.emit('message_failed', { code: validation.code });
     return;
@@ -85,6 +94,7 @@ export function handleSendMessage(
     senderIdentity: binding.identity, // from the binding, never the payload
     senderName: binding.displayName,
     text: validation.value,
+    attachments,
   });
   deps.chat.append(message);
   io.to(binding.roomName).emit('chat_message', message);

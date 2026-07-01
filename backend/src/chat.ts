@@ -12,7 +12,7 @@ export type ChatMessage = {
   attachments: Attachment[];
 };
 
-export type ChatErrorCode = 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' | 'NOT_A_MEMBER';
+export type ChatErrorCode = 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' | 'NOT_A_MEMBER' | 'TOO_MANY_ATTACHMENTS';
 
 export const MAX_TEXT_LENGTH = 1000;
 
