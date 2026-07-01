@@ -60,6 +60,13 @@ export const ru: Translations = {
     notDelivered: 'Не доставлено',
     charCount: '{{length}}/1000',
     openChat: 'Чат',
+    attach: 'Прикрепить файлы',
+    removeAttachment: 'Удалить',
+    unsupportedType: 'Неподдерживаемый тип файла.',
+    fileTooLarge: 'Файл превышает 10 МБ.',
+    tooManyFiles: 'Можно прикрепить не более 5 файлов к сообщению.',
+    closeLightbox: 'Закрыть',
+    download: 'Скачать',
   },
   roomStates: {
     fullTitle: 'Звонок заполнен.',

@@ -56,6 +56,13 @@ export const en = {
     notDelivered: 'Not delivered',
     charCount: '{{length}}/1000',
     openChat: 'Chat',
+    attach: 'Attach files',
+    removeAttachment: 'Remove',
+    unsupportedType: 'Unsupported file type.',
+    fileTooLarge: 'File exceeds 10 MB.',
+    tooManyFiles: 'You can attach up to 5 files per message.',
+    closeLightbox: 'Close',
+    download: 'Download',
   },
   roomStates: {
     fullTitle: 'This call is full.',
