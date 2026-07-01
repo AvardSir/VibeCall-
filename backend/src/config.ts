@@ -13,7 +13,6 @@ const envSchema = z.object({
   LIVEKIT_HOST: z.url(),
   PORT: z.coerce.number().int().positive().default(3000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
-  FIXED_ROOM_NAME: z.string().min(1).default('main'),
 });
 
 export type AppConfig = {
@@ -23,7 +22,6 @@ export type AppConfig = {
   livekitHost: string;
   port: number;
   corsOrigin: string;
-  fixedRoomName: string;
   maxParticipants: number;
   emptyTimeoutSeconds: number;
 };
@@ -42,7 +40,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     livekitHost: e.LIVEKIT_HOST,
     port: e.PORT,
     corsOrigin: e.CORS_ORIGIN,
-    fixedRoomName: e.FIXED_ROOM_NAME,
     maxParticipants: MAX_PARTICIPANTS,
     emptyTimeoutSeconds: EMPTY_TIMEOUT_SECONDS,
   };
