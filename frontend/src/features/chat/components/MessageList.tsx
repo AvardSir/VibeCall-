@@ -20,11 +20,12 @@ export function MessageList({ items, selfIdentity, onOpenImage }: MessageListPro
 
   return (
     <ul className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
-      {items.map((m) => (
+      {items.map((m, i) => (
         <ChatMessageItem
           key={m.key}
           item={m}
           isOwn={m.senderIdentity === selfIdentity}
+          isFirstInGroup={i === 0 || items[i - 1]!.senderIdentity !== m.senderIdentity}
           onOpenImage={onOpenImage}
         />
       ))}

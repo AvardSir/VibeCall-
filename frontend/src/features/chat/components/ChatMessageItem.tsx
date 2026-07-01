@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import type { ChatItem } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
@@ -10,6 +11,7 @@ import { FileChip } from './FileChip';
 export type ChatMessageItemProps = {
   item: ChatItem;
   isOwn: boolean;
+  isFirstInGroup: boolean;
   onOpenImage?: (src: string, alt: string) => void;
 };
 
@@ -21,7 +23,7 @@ function isAnimated(mime: string): boolean {
   return mime === 'image/gif' || mime === 'image/webp';
 }
 
-export function ChatMessageItem({ item: m, isOwn, onOpenImage }: ChatMessageItemProps): JSX.Element {
+export function ChatMessageItem({ item: m, isOwn, isFirstInGroup, onOpenImage }: ChatMessageItemProps): JSX.Element {
   const { t } = useTranslation('chat');
   const memberToken = useConnectionStore((s) => s.localParticipant?.memberToken ?? '');
 
@@ -29,17 +31,39 @@ export function ChatMessageItem({ item: m, isOwn, onOpenImage }: ChatMessageItem
     return a.url.startsWith('blob:') ? a.url : attachmentDownloadUrl(a, memberToken);
   }
 
+  // Audit §3: first bubble in a sender group = full 12px radius; subsequent bubbles cut the inner
+  // BOTTOM corner to 4px (others → bottom-left, own → bottom-right).
+  const radius = isFirstInGroup
+    ? 'rounded-[12px]'
+    : clsx('rounded-[12px]', isOwn ? 'rounded-br-[4px]' : 'rounded-bl-[4px]');
+
   return (
     <li className={isOwn ? 'self-end text-right' : 'self-start text-left'}>
-      <div className="text-xs text-slate-400">
-        <span className="font-medium">{m.senderName}</span> · {formatTime(m.sentAt)}
-      </div>
+      {isFirstInGroup && (
+        <div
+          className={clsx(
+            'mb-1 text-sm font-semibold leading-[18px]',
+            isOwn ? 'text-accent' : 'text-sender',
+          )}
+        >
+          {m.senderName}
+        </div>
+      )}
       {m.text !== '' && (
         <div
           data-testid="chat-text"
-          className="inline-block max-w-xs whitespace-pre-wrap break-words rounded-lg bg-surface-muted px-3 py-2 text-sm text-slate-100"
+          className={clsx(
+            'inline-block max-w-[280px] whitespace-pre-wrap break-words bg-surface px-3 py-2.5 text-left',
+            radius,
+          )}
         >
-          {m.text}
+          <span data-testid="chat-text-body" className="text-sm font-light leading-[18px] text-white">
+            {m.text}
+          </span>
+          <span data-testid="chat-timestamp" className="text-sm text-white/50">
+            {' · '}
+            {formatTime(m.sentAt)}
+          </span>
         </div>
       )}
       {m.attachments.length > 0 && (
@@ -60,12 +84,8 @@ export function ChatMessageItem({ item: m, isOwn, onOpenImage }: ChatMessageItem
           })}
         </div>
       )}
-      {isOwn && m.status === 'sending' && (
-        <div className="text-xs text-slate-500">{t('sending')}</div>
-      )}
-      {isOwn && m.status === 'failed' && (
-        <div className="text-xs text-red-400">{t('notDelivered')}</div>
-      )}
+      {isOwn && m.status === 'sending' && <div className="text-xs text-slate-500">{t('sending')}</div>}
+      {isOwn && m.status === 'failed' && <div className="text-xs text-red-400">{t('notDelivered')}</div>}
     </li>
   );
 }

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../../../shared/ui/Button';
+import { Icon } from '../../../shared/ui/Icon';
 import { Text } from '../../../shared/ui/Text';
 import { Tooltip } from '../../../shared/ui/Tooltip';
 import { useChatStore } from '../../../stores/useChatStore';
@@ -58,7 +58,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-1 border-t border-surface-muted p-3">
+    <form onSubmit={submit} className="flex flex-col gap-1 p-3">
       {stagedAttachments.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {stagedAttachments.map((staged) => (
@@ -81,7 +81,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           ))}
         </ul>
       )}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-3 rounded-[11px] bg-surface px-3 py-2 hover:border hover:border-white/25">
         <Tooltip label={t('attach')}>
           <button
             type="button"
@@ -106,11 +106,16 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT_LENGTH))}
           placeholder={t('placeholder')}
           rows={2}
-          className="flex-1 resize-none rounded-lg bg-surface-muted px-3 py-2 text-sm text-slate-100 outline-none"
+          className="flex-1 resize-none bg-transparent text-base font-light text-white outline-none placeholder:text-white/25"
         />
-        <Button type="submit" disabled={!canSend}>
-          {t('send')}
-        </Button>
+        <button
+          type="submit"
+          aria-label={t('send')}
+          disabled={!canSend}
+          className="shrink-0 disabled:opacity-40"
+        >
+          <Icon name="send" className="h-[34px] w-[34px] text-accent" />
+        </button>
       </div>
       {error && (
         <Text size="xs" className="text-red-400">

@@ -2,8 +2,7 @@ import type { JSX } from 'react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocalParticipant } from '@livekit/components-react';
-import { Toggle } from '../../../shared/ui/Toggle';
-import { Button } from '../../../shared/ui/Button';
+import { ControlButton } from '../../../shared/ui/ControlButton';
 import { Tooltip } from '../../../shared/ui/Tooltip';
 import { useMediaStore } from '../../../stores/useMediaStore';
 import { useChatStore } from '../../../stores/useChatStore';
@@ -52,60 +51,72 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
     togglePanel();
   };
 
+  const micLabel = isMicOn ? t('micTooltipOn') : t('micTooltipOff');
+  const camLabel = isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff');
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      {shareError ? <p className="text-sm text-amber-400">{shareError}</p> : null}
-      <div className="flex items-center justify-center gap-3 p-4">
-      <Tooltip label={isMicOn ? t('micTooltipOn') : t('micTooltipOff')}>
-        <Toggle label={t('micToggle')} pressed={isMicOn} onChange={setMicOn} />
-      </Tooltip>
-      <Tooltip label={isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff')}>
-        <Toggle label={t('cameraToggle')} pressed={isCamOn} onChange={setCamOn} />
-      </Tooltip>
-      <Tooltip label={shareTooltip}>
-        <button
-          type="button"
-          onClick={toggleShare}
-          disabled={isBusy}
-          className="rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSharing ? t('stopSharing') : t('shareScreen')}
-        </button>
-      </Tooltip>
-      <button
-        type="button"
-        aria-label={tc('openChat')}
-        onClick={handleToggleChat}
-        className="relative rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted"
-      >
-        {tc('openChat')}
-        {unreadCount > 0 && (
-          <span
-            data-testid="chat-unread"
-            className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-xs text-white"
-          >
-            {unreadCount}
-          </span>
+    <div className="relative p-4">
+      {shareError ? (
+        <p className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full text-sm text-amber-400">
+          {shareError}
+        </p>
+      ) : null}
+
+      <div className="flex items-center justify-center gap-4">
+        <Tooltip label={micLabel}>
+          <ControlButton
+            icon={isMicOn ? 'micOn' : 'micOff'}
+            label={micLabel}
+            onClick={() => setMicOn(!isMicOn)}
+          />
+        </Tooltip>
+        <Tooltip label={camLabel}>
+          <ControlButton
+            icon={isCamOn ? 'camOn' : 'camOff'}
+            label={camLabel}
+            onClick={() => setCamOn(!isCamOn)}
+          />
+        </Tooltip>
+        <Tooltip label={shareTooltip}>
+          <ControlButton
+            icon="screenShare"
+            label={shareTooltip}
+            variant={isSharing ? 'active' : 'white'}
+            disabled={isBusy}
+            onClick={toggleShare}
+          />
+        </Tooltip>
+        {role === 'host' ? (
+          <Tooltip label={t('endCallTooltip')}>
+            <ControlButton icon="hangup" label={t('endCallTooltip')} variant="danger" onClick={onEndCall} />
+          </Tooltip>
+        ) : (
+          <Tooltip label={t('leaveTooltip')}>
+            <ControlButton icon="hangup" label={t('leaveTooltip')} variant="danger" onClick={onLeave} />
+          </Tooltip>
         )}
-      </button>
-      {role === 'host' ? <CopyLinkButton url={participantUrl} /> : null}
-      {role === 'host' ? (
-        <Tooltip label={t('endCallTooltip')}>
-          <button
-            type="button"
-            onClick={onEndCall}
-            className="ml-6 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition hover:bg-danger/90"
-          >
-            {t('endCall')}
-          </button>
-        </Tooltip>
-      ) : (
-        <Tooltip label={t('leaveTooltip')}>
-          <Button variant="ghost" onClick={onLeave}>
-            {t('leave')}
-          </Button>
-        </Tooltip>
-      )}
+      </div>
+
+      <div className="absolute bottom-4 right-7 flex items-center gap-4">
+        {role === 'host' ? <CopyLinkButton url={participantUrl} /> : null}
+        <div className="relative">
+          <Tooltip label={tc('openChat')}>
+            <ControlButton
+              icon="chat"
+              label={tc('openChat')}
+              variant={isPanelOpen ? 'active' : 'dark'}
+              onClick={handleToggleChat}
+            />
+          </Tooltip>
+          {unreadCount > 0 && (
+            <span
+              data-testid="chat-unread"
+              className="pointer-events-none absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-xs text-white"
+            >
+              {unreadCount}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

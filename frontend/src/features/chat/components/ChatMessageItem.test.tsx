@@ -27,6 +27,43 @@ beforeEach(() => {
   });
 });
 
+describe('ChatMessageItem Figma styling', () => {
+  it('colors the sender name blue for own and purple for others (first in group)', () => {
+    const { rerender } = render(<ChatMessageItem item={item({ senderName: 'Ann' })} isOwn isFirstInGroup />);
+    expect(screen.getByText('Ann')).toHaveClass('text-accent');
+    rerender(<ChatMessageItem item={item({ senderName: 'Ann' })} isOwn={false} isFirstInGroup />);
+    expect(screen.getByText('Ann')).toHaveClass('text-sender');
+  });
+
+  it('hides the sender name for subsequent (non-first) bubbles in a group', () => {
+    render(<ChatMessageItem item={item({ senderName: 'Ann' })} isOwn={false} isFirstInGroup={false} />);
+    expect(screen.queryByText('Ann')).toBeNull();
+  });
+
+  it('uses the Figma bubble background + full radius for the first bubble in a group', () => {
+    render(<ChatMessageItem item={item({})} isOwn={false} isFirstInGroup />);
+    expect(screen.getByTestId('chat-text')).toHaveClass('bg-surface', 'rounded-[12px]');
+  });
+
+  it('cuts the inner bottom corner for subsequent bubbles (others → bottom-left)', () => {
+    render(<ChatMessageItem item={item({})} isOwn={false} isFirstInGroup={false} />);
+    expect(screen.getByTestId('chat-text')).toHaveClass('rounded-bl-[4px]');
+  });
+
+  it('cuts the inner bottom corner for subsequent own bubbles (own → bottom-right)', () => {
+    render(<ChatMessageItem item={item({})} isOwn isFirstInGroup={false} />);
+    expect(screen.getByTestId('chat-text')).toHaveClass('rounded-br-[4px]');
+  });
+
+  it('renders the message text and an inline timestamp in the bubble', () => {
+    render(<ChatMessageItem item={item({ text: 'hi there' })} isOwn={false} isFirstInGroup />);
+    const bubble = screen.getByTestId('chat-text');
+    expect(bubble).toHaveTextContent('hi there');
+    expect(screen.getByTestId('chat-text-body')).toHaveClass('text-white');
+    expect(screen.getByTestId('chat-timestamp')).toHaveClass('text-white/50');
+  });
+});
+
 describe('ChatMessageItem attachments', () => {
   it('renders an image attachment as a thumbnail with a tokened src and calls onOpenImage on click', () => {
     const onOpenImage = vi.fn();
@@ -39,6 +76,7 @@ describe('ChatMessageItem attachments', () => {
           ],
         })}
         isOwn={false}
+        isFirstInGroup
         onOpenImage={onOpenImage}
       />,
     );
@@ -60,6 +98,7 @@ describe('ChatMessageItem attachments', () => {
           ],
         })}
         isOwn={false}
+        isFirstInGroup
       />,
     );
 

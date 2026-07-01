@@ -10,6 +10,13 @@ describe('ChatInput', () => {
     useChatStore.getState().reset();
   });
 
+  it('keeps a multi-line textarea and an icon (not text) send button', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    expect(screen.getByRole('textbox')).toBeInTheDocument(); // textarea kept
+    const send = screen.getByRole('button', { name: /send/i });
+    expect(send.querySelector('svg')).not.toBeNull(); // icon, not text
+  });
+
   it('disables Send when the field is empty or whitespace', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const send = screen.getByRole('button', { name: 'Send' });

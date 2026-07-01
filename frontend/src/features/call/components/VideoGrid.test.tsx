@@ -43,7 +43,9 @@ describe('VideoGrid', () => {
     render(<VideoGrid />);
     expect(screen.getAllByTestId('video-tile')).toHaveLength(1);
     expect(screen.getByText('Waiting for someone to join…')).toBeInTheDocument();
-    expect(screen.getByTestId('video-grid')).toHaveAttribute('data-count', '1');
+    const grid = screen.getByTestId('video-grid');
+    expect(grid).toHaveAttribute('data-count', '1');
+    expect(grid).toHaveClass('gap-4', 'max-w-[1220px]');
   });
 
   it('renders two tiles and no notice for two participants', () => {
@@ -51,21 +53,27 @@ describe('VideoGrid', () => {
     render(<VideoGrid />);
     expect(screen.getAllByTestId('video-tile')).toHaveLength(2);
     expect(screen.queryByText('Waiting for someone to join…')).not.toBeInTheDocument();
-    expect(screen.getByTestId('video-grid')).toHaveAttribute('data-count', '2');
+    const grid = screen.getByTestId('video-grid');
+    expect(grid).toHaveAttribute('data-count', '2');
+    expect(grid).toHaveClass('gap-4', 'max-w-[1382px]');
   });
 
   it('renders three tiles for three participants', () => {
     useParticipantsStore.getState().setParticipants(roster(3));
     render(<VideoGrid />);
     expect(screen.getAllByTestId('video-tile')).toHaveLength(3);
-    expect(screen.getByTestId('video-grid')).toHaveAttribute('data-count', '3');
+    const grid = screen.getByTestId('video-grid');
+    expect(grid).toHaveAttribute('data-count', '3');
+    expect(grid).toHaveClass('gap-4', 'max-w-[1168px]');
   });
 
   it('renders four tiles for four participants', () => {
     useParticipantsStore.getState().setParticipants(roster(4));
     render(<VideoGrid />);
     expect(screen.getAllByTestId('video-tile')).toHaveLength(4);
-    expect(screen.getByTestId('video-grid')).toHaveAttribute('data-count', '4');
+    const grid = screen.getByTestId('video-grid');
+    expect(grid).toHaveAttribute('data-count', '4');
+    expect(grid).toHaveClass('gap-4', 'max-w-[1168px]');
   });
 
   it('does not wire a remove control on any tile when onRemoveGuest is omitted (guest viewer)', () => {

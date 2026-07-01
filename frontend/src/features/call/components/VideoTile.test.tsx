@@ -33,21 +33,42 @@ describe('VideoTile', () => {
     expect(screen.getByTestId('video-track').className).not.toContain('-scale-x-100');
   });
 
-  it('shows the centered mic-state icon + name (no video) when the camera is off', () => {
-    render(
+  it('applies the Figma 12px corner radius to the tile root', () => {
+    const { container } = render(
+      <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled cameraTrackRef={fakeTrack} />,
+    );
+    expect(container.firstElementChild).toHaveClass('rounded-[12px]');
+  });
+
+  it('shows the centered mic-glyph (SVG, not emoji) + name when the camera is off', () => {
+    const { container } = render(
       <VideoTile name="Bob" isLocal={false} isCameraEnabled={false} isMicrophoneEnabled cameraTrackRef={undefined} />,
     );
     expect(screen.queryByTestId('video-track')).not.toBeInTheDocument();
-    expect(screen.getByTestId('center-mic')).toBeInTheDocument();
+    const centerMic = container.querySelector('[data-testid="center-mic"]');
+    expect(centerMic).not.toBeNull();
+    expect(centerMic?.querySelector('svg')).not.toBeNull();
     expect(screen.getByText('Bob')).toBeInTheDocument();
   });
 
-  it('shows a corner mute icon when the camera is on and the mic is off', () => {
-    render(
+  it('shows a corner mute glyph (SVG) when the camera is on and the mic is off', () => {
+    const { container } = render(
       <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled={false} cameraTrackRef={fakeTrack} />,
     );
     expect(screen.getByTestId('video-track')).toBeInTheDocument();
-    expect(screen.getByTestId('corner-mute')).toBeInTheDocument();
+    const cornerMute = container.querySelector('[data-testid="corner-mute"]');
+    expect(cornerMute).not.toBeNull();
+    expect(cornerMute?.querySelector('svg')).not.toBeNull();
+  });
+
+  it('renders a mic glyph (SVG) in the live-video name label', () => {
+    const { container } = render(
+      <VideoTile name="Bob" isLocal={false} isCameraEnabled isMicrophoneEnabled cameraTrackRef={fakeTrack} />,
+    );
+    const label = container.querySelector('[data-testid="name-label"]');
+    expect(label).not.toBeNull();
+    expect(label?.querySelector('svg')).not.toBeNull();
+    expect(screen.getByText('Bob')).toBeInTheDocument();
   });
 
   it('does not show a corner mute icon when the camera is off (uses the centered icon instead)', () => {

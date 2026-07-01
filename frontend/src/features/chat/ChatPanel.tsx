@@ -1,9 +1,12 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
+import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/useChatStore';
 import { useConnectionStore } from '../../stores/useConnectionStore';
 import type { ParticipantRole } from '../../shared/types';
+import { Text } from '../../shared/ui/Text';
+import { Icon } from '../../shared/ui/Icon';
 import { useChat } from './hooks/useChat';
 import { MessageList } from './components/MessageList';
 import { ChatInput } from './components/ChatInput';
@@ -16,6 +19,7 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
   const { sendMessage } = useChat(role);
   const messages = useChatStore((s) => s.messages);
   const isPanelOpen = useChatStore((s) => s.isPanelOpen);
+  const togglePanel = useChatStore((s) => s.togglePanel);
   const selfIdentity = useConnectionStore((s) => s.localParticipant?.identity ?? '');
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
@@ -23,18 +27,34 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
     <>
       <aside
         aria-labelledby="chat-panel-title"
-        className={`fixed right-0 top-0 z-20 flex h-full w-80 flex-col border-l border-surface-muted bg-surface transition-transform ${
-          isPanelOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={clsx(
+          'fixed right-0 top-0 z-20 flex h-full w-[340px] flex-col bg-surface-elevated transition-transform',
+          isPanelOpen ? 'translate-x-0' : 'translate-x-full',
+        )}
       >
-        <header id="chat-panel-title" className="border-b border-surface-muted p-3 text-sm font-medium text-slate-200">
-          {t('title')}
+        <header className="flex items-center gap-2.5 border-b border-white/10 px-6 py-4">
+          <button
+            type="button"
+            aria-label={t('closeChat')}
+            onClick={togglePanel}
+            className="grid size-6 place-items-center rounded-[17px] bg-white"
+          >
+            {/* Arrow glyph points right by default; rotate 180° so it points left (back). */}
+            <Icon name="arrow" className="h-4 w-4 rotate-180 text-surface" />
+          </button>
+          <Text tag="h2" id="chat-panel-title" size="xl" weight="bold" className="text-white">
+            {t('title')}
+          </Text>
         </header>
-        <MessageList
-          items={messages}
-          selfIdentity={selfIdentity}
-          onOpenImage={(src, alt) => setLightbox({ src, alt })}
-        />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <MessageList
+            items={messages}
+            selfIdentity={selfIdentity}
+            onOpenImage={(src, alt) => setLightbox({ src, alt })}
+          />
+          {/* Figma: ~65px fade over the last messages, above the input row. */}
+          <div className="pointer-events-none absolute inset-x-3 bottom-0 h-16 bg-gradient-to-b from-transparent to-surface-elevated" />
+        </div>
         <ChatInput onSend={sendMessage} />
       </aside>
       {lightbox && (

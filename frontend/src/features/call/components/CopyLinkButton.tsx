@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ControlButton } from '../../../shared/ui/ControlButton';
+import { Tooltip } from '../../../shared/ui/Tooltip';
 
 export type CopyLinkButtonProps = { url: string };
 
@@ -31,20 +33,16 @@ export function CopyLinkButton({ url }: CopyLinkButtonProps): JSX.Element {
 
   return (
     <div className="relative flex flex-col items-center">
-      <button
-        type="button"
-        onClick={() => void handleCopy()}
-        className="rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted"
-      >
-        {t('copyLink')}
-      </button>
+      <Tooltip label={t('copyLink')}>
+        <ControlButton icon="link" label={t('copyLink')} onClick={() => void handleCopy()} />
+      </Tooltip>
       {state === 'copied' ? (
-        <span className="absolute -top-7 whitespace-nowrap text-xs text-emerald-400">
+        <span className="absolute -top-9 whitespace-nowrap text-xs text-emerald-400">
           {t('linkCopied')}
         </span>
       ) : null}
       {state === 'failed' ? (
-        <div className="absolute -top-14 w-72 rounded-md bg-surface-muted p-2 text-xs text-slate-200">
+        <div className="absolute -top-16 w-72 rounded-md bg-surface-muted p-2 text-xs text-slate-200">
           <p>{t('copyFailed')}</p>
           <p className="select-all break-all font-mono">{url}</p>
         </div>

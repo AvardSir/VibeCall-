@@ -71,6 +71,7 @@ export const ru: Translations = {
     notDelivered: 'Не доставлено',
     charCount: '{{length}}/1000',
     openChat: 'Чат',
+    closeChat: 'Закрыть чат',
     attach: 'Прикрепить файлы',
     removeAttachment: 'Удалить',
     unsupportedType: 'Неподдерживаемый тип файла.',
