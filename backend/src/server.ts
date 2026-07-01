@@ -1,6 +1,7 @@
 // Load backend/.env into process.env before any config is read (no-op if absent, e.g. in prod).
 import 'dotenv/config';
 import { createServer } from 'node:http';
+import { WebhookReceiver } from 'livekit-server-sdk';
 import { loadConfig } from './config.js';
 import { createLivekitAdmin } from './livekitAdmin.js';
 import { createTokenMinter } from './livekitTokens.js';
@@ -10,6 +11,7 @@ import { createChatService } from './chat.js';
 import { createSocketServer, emitGraceTick, emitGraceCancelled, emitRoomEnded } from './socket.js';
 import type { ChatServer } from './socket.js';
 import { createGraceService } from './grace.js';
+import { createWebhookHandler } from './webhooks.js';
 import { logger } from './logger.js';
 
 async function main(): Promise<void> {
@@ -33,7 +35,10 @@ async function main(): Promise<void> {
     onEnded: (roomId, reason) => emitRoomEnded(io, roomId, reason),
   });
 
-  const app = createApp({ config, registry, admin, minter, grace, io });
+  const receiver = new WebhookReceiver(config.livekitApiKey, config.livekitApiSecret);
+  const webhookHandler = createWebhookHandler({ receiver, registry, grace });
+
+  const app = createApp({ config, registry, admin, minter, grace, io, webhookHandler });
   httpServer.on('request', app);
 
   httpServer.listen(config.port, () => {

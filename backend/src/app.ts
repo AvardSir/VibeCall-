@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Express, Request, Response, NextFunction } from 'express';
+import type { Express, Request, Response, NextFunction, RequestHandler } from 'express';
 import cors from 'cors';
 import { StatusCodes } from 'http-status-codes';
 import type { AppConfig } from './config.js';
@@ -20,12 +20,17 @@ export type AppDeps = {
   minter: TokenMinter;
   grace: Pick<GraceService, 'cancelGrace'>;
   io: ChatServer;
+  webhookHandler: RequestHandler;
 };
 
 export function createApp(deps: AppDeps): Express {
   const { config } = deps;
   const app = express();
   app.use(cors({ origin: config.corsOrigin }));
+
+  // Mounted BEFORE express.json(): the LiveKit WebhookReceiver verifies its signature over the
+  // raw request body, so express.json() must not parse/consume it first.
+  app.post('/webhooks/livekit', express.raw({ type: '*/*' }), deps.webhookHandler);
   app.use(express.json());
 
   app.use(createRootRouter(deps));
