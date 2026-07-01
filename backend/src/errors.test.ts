@@ -34,4 +34,10 @@ describe('AppError', () => {
     expect(err.status).toBe(410);
     expect(err.code).toBe('ENDED');
   });
+
+  it('maps attachment error codes', () => {
+    expect(new AppError('UNSUPPORTED_TYPE').status).toBe(415);
+    expect(new AppError('FILE_TOO_LARGE').status).toBe(413);
+    expect(new AppError('FORBIDDEN').status).toBe(403);
+  });
 });

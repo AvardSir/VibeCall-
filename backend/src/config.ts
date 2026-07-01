@@ -14,7 +14,10 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   GRACE_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(60),
+  ATTACHMENT_STORAGE_PATH: z.string().min(1).default('./uploads'),
 });
+
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
 export type AppConfig = {
   livekitApiKey: string;
@@ -26,6 +29,7 @@ export type AppConfig = {
   maxParticipants: number;
   emptyTimeoutSeconds: number;
   graceTimeoutSeconds: number;
+  attachmentStoragePath: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -45,5 +49,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     maxParticipants: MAX_PARTICIPANTS,
     emptyTimeoutSeconds: EMPTY_TIMEOUT_SECONDS,
     graceTimeoutSeconds: e.GRACE_TIMEOUT_SECONDS,
+    attachmentStoragePath: e.ATTACHMENT_STORAGE_PATH,
   };
 }

@@ -10,6 +10,7 @@ const config: AppConfig = {
   livekitUrl: 'ws://localhost:7880', livekitHost: 'http://localhost:7880',
   port: 3000, corsOrigin: '*',
   maxParticipants: 4, emptyTimeoutSeconds: 300, graceTimeoutSeconds: 60,
+  attachmentStoragePath: './uploads',
 };
 
 function makeApp(count: number) {

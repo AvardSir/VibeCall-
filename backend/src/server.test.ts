@@ -18,6 +18,7 @@ const config: AppConfig = {
   maxParticipants: 4,
   emptyTimeoutSeconds: 300,
   graceTimeoutSeconds: 60,
+  attachmentStoragePath: './uploads',
 };
 
 function makeAppAndIo(): { app: ReturnType<typeof createApp>; io: ChatServer } {
