@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
+import type { Request, Response } from 'express';
 import { createApp } from './app.js';
 import type { AppConfig } from './config.js';
 import { createRoomRegistry } from './rooms.js';
@@ -29,15 +30,17 @@ function makeApp(count: number) {
   const io = {
     to: vi.fn(() => ({ emit: vi.fn() })),
   };
+  const webhookHandler = vi.fn((_req: Request, res: Response) => res.sendStatus(200));
   return {
     // `io` is a minimal fake (only `to().emit()` is used by the controller), not a full
     // socket.io Server — cast at this one boundary rather than widening the real ChatServer type.
-    app: createApp({ config, registry, admin, minter, grace, io: io as never }),
+    app: createApp({ config, registry, admin, minter, grace, io: io as never, webhookHandler }),
     registry,
     admin,
     minter,
     grace,
     io,
+    webhookHandler,
   };
 }
 
@@ -201,6 +204,18 @@ describe('join lifecycle', () => {
     const res = await request(app).post(`/rooms/${room.roomId}/join`).send({ name: 'Guest4' });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({ error: 'FULL' });
+  });
+});
+
+describe('POST /webhooks/livekit', () => {
+  it('mounts the raw-body route ahead of express.json() and delegates to the injected handler', async () => {
+    const { app, webhookHandler } = makeApp(0);
+    const res = await request(app)
+      .post('/webhooks/livekit')
+      .set('Content-Type', 'application/webhook+json')
+      .send(JSON.stringify({ event: 'participant_left' }));
+    expect(res.status).toBe(200);
+    expect(webhookHandler).toHaveBeenCalledOnce();
   });
 });
 
