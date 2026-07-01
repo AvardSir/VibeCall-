@@ -20,6 +20,7 @@ const fakeSocket = {
   on: vi.fn(),
   off: vi.fn(),
   emit: vi.fn(),
+  connect: vi.fn(),
   disconnect: vi.fn(),
   connected: false,
 };
@@ -69,6 +70,7 @@ beforeEach(() => {
   fakeSocket.on.mockReset();
   fakeSocket.off.mockReset();
   fakeSocket.emit.mockReset();
+  fakeSocket.connect.mockReset();
   fakeSocket.disconnect.mockReset();
 });
 

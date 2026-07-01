@@ -13,6 +13,10 @@ export function SocketProvider({ children }: SocketProviderProps): JSX.Element {
   const [socket] = useState<AppSocket>(() => createSocket());
 
   useEffect(() => {
+    // Connect on (re)mount and disconnect on cleanup. StrictMode runs this setup→cleanup→setup;
+    // reconnecting on the second setup is what keeps the socket alive (a cleanup-only effect would
+    // leave it disconnected, so no chat history or incoming messages would ever arrive).
+    socket.connect();
     return () => {
       socket.disconnect();
     };
