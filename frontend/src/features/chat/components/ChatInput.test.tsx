@@ -35,6 +35,24 @@ describe('ChatInput', () => {
     expect(field).toHaveValue('');
   });
 
+  it('sends on Enter and clears the field', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    await userEvent.type(field, 'hello{Enter}');
+    expect(onSend).toHaveBeenCalledWith('hello', []);
+    expect(field).toHaveValue('');
+  });
+
+  it('inserts a newline on Shift+Enter without sending', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    await userEvent.type(field, 'a{Shift>}{Enter}{/Shift}b');
+    expect(onSend).not.toHaveBeenCalled();
+    expect(field).toHaveValue('a\nb');
+  });
+
   it('shows the character counter only from 900 characters', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const field = screen.getByPlaceholderText('Type a message…');
