@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { act } from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Tooltip } from './Tooltip';
 
 describe('Tooltip', () => {
@@ -48,5 +49,57 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
     expect(screen.getByRole('tooltip')).toHaveClass('top-full');
+  });
+
+  it('reveals the bubble only after the hover delay', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Tooltip label="Mute">
+          <button type="button">m</button>
+        </Tooltip>,
+      );
+      const wrapper = screen.getByRole('button', { name: 'm' }).parentElement as HTMLElement;
+      const bubble = screen.getByRole('tooltip');
+      fireEvent.pointerEnter(wrapper);
+      expect(bubble).toHaveClass('opacity-0'); // still hidden during the delay
+      act(() => vi.advanceTimersByTime(400));
+      expect(bubble).toHaveClass('opacity-100');
+      fireEvent.pointerLeave(wrapper);
+      expect(bubble).toHaveClass('opacity-0');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows only one tooltip at a time (opening a second closes the first)', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <>
+          <Tooltip label="Alpha">
+            <button type="button">a</button>
+          </Tooltip>
+          <Tooltip label="Beta">
+            <button type="button">b</button>
+          </Tooltip>
+        </>,
+      );
+      const wrapA = screen.getByRole('button', { name: 'a' }).parentElement as HTMLElement;
+      const wrapB = screen.getByRole('button', { name: 'b' }).parentElement as HTMLElement;
+      const bubbleA = screen.getByText('Alpha');
+      const bubbleB = screen.getByText('Beta');
+
+      fireEvent.pointerEnter(wrapA);
+      act(() => vi.advanceTimersByTime(400));
+      expect(bubbleA).toHaveClass('opacity-100');
+
+      fireEvent.pointerEnter(wrapB);
+      act(() => vi.advanceTimersByTime(400));
+      expect(bubbleB).toHaveClass('opacity-100');
+      expect(bubbleA).toHaveClass('opacity-0'); // the first was auto-closed
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
