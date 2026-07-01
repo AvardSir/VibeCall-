@@ -30,26 +30,27 @@
 
 ## Coordination with M4 (read before executing)
 
-M5 and the M4 plan (`2026-07-01-m4-host-lifecycle.md`) both touch: `errors.ts` (ErrorCode union), `socket.ts` (events/deps), `rooms.ts`, `routes/rooms/controller.ts` (`join`), `config.ts`, `shared/types/index.ts`, `shared/lib/socketEvents.ts`, `useConnectionStore.ts`, `apiClient.ts`. **Recommended order: land one milestone fully, then rebase the other and reconcile these files** (merge unions/event maps/deps, never replace). This plan assumes M5 may run before or after M4:
-- If **M4 is already merged:** hook `attachments.deleteRoomFolder(roomId)` into the room-teardown path (M4's `end` controller + grace-expiry `onEnded`), and MERGE the ErrorCode/socket additions.
-- If **M4 is not present:** M5's per-room folder cleanup relies on the **startup orphan sweep** plus a best-effort delete when a room is known to end; note this as a limitation resolved once M4 lands. Do NOT build M4's lifecycle here.
+**Resolved (2026-07-01): M4 is already present on this branch.** This plan's branch `feat/m5-chat-attachments` was cut from `feat/m3-host-guest-rooms`, which already contains the M3/M4 work (landing/rooms/roles + host lifecycle: `end` controller, grace `onEnded`, room-end teardown). So the file-overlap concern below is effectively resolved — **build directly on the current tree** and merge (never replace) the shared additions.
+
+M5 and M4 both touch: `errors.ts` (ErrorCode union), `socket.ts` (events/deps), `rooms.ts`, `routes/rooms/controller.ts` (`join`/`end`), `config.ts`, `shared/types/index.ts`, `shared/lib/socketEvents.ts`, `useConnectionStore.ts`, `apiClient.ts`. When editing these, **extend the existing unions/event maps/deps objects in place** — do not overwrite M4's entries.
+- **Cleanup wiring (M4 present):** hook `attachments.deleteRoomFolder(roomId)` (and the currently-missing `chat.clear(roomId)`) into the room-teardown path — M4's `end` controller **and** grace-expiry (`grace.ts` `endExpired`, via a new `onCleanup` callback). The startup orphan sweep remains the backstop for crash-orphaned folders. Do NOT rebuild M4's lifecycle here.
 
 ---
 
 ## Resolved Design Decisions (from the M5 requirements review)
 
-⚑ = worth a human confirm before execution.
+All decisions below are locked (brainstorm 2026-07-01); none remain open.
 
 - **D1 — HTTP upload → socket metadata** (spec-confirmed). Files never traverse the socket; `send_message` carries the full `Attachment[]` returned by the upload endpoint.
-- **D2 ⚑ — `memberToken` infrastructure is built in M5.** It doesn't exist yet. Minimal approach: the registry tracks `memberTokens: Map<identity, token>` per room (not a full Participant map); `join` issues one (`randomBytes(16).base64url`), stores it, and returns it; the FE keeps it in `useConnectionStore.localParticipant.memberToken`. Upload verifies the header token, download verifies the query token, both via `registry.verifyMemberToken(roomId, token)`.
+- **D2 — `memberToken` infrastructure is built in M5.** Decided 2026-07-01 (brainstorm): issue an opaque per-participant token at `/join` (spec §3.5). It doesn't exist yet. Minimal approach: the registry tracks per-room `memberTokens` (a `Set<string>` is sufficient — no identity mapping is needed for M5 auth); `join` issues one (`randomBytes(16).base64url`), stores it, and returns it; the FE keeps it in `useConnectionStore.localParticipant.memberToken`. Upload verifies the header token, download verifies the query token, both via `registry.verifyMemberToken(roomId, token)`.
 - **D3 — `multer` for multipart**, memory storage (`multer.memoryStorage()`), so the service controls disk writes + validation before persisting. Add `multer` + `@types/multer` to backend deps.
 - **D4/D5 — validate type by BOTH extension and MIME, on BOTH client and server.** Client gates staging (instant error, no round-trip); server re-validates (defense vs. spoof).
 - **D6/D8 — token appended at render time.** Thumbnails: `<img src={attachment.url + '?token=' + memberToken}>`. File chips: `<a href={url + '?token=' + memberToken} download>`. Token is room-scoped + ephemeral; visible in devtools is acceptable per scope.
-- **D7 ⚑ — animated thumbnails are best-effort.** Thumbnails render via `<img>`; GIF/WebP may animate in the list. A true still-first-frame (canvas capture) is a **deferred refinement** (flagged), not built here — the lightbox still shows full animation.
+- **D7 — animated thumbnails are frozen to a still first frame (client-side canvas).** Decided 2026-07-01 (brainstorm). Non-animated images render via `<img>`; GIF/WebP (detected by `mime`) render into a `<canvas>` drawn from the first frame of an offscreen `Image`, so the list view is a **still** (FR-27). The lightbox uses a normal `<img>` and animates there. No server-side image library (avoids the `sharp`/musl risk noted in `CLAUDE.md`).
 - **D9 — lightbox close `×` at top-right.**
 - **D10 — staged attachments live in `useChatStore`** (`stagedAttachments`), per the store rules, so `canSend` and the panel can read them; cleared on successful send.
 - **D11 — full `Attachment[]` in the `send_message` payload** (spec flow), so the server includes them in history + broadcast.
-- **D12 ⚑ — simple resend semantics.** All staged files are uploaded before `send_message`. If ANY upload fails, the whole send fails → text + staged files retained → resend re-uploads all (new `fileId`s). Orphaned earlier uploads are reclaimed by the room-end cleanup / startup sweep. (No per-file resume.)
+- **D12 — upload-on-send + simple resend semantics.** Decided 2026-07-01 (brainstorm): files are staged locally and validated on pick, then all staged files are uploaded **on Send**, before `send_message`. If ANY upload fails, the whole send fails → text + staged files retained (message shows `Not delivered`) → resend re-uploads all (new `fileId`s). Orphaned earlier uploads are reclaimed by the room-end cleanup / startup sweep. (No per-file resume.)
 
 ---
 
@@ -631,14 +632,18 @@ it('optimistic + delivered items carry attachments', () => {
 
 ---
 
-### Task 17: ChatMessageItem — thumbnails + file chips
+### Task 17: AttachmentThumbnail (canvas-freeze) + file chips + ChatMessageItem
 
-**Files:** Modify `frontend/src/features/chat/components/ChatMessageItem.tsx`, `ChatMessageItem.test.tsx`.
+**Files:** Create `frontend/src/features/chat/components/AttachmentThumbnail.tsx`, `AttachmentThumbnail.test.tsx`; modify `frontend/src/features/chat/components/ChatMessageItem.tsx`, `ChatMessageItem.test.tsx`.
 
-**Interfaces:** For each `item.attachments`: `kind === 'image'` → a clickable thumbnail `<button onClick={() => onOpenImage(url + '?token=' + memberToken)}><img src={url + '?token=' + memberToken} alt={name} .../></button>`; `kind === 'file'` → a chip with name + humanized size + a download `<a href={url + '?token=' + memberToken} download={name} aria-label={t('chat.download')}>`. `memberToken` comes from `useConnectionStore`. Add an `onOpenImage(src: string, alt: string)` prop threaded from `ChatPanel`.
+**Interfaces:**
+- `AttachmentThumbnailProps = { src: string; name: string; animated: boolean; onOpen: () => void }`. When `animated` is false, render a clickable `<img src={src} alt={name}>`. When `animated` is true (GIF/WebP — see D7), render a `<canvas>` drawn from the **first frame** of an offscreen `Image(src)` (on `load`, size to a ≤160px box preserving aspect, `ctx.drawImage`), so the list view is a **still**; make it clickable (`role="button"`, `tabIndex={0}`, Enter/Space + click → `onOpen`).
+- `ChatMessageItem`: for each `item.attachments`, compute `src = a.url.startsWith('blob:') ? a.url : attachmentDownloadUrl(a, memberToken)` (blob previews while sending; tokened URL once delivered). `kind === 'image'` → `<AttachmentThumbnail src={src} name={a.name} animated={a.mime === 'image/gif' || a.mime === 'image/webp'} onOpen={() => onOpenImage(src, a.name)} />`; `kind === 'file'` → a chip with name + humanized size + a download `<a href={src} download={a.name} aria-label={t('chat.download')}>`. `memberToken` comes from `useConnectionStore`; `attachmentDownloadUrl` from `apiClient` (Task 11). Add an `onOpenImage(src: string, alt: string)` prop threaded from `ChatPanel`.
 
-- [ ] **Step 1: Tests (red)** — an image attachment renders an `<img>` whose `src` contains `?token=`; clicking it calls `onOpenImage`; a file attachment renders a download link with the token and the file name/size. Provide `memberToken` via the store (seed it) and pass an `onOpenImage` spy.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** — add a small `formatBytes` helper (e.g. `12.3 KB`); render both branches; keep existing text + `Sending…`/`Not delivered` rendering. **Step 4: Run** `npx vitest run src/features/chat/components/ChatMessageItem.test.tsx` → PASS. **Step 5: Commit** — `git commit -m "feat(frontend): render image thumbnails + file download chips"`.
+- [ ] **Step 1: Tests (red)** —
+  - `AttachmentThumbnail`: a non-animated image renders an `<img alt={name}>` and click calls `onOpen`; an `animated` thumbnail renders a `<canvas>` (assert `container.querySelector('canvas')`).
+  - `ChatMessageItem`: an image attachment renders a thumbnail whose delivered `src` contains `?token=`; clicking it calls `onOpenImage`; a file attachment renders a download link with the token + file name/size. Seed `memberToken` in the store and pass an `onOpenImage` spy.
+- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** — build `AttachmentThumbnail` (canvas `useEffect` that loads the image and draws the first frame; `img.crossOrigin = 'anonymous'`); add a small `formatBytes` helper (e.g. `12.3 KB`); render both attachment branches in `ChatMessageItem`; keep existing text + `Sending…`/`Not delivered` rendering. **Step 4: Run** `npx vitest run src/features/chat/components/AttachmentThumbnail.test.tsx src/features/chat/components/ChatMessageItem.test.tsx` → PASS. **Step 5: Commit** — `git commit -m "feat(frontend): canvas-freeze image thumbnails (animated still) + file download chips"`.
 
 ---
 
@@ -704,23 +709,19 @@ it('does not close when the image itself is clicked', () => {
 **Placeholder scan:** every task carries concrete code/tests + commands. Inline SDK/lib-verify points: multer's file-size-limit error → 413 mapping (Task 7, verify multer's `LIMIT_FILE_SIZE` error surface); the `uploadAttachment` error-body cast (Task 11, low-stakes per the post-MR3 convention).
 
 **Deferred follow-ups (flag to the executor/user):**
-- **⚑ D7** — animated GIF/WebP render as `<img>` (may animate in the list); a true still-first-frame thumbnail (canvas capture) is deferred.
-- **⚑ D2** — memberToken is a minimal per-room `Map<identity,token>`, not the spec's full `Participant` map; sufficient for M5 auth, revisit if M4/M6 need richer per-participant state.
+- **D7 is built, not deferred** — GIF/WebP render as a canvas-frozen still in the list and animate only in the lightbox (Task 17). Note: canvas first-frame capture relies on the offscreen `Image` having loaded a decodable first frame; if a specific codec fails to draw, the thumbnail falls back to a blank canvas box — acceptable for scope.
+- **D2 resolved** — memberToken is a per-room `Set<string>` issued at `/join`; sufficient for M5 auth. A richer per-participant registry (identity mapping) is a later concern only if M6 needs it.
 - Lightbox focus-return to the exact trigger element is best-effort (Task 19) — a stored trigger ref can be added if QA finds focus drifts.
-- Upload folder cleanup fully closes only once M4's room-teardown is present (Task 9); until then the startup sweep is the backstop.
+- **No explicit "resend" button** — a failed message shows `Not delivered` with its text + staged files retained visually, matching the existing text-chat behavior (no resend UI exists today). Adding a resend affordance is out of M5 scope.
+- Upload folder cleanup hooks into M4's teardown (present on this branch, Task 9); the startup sweep remains the backstop for crash-orphaned folders.
 
 ---
 
-**⚑ Decisions to confirm before execution:**
-1. **memberToken minimal map** (D2) vs. building the full `Participant` registry now — the plan uses the minimal map. Confirm.
-2. **Animated thumbnails best-effort** (D7) — accept auto-animating GIFs in the list for now? Confirm or request the canvas still-frame.
-3. **multer** as the multipart lib (D3) — confirm (vs. busboy).
-4. **Sequencing vs. M4** — M4 and M5 overlap in ~9 files. Recommend finishing one, then rebasing the other and merging the shared unions/event-maps/deps. Which goes first?
+**Decisions locked (brainstorm 2026-07-01 — no open confirms remain):**
+1. **memberToken at `/join`** (D2), stored as a per-room `Set<string>`.
+2. **Animated thumbnails: client-side canvas still-frame** (D7) — GIF/WebP are still in the list, animate only in the lightbox.
+3. **multer** for multipart (D3).
+4. **Upload-on-send** (D12) — files staged locally + validated on pick, uploaded only on Send.
+5. **M4 is present on this branch** — build directly on the current tree; hook cleanup into M4's teardown (see "Coordination with M4").
 
-**Plan complete and saved to `docs/superpowers/plans/2026-07-01-m5-chat-attachments.md`.** I did not modify any existing/code files — only created this new plan document (safe alongside the running background agent).
-
-**Execution options (when ready):**
-1. **Subagent-Driven (recommended)** — fresh subagent per task + task review + final whole-branch review.
-2. **Inline Execution** — via executing-plans with checkpoints.
-
-Which approach — and how do you want to resolve the four ⚑ decisions (especially M4-vs-M5 ordering)?
+Aligned with the design spec: `docs/superpowers/specs/2026-07-01-m5-chat-attachments-design.md`.
