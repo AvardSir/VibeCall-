@@ -12,6 +12,7 @@ function item(over: Partial<ChatItem>): ChatItem {
     sentAt: 0,
     text: 'hello',
     status: 'delivered',
+    attachments: [],
     ...over,
   };
 }
