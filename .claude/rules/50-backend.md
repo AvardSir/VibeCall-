@@ -53,6 +53,18 @@ primary owner, e.g. `rooms.ts`). Promote a responsibility to its own folder with
 - **Use Socket.IO's own generic `Socket`/`Server` types** in handlers (alias them, e.g. `ChatSocket`
   / `ChatServer`, with `SocketData` carrying the binding). Do **not** hand-roll structural subtypes
   of the socket/server API.
+- **Compose Socket.IO onto the Express app correctly — Express is the base HTTP handler, Socket.IO
+  *wraps* it.** Build the Express `app` first, then `const httpServer = createServer(app); io.attach(httpServer);`.
+  Construct the `Server` **detached** (`new Server({ cors })`, no http server) so it can be created
+  before the app and attached afterward. **Never** create a bare `createServer()`, attach Socket.IO to
+  it, then add Express with `httpServer.on('request', app)`: Socket.IO *snapshots* the server's
+  `request` listeners at attach time, so an Express handler added afterward becomes a **second,
+  independent** `request` listener. Both then fire on every request; on a `/socket.io/…` handshake
+  engine.io responds and Express then calls `setHeader` on the already-sent response →
+  `ERR_HTTP_HEADERS_SENT`, an **uncaught exception that crashes the process on the first socket
+  connection**. This shipped once (2026-07-01) despite green unit gates, because the crash lives in
+  `server.ts` composition, not in `createApp`. After `io.attach`, the wired `httpServer` must have
+  **exactly one** `request` listener (Socket.IO's delegate, which forwards non-socket requests to Express).
 - **Guard every listener.** Wrap each `socket.on(event, …)` body so a throw can't escape into the
   runtime — `logger.error({ err }, '<event> handler failed')` (mirror this across all events, sync or
   async). An uncaught throw in a listener can crash the process.
