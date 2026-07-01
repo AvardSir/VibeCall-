@@ -1158,6 +1158,14 @@ describe('joinRoom', () => {
     const result = await joinRoom('r1', 'Ann');
     expect(result).toEqual({ ok: false, error: 'NOT_FOUND' });
   });
+
+  // Keeps the join-success schema load-bearing (carried over from MR3): a malformed success body
+  // (missing token fields) must map to INTERNAL, not slip through as a valid session.
+  it('returns INTERNAL when the join success body is malformed', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ accessToken: 'jwt' }));
+    const result = await joinRoom('r1', 'Ann');
+    expect(result).toEqual({ ok: false, error: 'INTERNAL' });
+  });
 });
 ```
 
@@ -1212,9 +1220,11 @@ const roomsUrl = (): string => urlJoin(BASE_URL, 'rooms');
 const roomStatusUrl = (roomId: string): string => urlJoin(roomsUrl(), encodeURIComponent(roomId));
 const joinUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'join');
 
-// Response schemas — validate untrusted server payloads at the boundary instead of casting.
-const createRoomResponseSchema = z.object({ roomId: z.string(), hostToken: z.string() });
-const roomStatusResponseSchema = z.object({ status: z.enum(['available', 'full']) });
+// Runtime schema kept ONLY on the joinRoom SUCCESS path: accessToken/livekitUrl feed straight into
+// the LiveKit SDK, so a malformed reply must fail loudly rather than become a cryptic media error.
+// createRoom and getRoomStatus are low-stakes (a bad roomId just surfaces as NOT_FOUND when used) →
+// schema-free per the "validate only security-critical payloads" rule (20-frontend-structure.md).
+// This preserves the post-MR3 apiClient convention — do NOT add schemas to createRoom/status/error.
 const joinResponseSchema = z.object({
   accessToken: z.string(),
   livekitUrl: z.string(),
@@ -1223,23 +1233,20 @@ const joinResponseSchema = z.object({
   displayName: z.string(),
   roomId: z.string(),
 });
-const errorBodySchema = z.object({ error: z.enum(['FULL', 'INVALID_NAME', 'NOT_FOUND', 'INTERNAL']) });
 
 export async function createRoom(): Promise<CreateRoomResult> {
   const res = await fetch(roomsUrl(), { method: 'POST' });
   if (!res.ok) return { ok: false, error: 'INTERNAL' };
-  const data: unknown = await res.json();
-  const parsed = createRoomResponseSchema.safeParse(data);
-  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: 'INTERNAL' };
+  // Low-stakes cast: roomId/hostToken only build a URL; a malformed one surfaces as NOT_FOUND when
+  // the link is used, so a runtime schema here would be ceremony without a safety benefit.
+  const data = (await res.json()) as { roomId: string; hostToken: string };
+  return { ok: true, data };
 }
 
 export async function getRoomStatus(roomId: string): Promise<RoomStatus> {
   const res = await fetch(roomStatusUrl(roomId));
   if (res.status === 404) return 'not-found';
-  const body: unknown = await res.json();
-  const parsed = roomStatusResponseSchema.safeParse(body);
-  if (parsed.success) return parsed.data.status;
-  throw new Error('Malformed room status response');
+  return ((await res.json()) as { status: RoomStatus }).status;
 }
 
 export async function joinRoom(roomId: string, name: string, hostToken?: string): Promise<JoinResult> {
@@ -1250,15 +1257,18 @@ export async function joinRoom(roomId: string, name: string, hostToken?: string)
     body: JSON.stringify(payload),
   });
   if (res.ok) {
-    const data: unknown = await res.json();
-    const parsed = joinResponseSchema.safeParse(data);
+    const parsed = joinResponseSchema.safeParse(await res.json());
     return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: 'INTERNAL' };
   }
-  const body: unknown = await res.json().catch(() => ({}));
-  const parsed = errorBodySchema.safeParse(body);
-  return { ok: false, error: parsed.success ? parsed.data.error : 'INTERNAL' };
+  // Error branch is low-stakes → documented cast, no schema (matches the post-MR3 convention).
+  const body = (await res.json().catch(() => ({}))) as { error?: JoinError };
+  return { ok: false, error: body.error ?? 'INTERNAL' };
 }
 ```
+
+> **Reconciliation note (post-MR3):** MR3 refactored `apiClient` to keep a runtime schema **only** on the
+> join-success payload (the LiveKit token) and cast low-stakes bodies. The code above follows that
+> convention. Update the `import type` line to `import type { CreateRoomResult, JoinError, JoinResult, RoomStatus } from '../types';`.
 
 - [ ] **Step 5: Run test to verify it passes**
 
