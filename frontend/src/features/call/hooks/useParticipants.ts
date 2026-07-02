@@ -36,7 +36,13 @@ export function useParticipants(): void {
   useEffect(() => {
     function sync(): void {
       const all: Participant[] = [room.localParticipant, ...room.remoteParticipants.values()];
-      const ordered = [...all].sort(
+      // Guard against a duplicate identity (shouldn't happen — local and remote sets are disjoint —
+      // but dedupe defensively). First occurrence wins, so the local participant takes precedence.
+      const unique = new Map<string, Participant>();
+      for (const participant of all) {
+        if (!unique.has(participant.identity)) unique.set(participant.identity, participant);
+      }
+      const ordered = [...unique.values()].sort(
         (a, b) => (a.joinedAt?.getTime() ?? 0) - (b.joinedAt?.getTime() ?? 0),
       );
       setParticipants(ordered.map((p) => toCallParticipant(p, p === room.localParticipant)));
