@@ -223,7 +223,44 @@ These were direct user requests after M7b; each is a committed change on the bra
   `docker compose up --build`, or `docker compose exec frontend npm install` on a running stack (the
   anonymous `node_modules` volume shadows the host install). `down -v` only for base-image/musl changes.
 
+## 2026-07-02 session — screen-share polish + GitLab CI/CD
+
+### Screen-share / grid fixes (committed on `feat/m6-screen-share`)
+- **Strip hidden during share (`e1cb2b0`):** the share-layout column lacked `min-h-0`, so the
+  async-sized shared `<video>` ballooned and pushed the thumbnail strip below the `overflow-hidden`
+  fold on wide viewports (the grid branch already had this fix from `b2006bf`; share was missed).
+- **Late joiner didn't see the share + roster froze (`e1cb2b0`):** backend now emits the current
+  `share_state` on `join_chat` (new `RoomRegistry.getActiveSharer`); roster sync (`useParticipants`)
+  moved from `VideoGrid` (unmounted during a share) to `CallStage` — the always-mounted, in-room
+  parent of both grid and strip. It must NOT live in `CallShell` (outside the LiveKitRoom provider →
+  `useRoomContext` throws → crashed the in-call view, a green-gates-passing regression I hit and fixed).
+- **Unequal grid gaps (`9ea45a7`):** 1fr cells letterboxed each 16:9 tile, inflating the vertical gap.
+  Fix: per-count aspect on the grid box (16:9 for 1/3/4-up, 32:9 for 2-up), sized from a definite
+  width, tiles fill their cells → the only gap is the uniform `gap-4`. (First attempt with %-widths in
+  `auto` tracks collapsed the tiles — a circular dependency; reverted.)
+- **Tooltip tail (`e0fa5a4`):** added the Figma `56:3010` speech-bubble triangle (CSS border, colour
+  mirrors the bubble, direction by placement).
+- **Strip centered under the shared screen (`justify-center`, in `e1cb2b0`).**
+
+### GitLab CI/CD + demo2 deploy (committed on `feat/m6-screen-share`; also on new branch `develop`)
+- **Validation pipeline** (`.gitlab-ci.yml`): lint + typecheck + test + build for FE & BE in parallel.
+- **Prod Dockerfiles** (`backend/Dockerfile`, `frontend/Dockerfile` + `nginx.conf`): multi-stage,
+  built + smoke-tested locally.
+- **Deploy** to fora-soft demo2 via `docker-compose.develop.yml` (standalone; livekit + backend +
+  frontend), routed by **Traefik labels**, gated `when: manual`. `deploy/README.md` has the checklist.
+- **DevOps-confirmed params:** runner tag **`kmb-deploy`** (docker executor, deploys onto the host
+  docker so containers are Traefik-visible) · Traefik network **`traefik`**, entrypoint **`http`**, **no
+  certresolver** (TLS terminated upstream → **public scheme HTTPS**) · domains **`*-kmb.stg.forasoft.com`**
+  (`dev-kmb` / `dev-api-kmb` / `dev-livekit-kmb`, DNS resolves) · server IP **167.233.84.103** · **LiveKit
+  media = UDP** (publish 50000–50100/udp + 7881/tcp, `rtc.use_external_ip`; firewall must open the UDP
+  range; no TURN).
+- `FIXED_ROOM_NAME` in the dev compose is a **dead var** (not referenced in code).
+
 ## Possible next steps (await user direction)
-- **Push `feat/m6-screen-share` and open a PR** into `main` (M6 + M7a + M7b + the UX pass).
+- **Deploy to demo2:** set the 5 GitLab CI/CD Variables (scope `develop`; see `deploy/README.md`) →
+  `git push -u origin develop` (runs validation) → run the manual `deploy_develop` job → verify →
+  flip `when: manual` → `on_success`. Pin the LiveKit image version.
+- **Push + PR into `main`** (M6 + M7a + M7b + UX pass + CI/CD). NB: `feat/m6-screen-share`/`develop`
+  have **diverged from `origin/main`** (origin/main +12, branch +111) — reconcile before the MR.
 - Run the deferred full manual `docker compose up --build` smoke of M6/M7 in both themes before merge.
 - Gitignore `.claude/worktrees/`; remove the stray root `.txt`.
