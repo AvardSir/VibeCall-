@@ -9,6 +9,7 @@ export const en = {
     language: 'Language',
   },
   landing: {
+    appName: 'КМБ',
     tagline: 'Group video calls for up to four people. No sign-up required.',
     startCall: 'Start a call',
     startCallError: 'Unable to start a call right now. Please try again.',

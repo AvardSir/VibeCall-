@@ -4,7 +4,7 @@ import { ru } from './ru';
 
 describe('M3 i18n keys', () => {
   it('exposes the landing namespace with EN/RU parity', () => {
-    expect(Object.keys(en.landing)).toEqual(['tagline', 'startCall', 'startCallError']);
+    expect(Object.keys(en.landing)).toEqual(['appName', 'tagline', 'startCall', 'startCallError']);
     expect(Object.keys(ru.landing)).toEqual(Object.keys(en.landing));
   });
   it('exposes copy-link and not-found strings', () => {
