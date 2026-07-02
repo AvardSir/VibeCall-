@@ -25,22 +25,22 @@ media via the shared coturn TURN (creds in the wiki: `forasoft` / `ajhfcjanfqcct
 - Runner **`kmb-deploy`**, **docker executor**, deploys onto the **host docker** (containers persist,
   Traefik-visible).
 - Traefik: network **`traefik`**, entrypoint **`http`**, **no certresolver** (TLS upstream of Traefik).
+- **Public scheme: HTTPS** (TLS terminated upstream) → secure context OK for camera/mic/screen-share;
+  variables use `https` / `wss`.
 - Domains `*-kmb.stg.forasoft.com` — `dev-kmb` / `dev-api-kmb` / `dev-livekit-kmb` already resolve.
 - Server public IP **167.233.84.103** (LiveKit `rtc.use_external_ip`).
 
-## Still pending (2 answers)
+## Still pending (1 answer)
 
-1. **Public scheme HTTPS vs HTTP.** Camera/mic/screen-share need a secure context (HTTPS) on a real
-   domain — plain HTTP breaks them. This sets the schemes in the variables below (`https/wss` vs `http/ws`).
-2. **LiveKit media:** is UDP 50000–50100 open, or should we drop it and use coturn TURN? Adjust the
-   `livekit` ports in `docker-compose.develop.yml` + `livekit.yaml` accordingly.
+- **LiveKit media:** is UDP 50000–50100 open, or should we drop it and use coturn TURN? Adjust the
+  `livekit` ports in `docker-compose.develop.yml` + `livekit.yaml` accordingly.
 
 ## Your action — GitLab → Settings → CI/CD → Variables (scope: develop)
 
 - `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-- `LIVEKIT_URL` = `wss://dev-livekit-kmb.stg.forasoft.com`  (`ws://` if the edge is HTTP)
-- `CORS_ORIGIN` = `https://dev-kmb.stg.forasoft.com`  (`http://` if the edge is HTTP)
-- `VITE_API_BASE_URL` = `https://dev-api-kmb.stg.forasoft.com`  (`http://` if the edge is HTTP)
+- `LIVEKIT_URL` = `wss://dev-livekit-kmb.stg.forasoft.com`
+- `CORS_ORIGIN` = `https://dev-kmb.stg.forasoft.com`
+- `VITE_API_BASE_URL` = `https://dev-api-kmb.stg.forasoft.com`
 
 ## Files
 

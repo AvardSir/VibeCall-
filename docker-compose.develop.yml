@@ -8,14 +8,14 @@
 # ports — Traefik reaches them over the `traefik` network. Only LiveKit MEDIA ports are published,
 # since WebRTC media bypasses Traefik.
 #
-# Config is injected from GitLab CI/CD Variables (scope: develop). Expected:
+# Config is injected from GitLab CI/CD Variables (scope: develop). Public scheme is HTTPS (TLS upstream
+# of Traefik), so:
 #   LIVEKIT_API_KEY, LIVEKIT_API_SECRET
-#   LIVEKIT_URL        = wss://dev-livekit-kmb.stg.forasoft.com   (or ws:// if the public edge is HTTP)
-#   CORS_ORIGIN        = https://dev-kmb.stg.forasoft.com          (or http://)
-#   VITE_API_BASE_URL  = https://dev-api-kmb.stg.forasoft.com      (or http://; baked into the FE build)
+#   LIVEKIT_URL        = wss://dev-livekit-kmb.stg.forasoft.com
+#   CORS_ORIGIN        = https://dev-kmb.stg.forasoft.com
+#   VITE_API_BASE_URL  = https://dev-api-kmb.stg.forasoft.com      (baked into the FE build)
 #
-# STILL CONFIRM with DevOps (do not block this file):
-#   - public scheme HTTPS vs HTTP (secure context needed for camera/screen-share) → sets the schemes above
+# STILL CONFIRM with DevOps (does not block this file):
 #   - LiveKit media: is the UDP range below open, or should we drop it and use coturn TURN?
 
 version: "3.8"
