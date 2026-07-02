@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { Socket } from 'socket.io-client';
-import { createSocket } from '../../../shared/lib/socketClient';
+import { useSocket } from '../../../shared/hooks/useSocket';
 import { useChatStore } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
 import type { ChatMessage, ParticipantRole } from '../../../shared/types';
@@ -8,6 +7,7 @@ import type { ChatMessage, ParticipantRole } from '../../../shared/types';
 export type UseChatResult = { sendMessage: (text: string) => void };
 
 export function useChat(role: ParticipantRole): UseChatResult {
+  const socket = useSocket();
   const localParticipant = useConnectionStore((s) => s.localParticipant);
   const phase = useConnectionStore((s) => s.phase);
   const setHistory = useChatStore((s) => s.setHistory);
@@ -15,44 +15,51 @@ export function useChat(role: ParticipantRole): UseChatResult {
   const addOptimistic = useChatStore((s) => s.addOptimistic);
   const markFailed = useChatStore((s) => s.markFailed);
 
-  const socketRef = useRef<Socket | null>(null);
   const joinedRef = useRef(false);
   const clientSeq = useRef(0);
 
   useEffect(() => {
     if (!localParticipant) return;
     const identity = localParticipant.identity;
-    const socket = createSocket();
-    socketRef.current = socket;
     joinedRef.current = false;
 
     // Join only after LiveKit reports the call connected: the participant is
     // registered with the SFU by then, so the server's listParticipants()
     // membership check succeeds. Joining on the bare socket 'connect' races that
     // registration and is rejected as NOT_A_MEMBER with no recovery.
-    const joinChat = (): void => {
+    const handleConnect = (): void => {
       if (joinedRef.current) return;
       if (useConnectionStore.getState().phase !== 'connected') return;
       joinedRef.current = true;
       socket.emit('join_chat', { identity, role });
     };
 
-    socket.on('connect', joinChat);
-    socket.on('disconnect', () => {
+    const handleDisconnect = (): void => {
       // A reconnect creates a fresh server-side binding, so allow re-joining.
       joinedRef.current = false;
-    });
-    socket.on('chat_history', (messages: ChatMessage[]) => setHistory(messages));
-    socket.on('chat_message', (message: ChatMessage) => receiveMessage(message, identity));
-    socket.on('message_failed', () => markFailed());
+    };
+
+    const handleChatHistory = (messages: ChatMessage[]): void => setHistory(messages);
+
+    const handleChatMessage = (message: ChatMessage): void => receiveMessage(message, identity);
+
+    const handleMessageFailed = (): void => markFailed();
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('chat_history', handleChatHistory);
+    socket.on('chat_message', handleChatMessage);
+    socket.on('message_failed', handleMessageFailed);
 
     return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
-      socketRef.current = null;
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('chat_history', handleChatHistory);
+      socket.off('chat_message', handleChatMessage);
+      socket.off('message_failed', handleMessageFailed);
       joinedRef.current = false;
     };
-  }, [localParticipant, role, setHistory, receiveMessage, markFailed]);
+  }, [localParticipant, role, socket, setHistory, receiveMessage, markFailed]);
 
   // Common case: the socket connected before LiveKit finished connecting, so the
   // 'connect' handler saw phase !== 'connected' and skipped. When the phase
@@ -61,21 +68,19 @@ export function useChat(role: ParticipantRole): UseChatResult {
   // socket is not open yet and flushes it on connect.
   useEffect(() => {
     if (phase !== 'connected' || joinedRef.current) return;
-    const socket = socketRef.current;
-    if (!socket || !localParticipant) return;
+    if (!localParticipant) return;
     joinedRef.current = true;
     socket.emit('join_chat', { identity: localParticipant.identity, role });
-  }, [phase, localParticipant, role]);
+  }, [phase, localParticipant, role, socket]);
 
   const sendMessage = useCallback(
     (text: string) => {
-      const socket = socketRef.current;
-      if (!socket || !localParticipant) return;
+      if (!localParticipant) return;
       const clientId = `c_${clientSeq.current++}`;
       addOptimistic(clientId, text, localParticipant);
       socket.emit('send_message', { text });
     },
-    [addOptimistic, localParticipant],
+    [addOptimistic, localParticipant, socket],
   );
 
   return { sendMessage };

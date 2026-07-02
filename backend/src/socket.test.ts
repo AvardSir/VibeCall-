@@ -1,8 +1,30 @@
-import { describe, it, expect, vi } from 'vitest';
-import { handleJoinChat, handleSendMessage } from './socket.js';
-import type { ChatGatewayDeps, ChatSocketBinding } from './socket.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { handleJoinChat, handleSendMessage, createSocketServer } from './socket.js';
+import type { ChatGatewayDeps, ChatSocketBinding, ChatSocket, ChatServer } from './socket.js';
+import type { Server as HttpServer } from 'node:http';
 import { createChatService } from './chat.js';
+import { logger } from './logger.js';
 
+// ---------------------------------------------------------------------------
+// Fake socket.io Server so createSocketServer does not bind a real port.
+// We capture the connection handler to drive tests directly.
+// ---------------------------------------------------------------------------
+type ConnectionHandler = (socket: unknown) => void;
+
+let capturedConnectionHandler: ConnectionHandler | undefined;
+
+vi.mock('socket.io', () => {
+  class Server {
+    on(event: string, handler: ConnectionHandler): void {
+      if (event === 'connection') capturedConnectionHandler = handler;
+    }
+  }
+  return { Server };
+});
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
 function makeSocket() {
   const emitted: { event: string; payload: unknown }[] = [];
   const joined: string[] = [];
@@ -39,12 +61,52 @@ function makeDeps(participants: { identity: string; name: string }[]): ChatGatew
   };
 }
 
+// ---------------------------------------------------------------------------
+// Helper: use the mocked Server to extract the send_message listener that
+// createSocketServer registers, bound to a pre-bound fake socket.
+// ---------------------------------------------------------------------------
+function extractSendMessageListener(deps: ChatGatewayDeps, binding: ChatSocketBinding) {
+  capturedConnectionHandler = undefined;
+
+  // Fake http.Server — createSocketServer passes it to `new Server(httpServer, ...)`.
+  // The mock ignores the arguments, so {} is fine.
+  const fakeHttpServer = {} as HttpServer;
+  createSocketServer(fakeHttpServer, deps);
+
+  // The Server mock captures the connection handler registered by createSocketServer.
+  const connectionHandler: ConnectionHandler | undefined = capturedConnectionHandler;
+  if (connectionHandler === undefined) throw new Error('connection handler was not registered');
+
+  // Build a fake socket that records which event listeners are registered.
+  const listeners: Record<string, (payload: unknown) => void> = {};
+  const fakeSocket = {
+    data: { binding } as { binding?: ChatSocketBinding },
+    join: (_room: string): void => {},
+    emit: (_event: string, _payload: unknown): void => {},
+    on: (event: string, handler: (payload: unknown) => void): void => {
+      listeners[event] = handler;
+    },
+  };
+
+  // Trigger the connection callback — this causes createSocketServer to call
+  // socket.on('send_message', ...) on our fake socket.
+  const handler: ConnectionHandler = connectionHandler;
+  handler(fakeSocket);
+
+  const sendMessageListener = listeners['send_message'];
+  if (!sendMessageListener) throw new Error('send_message listener was not registered');
+  return sendMessageListener;
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 describe('handleJoinChat', () => {
   it('binds the socket and emits chat_history for a current member', async () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
     const { socket, emitted, joined } = makeSocket();
 
-    await handleJoinChat(socket, deps, { identity: 'p_1', role: 'guest' });
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { identity: 'p_1', role: 'guest' });
 
     expect(socket.data.binding).toEqual({ identity: 'p_1', displayName: 'Ann', roomName: 'main' });
     expect(joined).toEqual(['main']);
@@ -55,7 +117,7 @@ describe('handleJoinChat', () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
     const { socket, emitted, joined } = makeSocket();
 
-    await handleJoinChat(socket, deps, { identity: 'ghost', role: 'guest' });
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { identity: 'ghost', role: 'guest' });
 
     expect(socket.data.binding).toBeUndefined();
     expect(joined).toEqual([]);
@@ -69,7 +131,7 @@ describe('handleJoinChat', () => {
     );
     const { socket, emitted } = makeSocket();
 
-    await handleJoinChat(socket, deps, { identity: 'p_1', role: 'guest' });
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { identity: 'p_1', role: 'guest' });
 
     const history = emitted.find((e) => e.event === 'chat_history')?.payload as { text: string }[];
     expect(history.map((m) => m.text)).toEqual(['earlier']);
@@ -89,7 +151,7 @@ describe('handleSendMessage', () => {
     const { io, broadcasts } = makeIo();
 
     // Even if a client sneaks extra fields, only `text` is read; sender comes from the binding.
-    handleSendMessage(socket, io, deps, { text: 'hi' } as { text: string });
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, { text: 'hi' } as { text: string });
 
     expect(broadcasts).toHaveLength(1);
     const msg = broadcasts[0]!.payload as {
@@ -111,9 +173,9 @@ describe('handleSendMessage', () => {
     const { io, broadcasts } = makeIo();
 
     const a = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
-    handleSendMessage(a.socket, io, deps, { text: 'from one' });
+    handleSendMessage(a.socket as unknown as ChatSocket, io as unknown as ChatServer, deps, { text: 'from one' });
     const b = bound(deps, { identity: 'p_2', displayName: 'Ann', roomName: 'main' });
-    handleSendMessage(b.socket, io, deps, { text: 'from two' });
+    handleSendMessage(b.socket as unknown as ChatSocket, io as unknown as ChatServer, deps, { text: 'from two' });
 
     const ids = broadcasts.map((x) => (x.payload as { senderIdentity: string }).senderIdentity);
     expect(ids).toEqual(['p_1', 'p_2']);
@@ -124,7 +186,7 @@ describe('handleSendMessage', () => {
     const { socket, emitted } = makeSocket();
     const { io, broadcasts } = makeIo();
 
-    handleSendMessage(socket, io, deps, { text: 'hi' });
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, { text: 'hi' });
 
     expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'NOT_A_MEMBER' } }]);
     expect(broadcasts).toEqual([]);
@@ -135,7 +197,7 @@ describe('handleSendMessage', () => {
     const { socket, emitted } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
     const { io, broadcasts } = makeIo();
 
-    handleSendMessage(socket, io, deps, { text: '   ' });
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, { text: '   ' });
 
     expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'EMPTY_MESSAGE' } }]);
     expect(broadcasts).toEqual([]);
@@ -146,8 +208,35 @@ describe('handleSendMessage', () => {
     const { socket, emitted } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
     const { io } = makeIo();
 
-    handleSendMessage(socket, io, deps, { text: 'a'.repeat(1001) });
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, { text: 'a'.repeat(1001) });
 
     expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'TEXT_TOO_LONG' } }]);
+  });
+});
+
+describe('createSocketServer — send_message listener error handling', () => {
+  beforeEach(() => {
+    vi.spyOn(logger, 'error');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('does not propagate an error thrown by handleSendMessage and logs it via logger.error', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const throwingError = new Error('validateText exploded');
+    deps.chat.validateText = () => {
+      throw throwingError;
+    };
+
+    const binding: ChatSocketBinding = { identity: 'p_1', displayName: 'Ann', roomName: 'main' };
+    const listener = extractSendMessageListener(deps, binding);
+
+    // Without the try/catch fix, the error would propagate here and the test would fail.
+    expect(() => listener({ text: 'hi' })).not.toThrow();
+    expect(logger.error).toHaveBeenCalledOnce();
+    const call = vi.mocked(logger.error).mock.calls[0];
+    expect((call?.[0] as { err: unknown }).err).toBe(throwingError);
   });
 });
