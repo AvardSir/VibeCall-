@@ -11,6 +11,7 @@ import { useConnectionStore } from './stores/useConnectionStore';
 import { useMediaStore } from './stores/useMediaStore';
 import { useChatStore } from './stores/useChatStore';
 import { useParticipantsStore } from './stores/useParticipantsStore';
+import { SocketProvider } from './shared/lib/SocketProvider';
 
 const ROOM_NAME = 'main';
 
@@ -81,7 +82,7 @@ export function App(): JSX.Element {
     content = <ConnectErrorScreen onRetry={recheckCapacity} />;
   } else if (view === 'in-call' && session) {
     content = (
-      <>
+      <SocketProvider>
         <CallShell
           accessToken={session.accessToken}
           serverUrl={session.livekitUrl}
@@ -90,7 +91,7 @@ export function App(): JSX.Element {
           onRoomFull={() => setView('full')}
         />
         <ChatPanel role={session.role} />
-      </>
+      </SocketProvider>
     );
   } else {
     content = <PreJoinScreen onEnter={(name) => void handleEnter(name)} />;

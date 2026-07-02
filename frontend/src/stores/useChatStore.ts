@@ -21,7 +21,7 @@ type ChatState = {
   addOptimistic: (clientId: string, text: string, self: { identity: string; displayName: string }) => void;
   markFailed: () => void;
   openPanel: () => void;
-  closePanel: () => void;
+  togglePanel: () => void;
   reset: () => void;
 };
 
@@ -87,6 +87,9 @@ export const useChatStore = create<ChatState>()((set) => ({
     }),
 
   openPanel: () => set({ isPanelOpen: true, unreadCount: 0 }),
-  closePanel: () => set({ isPanelOpen: false }),
+  togglePanel: () =>
+    set((s) =>
+      s.isPanelOpen ? { isPanelOpen: false } : { isPanelOpen: true, unreadCount: 0 },
+    ),
   reset: () => set({ messages: [], isPanelOpen: false, unreadCount: 0 }),
 }));
