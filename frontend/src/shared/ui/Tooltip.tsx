@@ -53,7 +53,13 @@ export function Tooltip({ label, children, placement = 'top' }: TooltipProps): J
     timerRef.current = setTimeout(show, OPEN_DELAY_MS);
   };
 
-  const position = placement === 'top' ? 'bottom-full mb-2.5' : 'top-full mt-2.5';
+  const isTop = placement === 'top';
+  const position = isTop ? 'bottom-full mb-2.5' : 'top-full mt-2.5';
+  // Speech-bubble tail (Figma 56:3010): a 14×6px triangle centered on the body edge, pointing at the
+  // trigger. Built from borders on a zero-size box; its color mirrors the body bg in both themes.
+  const tail = isTop
+    ? 'top-full border-x-[7px] border-t-[6px] border-x-transparent border-t-slate-800 dark:border-t-white'
+    : 'bottom-full border-x-[7px] border-b-[6px] border-x-transparent border-b-slate-800 dark:border-b-white';
 
   return (
     <span
@@ -82,6 +88,7 @@ export function Tooltip({ label, children, placement = 'top' }: TooltipProps): J
         )}
       >
         {label}
+        <span aria-hidden="true" className={clsx('absolute left-1/2 h-0 w-0 -translate-x-1/2', tail)} />
       </span>
     </span>
   );
