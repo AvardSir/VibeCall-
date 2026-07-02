@@ -18,6 +18,13 @@ describe('Button', () => {
     expect(el).toHaveClass('bg-slate-800', 'text-white', 'hover:bg-slate-700');
   });
 
+  it('stretches to full width when fullWidth is set', () => {
+    const { rerender } = render(<Button>Join</Button>);
+    expect(screen.getByRole('button', { name: 'Join' })).not.toHaveClass('w-full');
+    rerender(<Button fullWidth>Join</Button>);
+    expect(screen.getByRole('button', { name: 'Join' })).toHaveClass('w-full');
+  });
+
   it('renders the danger variant', () => {
     render(<Button variant="danger">End call</Button>);
     expect(screen.getByRole('button', { name: 'End call' })).toHaveClass('bg-danger', 'text-white');
