@@ -5,23 +5,20 @@
 # repo — see the compose file. rtc.use_external_ip lets LiveKit advertise the server's public IP for
 # ICE candidates.
 
-port: 7880                     # signaling (nginx WSS subdomain proxies here)
+port: 7880                     # signaling (Traefik routes the WSS subdomain here over `traefik`)
 log_level: info
 
 rtc:
-  tcp_port: 7881               # ICE/TCP fallback — works even when the UDP range is closed
-  port_range_start: 50000      # CONFIRM: is this UDP range open on demo2's firewall?
-  port_range_end: 50100        #          if not, keep UDP closed and rely on tcp_port + TURN below
+  tcp_port: 7881               # ICE/TCP fallback
+  port_range_start: 50000      # ICE/UDP range — CONFIRMED open on demo2's firewall (DevOps 2026-07-02);
+  port_range_end: 50100        #   the host publishes 50000-50100/udp, so no TURN is needed
   use_external_ip: true        # advertise the server's public IP for ICE (server IP: 167.233.84.103)
 
-# Media relay via the shared coturn on demo2 (creds from the demo-server wiki). LiveKit hands these
-# ICE servers to clients so browsers behind strict NATs can still connect when UDP is unavailable.
-# CONFIRM with DevOps: exact coturn host/port + whether we should use it vs opening a UDP range.
+# TURN is not used: DevOps confirmed (2026-07-02) the ICE/UDP range above is open, so direct UDP
+# (with tcp_port as the fallback) is enough. If a strict-NAT client ever needs a relay, either enable
+# LiveKit's embedded TURN (turn.enabled + turn.tls_port + turn.domain — needs a cert) or wire the
+# shared demo2 coturn (creds in the demo-server wiki) as external ICE servers.
 turn:
-  enabled: false               # using the EXTERNAL shared coturn (below), not LiveKit's embedded TURN
-
-# NOTE: external ICE/TURN servers are passed to clients by the backend when it mints tokens, or via
-# the LiveKit client SDK's rtcConfig. If DevOps wants LiveKit's own TURN instead, set turn.enabled:
-# true + turn.tls_port + turn.domain (needs a cert) and drop the coturn wiring.
+  enabled: false
 
 keys: {}                       # populated from LIVEKIT_KEYS env at container start
