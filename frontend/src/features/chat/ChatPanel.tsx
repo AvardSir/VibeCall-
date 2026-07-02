@@ -45,7 +45,7 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
         ref={panelRef}
         aria-labelledby="chat-panel-title"
         className={clsx(
-          'fixed right-0 top-0 z-20 flex h-full w-[340px] flex-col bg-slate-100 transition-transform dark:bg-surface-elevated',
+          'fixed right-0 top-0 z-20 flex h-full w-chat-panel flex-col bg-slate-100 transition-transform dark:bg-surface-elevated',
           isPanelOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >

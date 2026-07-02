@@ -36,7 +36,7 @@ export function CameraPreview({ stream }: CameraPreviewProps): JSX.Element {
       ) : (
         // Camera off / denied: mic-state glyph in a dark pill, matching the in-call camera-off tile.
         <div className="grid h-full place-items-center">
-          <div className="rounded-[9px] bg-[rgba(31,34,36,0.5)] p-4">
+          <div className="rounded-[9px] bg-surface-elevated/50 p-4">
             <Icon name={isMicOn ? 'micOn' : 'micOff'} className="h-8 w-8 text-white" />
             <span className="sr-only">{t('cameraToggle')}</span>
           </div>
