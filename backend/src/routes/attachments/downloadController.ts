@@ -9,7 +9,7 @@ export type DownloadControllerDeps = {
   sendFile?: (res: Response, absolutePath: string, downloadName: string) => void;
 };
 
-export function createDownloadController(deps: DownloadControllerDeps) {
+export function createDownloadController(deps: DownloadControllerDeps): (req: Request, res: Response) => Promise<void> {
   const send = deps.sendFile ?? ((res, p, name) => { res.download(p, name); });
   return async function download(req: Request, res: Response): Promise<void> {
     const { roomName, fileId, name } = req.params as { roomName: string; fileId: string; name: string };

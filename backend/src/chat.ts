@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
 import type { Attachment } from './attachments.js';
 
 export type ChatMessage = {
@@ -20,21 +19,6 @@ export type MessageValidation =
   | { ok: true; value: string }
   | { ok: false; code: 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' };
 
-// Reason codes are carried as the zod issue message so the first failing check maps straight to
-// a MessageValidation code. Checks are ordered empty-before-length; a value cannot fail both.
-const messageTextSchema = z
-  .string({ error: 'EMPTY_MESSAGE' })
-  .refine((s) => s.trim().length > 0, { error: 'EMPTY_MESSAGE' })
-  .refine((s) => s.length <= MAX_TEXT_LENGTH, { error: 'TEXT_TOO_LONG' });
-
-export function validateMessageText(raw: unknown): MessageValidation {
-  const result = messageTextSchema.safeParse(raw);
-  if (result.success) return { ok: true, value: result.data };
-  const [issue] = result.error.issues;
-  const code = issue?.message === 'TEXT_TOO_LONG' ? 'TEXT_TOO_LONG' : 'EMPTY_MESSAGE';
-  return { ok: false, code };
-}
-
 // Text may be blank when at least one attachment is present (an attachment-only message).
 export function validateMessage(input: { text: string; attachmentCount: number }): MessageValidation {
   const { text, attachmentCount } = input;
@@ -48,7 +32,6 @@ export function validateMessage(input: { text: string; attachmentCount: number }
 }
 
 export type ChatService = {
-  validateText(raw: unknown): MessageValidation;
   validateMessage(input: { text: string; attachmentCount: number }): MessageValidation;
   build(input: {
     roomName: string;
@@ -73,7 +56,6 @@ export function createChatService(options: ChatServiceOptions = {}): ChatService
   const histories = new Map<string, ChatMessage[]>();
 
   return {
-    validateText: validateMessageText,
     validateMessage,
     build({ roomName, senderIdentity, senderName, text, attachments }) {
       return {
