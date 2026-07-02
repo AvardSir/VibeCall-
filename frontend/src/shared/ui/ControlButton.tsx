@@ -11,6 +11,9 @@ export type ControlButtonProps = {
   onClick: () => void;
   variant?: ControlVariant;
   disabled?: boolean;
+  // Override the inner icon size. Most glyphs sit at 30px; a few (screen-share, link) have less
+  // built-in padding and read as oversized at that size, so those callers pass a slightly smaller box.
+  iconClassName?: string;
 };
 
 const VARIANT_CLASSES: Record<ControlVariant, string> = {
@@ -27,6 +30,7 @@ export function ControlButton({
   onClick,
   variant = 'white',
   disabled,
+  iconClassName = 'h-[30px] w-[30px]',
 }: ControlButtonProps): JSX.Element {
   return (
     <button
@@ -39,7 +43,7 @@ export function ControlButton({
         VARIANT_CLASSES[variant],
       )}
     >
-      <Icon name={icon} className="h-[30px] w-[30px]" />
+      <Icon name={icon} className={iconClassName} />
     </button>
   );
 }

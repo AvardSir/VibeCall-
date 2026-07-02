@@ -84,6 +84,7 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
             variant={isSharing ? 'active' : 'white'}
             disabled={isBusy}
             onClick={toggleShare}
+            iconClassName="h-[26px] w-[26px]"
           />
         </Tooltip>
         {role === 'host' ? (

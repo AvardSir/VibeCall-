@@ -44,7 +44,8 @@ describe('VideoGrid', () => {
     expect(screen.getByText('Waiting for someone to join…')).toBeInTheDocument();
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '1');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1220px]');
+    // 1-up is a 16:9 box sized height-first so it fills the vertical space (width derived).
+    expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
   });
 
   it('renders two tiles and no notice for two participants', () => {
@@ -54,7 +55,8 @@ describe('VideoGrid', () => {
     expect(screen.queryByText('Waiting for someone to join…')).not.toBeInTheDocument();
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '2');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1382px]');
+    // 2-up is the wide 32:9 box — genuinely width-limited, so it stays width-first (capped).
+    expect(grid).toHaveClass('gap-4', 'w-full', 'aspect-[32/9]', 'max-w-[1382px]');
   });
 
   it('renders three tiles for three participants', () => {
@@ -63,7 +65,7 @@ describe('VideoGrid', () => {
     expect(screen.getAllByTestId('video-tile')).toHaveLength(3);
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '3');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1168px]');
+    expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
   });
 
   it('renders four tiles for four participants', () => {
@@ -72,7 +74,7 @@ describe('VideoGrid', () => {
     expect(screen.getAllByTestId('video-tile')).toHaveLength(4);
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '4');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1168px]');
+    expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
   });
 
   it('does not wire a remove control on any tile when onRemoveGuest is omitted (guest viewer)', () => {
