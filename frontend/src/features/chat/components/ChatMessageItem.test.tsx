@@ -55,6 +55,15 @@ describe('ChatMessageItem Figma styling', () => {
     expect(screen.getByTestId('chat-text')).toHaveClass('rounded-br-[4px]');
   });
 
+  it('places the sender name inside the first bubble, combined with the text (Figma)', () => {
+    render(<ChatMessageItem item={item({ senderName: 'Ann', text: 'hi there' })} isOwn={false} isFirstInGroup />);
+    const bubble = screen.getByTestId('chat-text');
+    // name + body live in the SAME bubble, not as a separate label above it
+    expect(bubble).toHaveTextContent('Ann');
+    expect(bubble).toHaveTextContent('hi there');
+    expect(screen.getByText('Ann')).toHaveClass('text-sender');
+  });
+
   it('renders the message text and an inline timestamp in the bubble', () => {
     render(<ChatMessageItem item={item({ text: 'hi there' })} isOwn={false} isFirstInGroup />);
     const bubble = screen.getByTestId('chat-text');
