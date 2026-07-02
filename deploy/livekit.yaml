@@ -1,0 +1,27 @@
+# LiveKit SFU config for demo2 (NOT --dev). Mounted read-only into the livekit container by
+# docker-compose.develop.yml. Values marked CONFIRM must be checked with DevOps for this server.
+#
+# Keys are injected from env (LIVEKIT_KEYS = "<API_KEY>: <API_SECRET>") so no secret lives in the
+# repo — see the compose file. rtc.use_external_ip lets LiveKit advertise the server's public IP for
+# ICE candidates.
+
+port: 7880                     # signaling (nginx WSS subdomain proxies here)
+log_level: info
+
+rtc:
+  tcp_port: 7881               # ICE/TCP fallback — works even when the UDP range is closed
+  port_range_start: 50000      # CONFIRM: is this UDP range open on demo2's firewall?
+  port_range_end: 50100        #          if not, keep UDP closed and rely on tcp_port + TURN below
+  use_external_ip: true        # advertise the server's public IP (CONFIRM: 78.46.107.230)
+
+# Media relay via the shared coturn on demo2 (creds from the demo-server wiki). LiveKit hands these
+# ICE servers to clients so browsers behind strict NATs can still connect when UDP is unavailable.
+# CONFIRM with DevOps: exact coturn host/port + whether we should use it vs opening a UDP range.
+turn:
+  enabled: false               # using the EXTERNAL shared coturn (below), not LiveKit's embedded TURN
+
+# NOTE: external ICE/TURN servers are passed to clients by the backend when it mints tokens, or via
+# the LiveKit client SDK's rtcConfig. If DevOps wants LiveKit's own TURN instead, set turn.enabled:
+# true + turn.tls_port + turn.domain (needs a cert) and drop the coturn wiring.
+
+keys: {}                       # populated from LIVEKIT_KEYS env at container start

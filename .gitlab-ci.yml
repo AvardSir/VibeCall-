@@ -13,7 +13,7 @@
 
 stages:
   - validate
-  # - deploy   # uncomment once Stage 2 below is enabled
+  - deploy
 
 # Defaults shared by the validation jobs: Node 22 (matches the app) on the shared demo2 runner.
 default:
@@ -69,23 +69,26 @@ backend:
     - npm run build
 
 # --------------------------------------------------------------------------------------------------
-# Stage 2 — deploy to demo2 (TEMPLATE, disabled). Mirrors the fora-soft `.common` pattern. Enable by
-# uncommenting, adding `deploy` to `stages`, creating docker-compose.demo.yml + the `demo` branch, and
-# setting the env/variables in GitLab. Verify the LiveKit hosting story before relying on this.
-#
-# .deploy:
-#   stage: deploy
-#   image: registry.s2.git.fora-soft.com/forasoft/dind
-#   tags:
-#     - demoserver-2
-#   environment:
-#     name: demo
-#   script:
-#     - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
-#     - docker-compose --compatibility -p kmb-lashin_${CI_COMMIT_REF_NAME}
-#         -f docker-compose.yml -f docker-compose.demo.yml up -d --force-recreate --build
-#
-# deploy_demo:
-#   extends: .deploy
-#   only:
-#     - develop   # develop is our demo2 trigger branch
+# Deploy to demo2 (staging.forasoft.com) — build + run our compose on the shared demo server, per the
+# fora-soft `.common` pattern (dind image, demoserver-2 runner). Gated `when: manual` so a push to
+# develop does NOT auto-deploy until the prerequisites are in place (see deploy/README.md):
+#   - GitLab CI/CD Variables scoped to the demo env: LIVEKIT_API_KEY/SECRET, LIVEKIT_URL, CORS_ORIGIN,
+#     VITE_API_BASE_URL;
+#   - the three nginx vhosts (deploy/nginx/kmb-lashin.staging.conf) installed + reloaded by ops;
+#   - LiveKit media path (UDP range vs coturn TURN) confirmed with DevOps.
+# Flip `when: manual` → `when: on_success` once the first manual deploy is verified.
+deploy_develop:
+  stage: deploy
+  image: registry.s2.git.fora-soft.com/forasoft/dind
+  tags:
+    - demoserver-2
+  environment:
+    name: develop
+    url: https://dev-kmb-lashin.staging.forasoft.com
+  script:
+    - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
+    - docker-compose --compatibility -p kmb-lashin_${CI_COMMIT_REF_NAME}
+        -f docker-compose.develop.yml up -d --build --force-recreate
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      when: manual
