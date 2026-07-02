@@ -1,8 +1,9 @@
 import { Server } from 'socket.io';
+import type { Socket, DefaultEventsMap } from 'socket.io';
 import type { Server as HttpServer } from 'node:http';
 import type { AppConfig } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
-import type { ChatService } from './chat.js';
+import type { ChatService, ChatMessage, ChatErrorCode } from './chat.js';
 import { logger } from './logger.js';
 
 export type JoinChatPayload = { identity: string; role: 'host' | 'guest' };
@@ -10,16 +11,24 @@ export type SendMessagePayload = { text: string };
 
 export type ChatSocketBinding = { identity: string; displayName: string; roomName: string };
 
-// Structural subsets of the Socket.IO `Socket`/`Server` so handlers are unit-testable
-// with plain fakes. A default-typed Socket.IO socket/server satisfies these.
-export type EmittingSocket = {
-  data: { binding?: ChatSocketBinding };
-  join(room: string): void;
-  emit(event: string, payload: unknown): void;
+// NOTE: these event maps are intentionally duplicated on the frontend
+// (frontend/src/shared/lib/socketEvents.ts) — this repo is not an npm workspace and follows a
+// "duplicate + cross-ref" convention. A shared socket-contract module is a planned follow-up
+// (see docs/superpowers/plans/2026-06-30-mr3-review-fixes.md → Deferred follow-ups). Keep both in sync.
+export type ServerToClientEvents = {
+  chat_history: (messages: ChatMessage[]) => void;
+  chat_message: (message: ChatMessage) => void;
+  message_failed: (e: { code: ChatErrorCode }) => void;
 };
-export type Broadcaster = {
-  to(room: string): { emit(event: string, payload: unknown): void };
+export type ClientToServerEvents = {
+  join_chat: (payload: JoinChatPayload) => void;
+  send_message: (payload: SendMessagePayload) => void;
 };
+
+type ChatSocketData = { binding?: ChatSocketBinding };
+
+export type ChatServer = Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>;
+export type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>;
 
 export type ChatGatewayDeps = {
   config: Pick<AppConfig, 'fixedRoomName' | 'corsOrigin'>;
@@ -28,7 +37,7 @@ export type ChatGatewayDeps = {
 };
 
 export async function handleJoinChat(
-  socket: EmittingSocket,
+  socket: ChatSocket,
   deps: ChatGatewayDeps,
   payload: JoinChatPayload,
 ): Promise<void> {
@@ -47,8 +56,8 @@ export async function handleJoinChat(
 }
 
 export function handleSendMessage(
-  socket: EmittingSocket,
-  io: Broadcaster,
+  socket: ChatSocket,
+  io: ChatServer,
   deps: ChatGatewayDeps,
   payload: SendMessagePayload,
 ): void {
@@ -72,8 +81,8 @@ export function handleSendMessage(
   io.to(binding.roomName).emit('chat_message', message);
 }
 
-export function createSocketServer(httpServer: HttpServer, deps: ChatGatewayDeps): Server {
-  const io = new Server(httpServer, {
+export function createSocketServer(httpServer: HttpServer, deps: ChatGatewayDeps): ChatServer {
+  const io = new Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, ChatSocketData>(httpServer, {
     cors: { origin: deps.config.corsOrigin },
   });
 
@@ -84,7 +93,11 @@ export function createSocketServer(httpServer: HttpServer, deps: ChatGatewayDeps
       });
     });
     socket.on('send_message', (payload: SendMessagePayload) => {
-      handleSendMessage(socket, io, deps, payload);
+      try {
+        handleSendMessage(socket, io, deps, payload);
+      } catch (err: unknown) {
+        logger.error({ err }, 'send_message handler failed');
+      }
     });
   });
 

@@ -23,17 +23,18 @@ const nameSchema = z
       .refine((s) => NAME_PATTERN.test(s), { error: 'nameChars' }),
   );
 
+const NAME_ERROR_KEYS = new Set<string>(['nameEmpty', 'nameLength', 'nameChars']);
+
+function isNameErrorKey(x: unknown): x is NameErrorKey {
+  return typeof x === 'string' && NAME_ERROR_KEYS.has(x);
+}
+
 export function useNameValidation(name: string): NameValidity {
   return useMemo(() => {
     const result = nameSchema.safeParse(name);
     if (result.success) return { valid: true, errorKey: null };
     const [issue] = result.error.issues;
-    const errorKey: NameErrorKey =
-      issue?.message === 'nameLength'
-        ? 'nameLength'
-        : issue?.message === 'nameChars'
-          ? 'nameChars'
-          : 'nameEmpty';
+    const errorKey: NameErrorKey = isNameErrorKey(issue?.message) ? issue.message : 'nameEmpty';
     return { valid: false, errorKey };
   }, [name]);
 }

@@ -28,6 +28,10 @@ conventions introduced here. Read this first.
 - **Strict typing.** No `any`. The build must pass `tsc --noEmit` and ESLint with zero warnings.
 - **Co-located, small modules.** Keep related code together (see `20-frontend-structure.md`).
 - **No hardcoded user-facing strings** — everything goes through i18n (`40-styling-and-i18n.md`).
+- **Adapt external code to our conventions.** A reviewer's snippet, a design-system example, or a
+  library README is a *pattern* reference, not drop-in code. Port the idea, but rewrite it to our
+  rules (no `I`-prefix, our React version, real Tailwind tokens, our folder layout) — never paste it
+  verbatim and inherit a foreign convention.
 
 ## Naming (quick reference — details in `10-typescript.md`)
 

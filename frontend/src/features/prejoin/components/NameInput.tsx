@@ -2,19 +2,19 @@ import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NameErrorKey } from '../hooks/useNameValidation';
 
-export type DisplayNameInputProps = {
+export type NameInputProps = {
   value: string;
   onChange: (value: string) => void;
   errorKey: NameErrorKey | null;
   showError: boolean;
 };
 
-export function DisplayNameInput({
+export function NameInput({
   value,
   onChange,
   errorKey,
   showError,
-}: DisplayNameInputProps): JSX.Element {
+}: NameInputProps): JSX.Element {
   const { t } = useTranslation('prejoin');
 
   return (

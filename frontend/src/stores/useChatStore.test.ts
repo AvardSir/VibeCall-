@@ -71,6 +71,33 @@ describe('useChatStore', () => {
     expect(msgs[1]!.status).toBe('sending');
   });
 
+  describe('togglePanel', () => {
+    it('toggles from closed to open and clears unreadCount', () => {
+      useChatStore.setState({ isPanelOpen: false, unreadCount: 3 });
+      useChatStore.getState().togglePanel();
+      const s = useChatStore.getState();
+      expect(s.isPanelOpen).toBe(true);
+      expect(s.unreadCount).toBe(0);
+    });
+
+    it('toggles from open to closed and leaves unreadCount untouched', () => {
+      useChatStore.setState({ isPanelOpen: true, unreadCount: 5 });
+      useChatStore.getState().togglePanel();
+      const s = useChatStore.getState();
+      expect(s.isPanelOpen).toBe(false);
+      expect(s.unreadCount).toBe(5);
+    });
+
+    it('idempotent double-toggle returns to start state', () => {
+      useChatStore.setState({ isPanelOpen: false, unreadCount: 2 });
+      useChatStore.getState().togglePanel(); // → open, unread cleared
+      useChatStore.getState().togglePanel(); // → closed
+      const s = useChatStore.getState();
+      expect(s.isPanelOpen).toBe(false);
+      expect(s.unreadCount).toBe(0); // cleared on first open, stays 0
+    });
+  });
+
   it('reset clears everything', () => {
     useChatStore.getState().addOptimistic('c1', 'a', SELF);
     useChatStore.getState().receiveMessage(serverMsg({}), SELF.identity);
