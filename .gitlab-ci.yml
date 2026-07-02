@@ -82,7 +82,7 @@ backend:
 # Flip `when: manual` → `when: on_success` once the first manual deploy is verified.
 deploy_develop:
   stage: deploy
-  image: registry.s2.git.fora-soft.com/forasoft/dind
+  image: forasoft/dind25
   tags:
     - kmb-deploy
   environment:
