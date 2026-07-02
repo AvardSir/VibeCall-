@@ -83,6 +83,10 @@ Ordered by value + dependency. M1 and M5 directly address the user's stated pain
 8. **M7b — Figma in-call rebuilds.** Last. Depends on M7a (design system) **and** M5 + M6, because
    the controls-bar / grid / chat-panel rebuilds touch the *final* chat and controls/share code.
 
+> **M2 deviation (2026-07-02, intentional):** active-speaker highlighting was implemented in M2's
+> `VideoTile` despite PRD non-goal #8 — kept for Figma visual fidelity. Recorded in
+> `docs/superpowers/specs/subtasks/03-videochat.md` §8.
+>
 > M5 (attachments / "фото в чате") is independent of M2–M4 and may be reprioritized to right after
 > M1 if that pain matters more than the video grid.
 >

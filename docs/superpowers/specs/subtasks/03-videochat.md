@@ -136,6 +136,11 @@ objects — no real SFU):
   thumbnail strip"; the grid here is the no-share case. `activeSharerId` is already in the store
   shape for that.
 - **No active-speaker UI** for this product scope.
+  - **DEVIATION (2026-07-02, intentional):** active-speaker highlighting **was** implemented in the
+    frontend (`VideoTile` accent ring driven by LiveKit `ActiveSpeakersChanged`). This deviates from
+    **PRD non-goal #8** and this subtask's out-of-scope table (§2, "Active-speaker highlighting").
+    It was built deliberately for **Figma visual fidelity** and is kept on purpose — code and spec
+    are reconciled here to record the decision.
 - **4-cap** comes from Subtask 1; this subtask assumes it and never renders a 5th tile.
 
 ## 9. Forward-compatibility mapping
