@@ -3,17 +3,28 @@ import { useTranslation } from 'react-i18next';
 import { Track } from 'livekit-client';
 import { useTracks } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
-import { useParticipants } from '../hooks/useParticipants';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
 import { ParticipantTile } from './ParticipantTile';
 
-// Layout per FR-13: 1 → full; 2 → left/right; 3 → two top + one centered bottom;
-// 4 → 2×2. The 3-up case uses a 2×2 grid where the third tile spans and centers.
+// Layout per FR-13: 1 → full; 2 → left/right; 3 → two top + one centered bottom; 4 → 2×2.
+// Tracks are `1fr` so cells fill the grid box evenly; the tiles then FILL their cell (no letterbox),
+// so the only spacing between tiles is the uniform `gap-4` — identical vertically and horizontally.
 const GRID_LAYOUT: Record<number, string> = {
   1: 'grid-cols-1 grid-rows-1',
   2: 'grid-cols-2 grid-rows-1',
   3: 'grid-cols-2 grid-rows-2',
   4: 'grid-cols-2 grid-rows-2',
+};
+
+// Per-count aspect ratio of the whole grid box, so that once split into 1fr cells each cell comes out
+// ~16:9 and the tiles (which fill their cells) stay ~16:9 without letterboxing: 2-up is one row of two
+// 16:9 tiles → ~32:9; 1/3/4-up stack two 16:9-ish rows → 16:9. The box is sized from its definite
+// width (w-full, capped) with the height derived from this ratio; `max-h-full` prevents overflow.
+const GRID_ASPECT: Record<number, string> = {
+  1: 'aspect-video',
+  2: 'aspect-[32/9]',
+  3: 'aspect-video',
+  4: 'aspect-video',
 };
 
 // Per-count content width caps (Figma V2 room grids — audit §4/§5 item 7):
@@ -33,7 +44,7 @@ export type VideoGridProps = {
 
 export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
   const { t } = useTranslation('call');
-  useParticipants();
+  // Roster sync now lives in CallShell (runs in both grid and share layouts); this component only reads.
   const participants = useParticipantsStore((s) => s.participants);
   const cameraTracks = useTracks([Track.Source.Camera]);
 
@@ -43,6 +54,7 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
 
   const count = participants.length;
   const layout = GRID_LAYOUT[count] ?? 'grid-cols-2 grid-rows-2';
+  const aspect = GRID_ASPECT[count] ?? 'aspect-video';
   const maxWidth = GRID_MAX_WIDTH[count] ?? 'max-w-[1168px]';
 
   return (
@@ -50,23 +62,22 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
       <div
         data-testid="video-grid"
         data-count={count}
-        className={`grid h-full min-h-0 w-full gap-4 ${maxWidth} ${layout}`}
+        // w-full (capped) is the definite basis; aspect derives the height; max-h-full bounds it to the
+        // viewport (no overflow). The block centers via the parent flex. 1fr cells + filling tiles → the
+        // spacing between tiles is exactly the gap-4, equal on both axes.
+        className={`grid min-h-0 w-full ${aspect} max-h-full gap-4 ${maxWidth} ${layout}`}
       >
         {participants.map((p, index) => {
-          const centerBottom =
-            count === 3 && index === 2 ? 'col-span-2 w-1/2 justify-self-center' : '';
+          // 3-up: the third tile spans both columns and centers (half width), so it sits under the gap
+          // between the two top tiles (FR-13). Every tile fills its cell; VideoTile is h-full w-full.
+          const centerBottom = count === 3 && index === 2 ? 'col-span-2 w-1/2 justify-self-center' : '';
           return (
-            // Cell fills its grid track (bounded height); the inner box derives its WIDTH from that
-            // bounded height via aspect-video (max-w-full caps it), so a wide viewport never makes the
-            // tile taller than the available space — which previously overflowed and clipped the controls.
-            <div key={p.identity} className={`flex min-h-0 min-w-0 items-center justify-center ${centerBottom}`}>
-              <div className="aspect-video h-full max-w-full">
-                <ParticipantTile
-                  participant={p}
-                  cameraTrackRef={trackByIdentity.get(p.identity)}
-                  onRemoveGuest={onRemoveGuest}
-                />
-              </div>
+            <div key={p.identity} className={`min-h-0 min-w-0 ${centerBottom}`}>
+              <ParticipantTile
+                participant={p}
+                cameraTrackRef={trackByIdentity.get(p.identity)}
+                onRemoveGuest={onRemoveGuest}
+              />
             </div>
           );
         })}

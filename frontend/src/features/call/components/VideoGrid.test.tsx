@@ -4,9 +4,8 @@ import '../../../shared/i18n';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
 import type { CallParticipant } from '../../../shared/types';
 
-// The grid is what we test; the roster hook and LiveKit track subscription are
-// stubbed so we drive the store directly.
-vi.mock('../hooks/useParticipants', () => ({ useParticipants: () => undefined }));
+// The grid is what we test; roster sync now lives in CallShell, so we just drive the store directly.
+// The LiveKit track subscription is stubbed.
 vi.mock('@livekit/components-react', () => ({ useTracks: () => [] }));
 vi.mock('./VideoTile', () => ({
   VideoTile: ({ name, onRemove }: { name: string; onRemove?: () => void }) => (
