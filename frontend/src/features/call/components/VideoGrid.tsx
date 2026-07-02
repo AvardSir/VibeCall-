@@ -16,24 +16,21 @@ const GRID_LAYOUT: Record<number, string> = {
   4: 'grid-cols-2 grid-rows-2',
 };
 
-// Per-count aspect ratio of the whole grid box, so that once split into 1fr cells each cell comes out
-// ~16:9 and the tiles (which fill their cells) stay ~16:9 without letterboxing: 2-up is one row of two
-// 16:9 tiles → ~32:9; 1/3/4-up stack two 16:9-ish rows → 16:9. The box is sized from its definite
-// width (w-full, capped) with the height derived from this ratio; `max-h-full` prevents overflow.
-const GRID_ASPECT: Record<number, string> = {
-  1: 'aspect-video',
-  2: 'aspect-[32/9]',
-  3: 'aspect-video',
-  4: 'aspect-video',
-};
-
-// Per-count content width caps (Figma V2 room grids — audit §4/§5 item 7):
-// 1-up 1220px, 2-up 1382px, 3-up/4-up 1168px (4-up reuses V1 geometry).
-const GRID_MAX_WIDTH: Record<number, string> = {
-  1: 'max-w-[1220px]',
-  2: 'max-w-[1382px]',
-  3: 'max-w-[1168px]',
-  4: 'max-w-[1168px]',
+// Per-count sizing of the whole grid box. Each box keeps a fixed aspect ratio so that once split into
+// 1fr cells every cell comes out ~16:9 and the tiles (which fill their cells) stay ~16:9 without
+// letterboxing: 2-up is one row of two 16:9 tiles → ~32:9; 1/3/4-up stack two 16:9-ish rows → 16:9.
+//
+// The call area (below the controls bar) is wider than 16:9, so for the 16:9 boxes (1/3/4-up) the
+// limiting dimension is HEIGHT — we size them height-first (`h-full` → width derived from the ratio,
+// `max-w-full` guards the rare narrower-than-16:9 viewport) so the box fills the vertical space and
+// the tiles grow as large as fit. 2-up is a very wide 32:9 box (two 16:9 tiles side by side) that is
+// genuinely width-limited, so it stays width-first (`w-full`, capped to the Figma 1382px, `max-h-full`
+// prevents overflow); its short height is inherent to the side-by-side layout, not dead space.
+const GRID_SIZING: Record<number, string> = {
+  1: 'h-full aspect-video max-w-full',
+  2: 'w-full aspect-[32/9] max-h-full max-w-[1382px]',
+  3: 'h-full aspect-video max-w-full',
+  4: 'h-full aspect-video max-w-full',
 };
 
 export type VideoGridProps = {
@@ -54,18 +51,17 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
 
   const count = participants.length;
   const layout = GRID_LAYOUT[count] ?? 'grid-cols-2 grid-rows-2';
-  const aspect = GRID_ASPECT[count] ?? 'aspect-video';
-  const maxWidth = GRID_MAX_WIDTH[count] ?? 'max-w-[1168px]';
+  const sizing = GRID_SIZING[count] ?? 'h-full aspect-video max-w-full';
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center p-6">
       <div
         data-testid="video-grid"
         data-count={count}
-        // w-full (capped) is the definite basis; aspect derives the height; max-h-full bounds it to the
-        // viewport (no overflow). The block centers via the parent flex. 1fr cells + filling tiles → the
-        // spacing between tiles is exactly the gap-4, equal on both axes.
-        className={`grid min-h-0 w-full ${aspect} max-h-full gap-4 ${maxWidth} ${layout}`}
+        // The box holds a fixed aspect ratio (see GRID_SIZING); the 16:9 counts fill the available
+        // height (height-first), 2-up fills the available width. The block centers via the parent flex.
+        // 1fr cells + filling tiles → the spacing between tiles is exactly the gap-4, equal on both axes.
+        className={`grid min-h-0 min-w-0 gap-4 ${sizing} ${layout}`}
       >
         {participants.map((p, index) => {
           // 3-up: the third tile spans both columns and centers (half width), so it sits under the gap

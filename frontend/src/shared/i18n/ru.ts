@@ -13,6 +13,7 @@ export const ru: Translations = {
     language: 'Язык',
   },
   landing: {
+    appName: 'КМБ',
     tagline: 'Групповые видеозвонки до четырёх человек. Без регистрации.',
     startCall: 'Начать звонок',
     startCallError: 'Не удалось начать звонок. Пожалуйста, попробуйте снова.',

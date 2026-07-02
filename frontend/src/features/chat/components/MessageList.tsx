@@ -19,7 +19,7 @@ export function MessageList({ items, selfIdentity, onOpenImage }: MessageListPro
   }
 
   return (
-    <ul className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
+    <ul className="scrollbar-hide flex flex-1 flex-col gap-2 overflow-y-auto px-6 py-3">
       {items.map((m, i) => (
         <ChatMessageItem
           key={m.key}

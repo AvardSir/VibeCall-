@@ -32,13 +32,24 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
   const stagedAttachments = useChatStore((s) => s.stagedAttachments);
   const addStaged = useChatStore((s) => s.addStaged);
   const removeStaged = useChatStore((s) => s.removeStaged);
+  const clearStaged = useChatStore((s) => s.clearStaged);
 
   const canSend = text.trim().length > 0 || stagedAttachments.length > 0;
 
   const send = (): void => {
-    if (!canSend) return;
-    onSend(text, stagedAttachments);
+    // Consume the composer synchronously at send time: read the staged files fresh from the store
+    // (not the render-time closure, which a rapid double-click/Enter would reuse) and clear both text
+    // and staging immediately. Uploads are async, so without this the staged files linger for the
+    // whole upload window and every extra click re-sends the same file. onSend has already captured
+    // the files array, so clearing the store afterward does not affect the in-flight send.
+    const files = useChatStore.getState().stagedAttachments;
+    if (text.trim().length === 0 && files.length === 0) return;
+    onSend(text, files);
     setText('');
+    clearStaged();
+    // Clear any staging error (e.g. the "up to 5 files" notice) — it refers to the batch we just
+    // sent, so it must not linger over the now-empty composer.
+    setError(null);
   };
 
   const submit = (e: FormEvent): void => {
@@ -105,7 +116,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-1 p-3">
+    <form onSubmit={submit} className="flex flex-col gap-1 px-6 py-3">
       {stagedAttachments.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {stagedAttachments.map((staged) => (
@@ -128,7 +139,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           ))}
         </ul>
       )}
-      <div className="flex items-end gap-3 rounded-[11px] bg-white px-3 py-2 hover:border hover:border-slate-300 dark:bg-surface dark:hover:border-white/25">
+      <div className="flex items-end gap-3 rounded-[11px] bg-white px-3 py-2 dark:bg-surface">
         <Tooltip label={t('attach')}>
           <button
             type="button"
@@ -155,7 +166,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           onKeyDown={handleKeyDown}
           placeholder={t('placeholder')}
           rows={2}
-          className="flex-1 resize-none bg-transparent text-base font-light text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/25"
+          className="scrollbar-hide flex-1 resize-none bg-transparent text-base font-light text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/25"
         />
         <button
           type="submit"

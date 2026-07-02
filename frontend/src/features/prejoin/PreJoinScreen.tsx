@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { JSX } from 'react';
+import type { FormEvent, JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/Button';
 import { Text } from '../../shared/ui/Text';
@@ -29,7 +29,8 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
 
   const bothDenied = cameraPermission === 'denied' && micPermission === 'denied';
 
-  function handleSubmit(): void {
+  function handleSubmit(e: FormEvent<HTMLFormElement>): void {
+    e.preventDefault();
     setTouched(true);
     if (valid && !submitting) onEnter(name.trim());
   }
@@ -59,15 +60,20 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
           <Text size="sm" className="text-center text-warning">{t('common:connectError')}</Text>
         ) : null}
 
-        <div className="flex w-full flex-col items-center gap-4">
+        <form onSubmit={handleSubmit} className="flex w-full flex-col items-center gap-4">
           <Text tag="h1" size="2xl" weight="bold" className="text-slate-900 dark:text-white">
             {t('title')}
           </Text>
           <NameInput value={name} onChange={setName} errorKey={errorKey} showError={touched} />
-          <Button type="button" onClick={handleSubmit} disabled={!valid || submitting}>
-            {role === 'host' ? t('enterCall') : t('join')}
-          </Button>
-        </div>
+          {/* Match the name field's width (332px). Button is enabled even when the name is invalid so
+              the click/Enter surfaces the specific error (PRD: "Error appears on the Enter call/Join
+              click"); handleSubmit gates the actual entry. */}
+          <div className="w-[332px]">
+            <Button type="submit" fullWidth disabled={submitting}>
+              {role === 'host' ? t('enterCall') : t('join')}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
