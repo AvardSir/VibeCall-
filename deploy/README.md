@@ -30,8 +30,17 @@ coturn TURN, advertising the server's public IP.
 3. **CONFIRM with DevOps**:
    - LiveKit media: is UDP 50000–50100 open, or should we go TCP + coturn TURN only?
      (coturn creds from the wiki: `forasoft` / `ajhfcjanfqccthdth`.) Wire the choice into `livekit.yaml`.
-   - Public IP for `rtc.use_external_ip` (wiki suggests `78.46.107.230`).
-   - Host ports 8080 / 3010 / 7880 don't collide with other projects (`docker ps -f publish=<port>`).
+   - Public IP for `rtc.use_external_ip`.
+   - Host ports 8080 / 3010 / 7880 — likely fine on a dedicated box, but confirm the actual
+     public URLs/domains (a dedicated server may not use `*.staging.forasoft.com`).
+
+## Runner
+
+DevOps assigned the runner tag **`kmb-deploy`** (this project's own runner — per the wiki, a
+dedicated server gets a `PROJECT_NAME-deploy` runner). All CI jobs are tagged with it. This assumes
+a **docker executor** (so `image:` works for the validation jobs); if it's a **shell executor**, the
+validation jobs must run Node on the host instead of via `image: node:22-alpine`. CONFIRM the
+executor type with DevOps.
 
 ## Files
 
