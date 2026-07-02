@@ -1,15 +1,13 @@
 # CI/CD for kmb-lashin.
 #
 # Stage 1 (validate) is live: it runs the same gates we run locally — lint, typecheck, tests and a
-# production build — for the frontend and backend in parallel, on the shared demo2 runner
-# (tag: demoserver-2) per fora-soft conventions (https://wiki.fora-soft.com → CI/CD).
+# production build — for the frontend and backend in parallel, on this project's runner
+# (tag: kmb-deploy, docker executor) per fora-soft conventions (https://wiki.fora-soft.com → CI/CD).
 #
-# Stage 2 (deploy to demo2) is scaffolded but DISABLED (see the commented `.deploy`/`deploy_demo`
-# block at the bottom). Enabling it needs, on the GitLab side (maintainer rights required):
-#   - a `demo` environment + CI/CD Variables (LIVEKIT_API_KEY/SECRET/URL, etc.), scoped per env;
-#   - a demo branch to trigger on;
-#   - a production compose (docker-compose.demo.yml) + prod Dockerfiles, and a decision on how the
-#     LiveKit SFU is hosted on demo2 (public WSS/TLS + UDP/TURN) — the dev compose won't serve demo.
+# Stage 2 (deploy_develop) is wired and ACTIVE, but gated `when: manual` on the `develop` branch — a
+# push to develop does NOT auto-deploy; a maintainer runs the job by hand. Before the first run, set
+# the develop-scoped CI/CD Variables (LIVEKIT_API_KEY/SECRET, LIVEKIT_URL, CORS_ORIGIN,
+# VITE_API_BASE_URL) — see deploy/README.md. Flip `when: manual` → `when: on_success` once verified.
 
 stages:
   - validate
@@ -23,11 +21,17 @@ default:
   tags:
     - kmb-deploy
 
-# Run validation on merge requests and on the default/integration branches — not twice for the same
-# commit (branch pipeline is skipped when an MR pipeline exists).
+# Run validation on merge requests and on the default/integration/working branches. GitLab does NOT
+# dedupe branch-vs-MR pipelines on its own, so the guard rule below is required: it skips the
+# redundant *branch* pipeline whenever the branch already has an open MR (the MR pipeline covers that
+# commit). Order matters — first matching rule wins.
 workflow:
   rules:
+    # MR pipelines always run for merge requests.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Skip the duplicate branch pipeline when the branch already has an open MR.
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     # Long-lived environment branches (fora-soft convention) + working branches.
     - if: $CI_COMMIT_BRANCH =~ /^(develop|testing|demo|pre|live)$/
