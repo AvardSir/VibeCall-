@@ -1,0 +1,91 @@
+# CI/CD for kmb-lashin.
+#
+# Stage 1 (validate) is live: it runs the same gates we run locally — lint, typecheck, tests and a
+# production build — for the frontend and backend in parallel, on the shared demo2 runner
+# (tag: demoserver-2) per fora-soft conventions (https://wiki.fora-soft.com → CI/CD).
+#
+# Stage 2 (deploy to demo2) is scaffolded but DISABLED (see the commented `.deploy`/`deploy_demo`
+# block at the bottom). Enabling it needs, on the GitLab side (maintainer rights required):
+#   - a `demo` environment + CI/CD Variables (LIVEKIT_API_KEY/SECRET/URL, etc.), scoped per env;
+#   - a demo branch to trigger on;
+#   - a production compose (docker-compose.demo.yml) + prod Dockerfiles, and a decision on how the
+#     LiveKit SFU is hosted on demo2 (public WSS/TLS + UDP/TURN) — the dev compose won't serve demo.
+
+stages:
+  - validate
+  # - deploy   # uncomment once Stage 2 below is enabled
+
+# Defaults shared by the validation jobs: Node 22 (matches the app) on the shared demo2 runner.
+default:
+  image: node:22-alpine
+  tags:
+    - demoserver-2
+
+# Run validation on merge requests and on the default/integration branches — not twice for the same
+# commit (branch pipeline is skipped when an MR pipeline exists).
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Long-lived environment branches (fora-soft convention) + working branches.
+    - if: $CI_COMMIT_BRANCH =~ /^(develop|testing|demo|pre|live)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(feat|fix|ci)\//
+
+.node_job:
+  stage: validate
+  # cache is defined per job below: cache:key:files takes literal paths (no variable expansion),
+  # and each package has its own lockfile, so a shared template can't express it.
+
+frontend:
+  extends: .node_job
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/node_modules/
+  script:
+    - cd frontend
+    - npm ci
+    - npm run lint
+    - npm run typecheck
+    - npm run test
+    - npm run build
+
+backend:
+  extends: .node_job
+  cache:
+    key:
+      files:
+        - backend/package-lock.json
+    paths:
+      - backend/node_modules/
+  script:
+    - cd backend
+    - npm ci
+    - npm run lint
+    - npm run typecheck
+    - npm run test
+    - npm run build
+
+# --------------------------------------------------------------------------------------------------
+# Stage 2 — deploy to demo2 (TEMPLATE, disabled). Mirrors the fora-soft `.common` pattern. Enable by
+# uncommenting, adding `deploy` to `stages`, creating docker-compose.demo.yml + the `demo` branch, and
+# setting the env/variables in GitLab. Verify the LiveKit hosting story before relying on this.
+#
+# .deploy:
+#   stage: deploy
+#   image: registry.s2.git.fora-soft.com/forasoft/dind
+#   tags:
+#     - demoserver-2
+#   environment:
+#     name: demo
+#   script:
+#     - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
+#     - docker-compose --compatibility -p kmb-lashin_${CI_COMMIT_REF_NAME}
+#         -f docker-compose.yml -f docker-compose.demo.yml up -d --force-recreate --build
+#
+# deploy_demo:
+#   extends: .deploy
+#   only:
+#     - develop   # develop is our demo2 trigger branch
