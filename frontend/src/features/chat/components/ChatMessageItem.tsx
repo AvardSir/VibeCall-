@@ -37,19 +37,18 @@ export function ChatMessageItem({ item: m, isOwn, isFirstInGroup, onOpenImage }:
     ? 'rounded-[12px]'
     : clsx('rounded-[12px]', isOwn ? 'rounded-br-[4px]' : 'rounded-bl-[4px]');
 
+  // Figma (audit §5, nodes 50:4178 / 63:3131): the first bubble in a sender group carries the sender
+  // name as its own top row INSIDE the bubble — name + body combined in one bubble, gap-[4px].
+  // Subsequent bubbles omit the name.
+  const nameRow = isFirstInGroup ? (
+    <div className={clsx('mb-1 text-sm font-semibold leading-[18px]', isOwn ? 'text-accent' : 'text-sender')}>
+      {m.senderName}
+    </div>
+  ) : null;
+
   return (
     <li className={isOwn ? 'self-end text-right' : 'self-start text-left'}>
-      {isFirstInGroup && (
-        <div
-          className={clsx(
-            'mb-1 text-sm font-semibold leading-[18px]',
-            isOwn ? 'text-accent' : 'text-sender',
-          )}
-        >
-          {m.senderName}
-        </div>
-      )}
-      {m.text !== '' && (
+      {m.text !== '' ? (
         <div
           data-testid="chat-text"
           className={clsx(
@@ -57,6 +56,7 @@ export function ChatMessageItem({ item: m, isOwn, isFirstInGroup, onOpenImage }:
             radius,
           )}
         >
+          {nameRow}
           <span data-testid="chat-text-body" className="text-sm font-light leading-[18px] text-slate-900 dark:text-white">
             {m.text}
           </span>
@@ -65,6 +65,9 @@ export function ChatMessageItem({ item: m, isOwn, isFirstInGroup, onOpenImage }:
             {formatTime(m.sentAt)}
           </span>
         </div>
+      ) : (
+        // Attachment-only message: no text bubble — keep the sender name above the attachments.
+        nameRow
       )}
       {m.attachments.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-2">

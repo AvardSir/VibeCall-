@@ -66,6 +66,21 @@ describe('ChatPanel', () => {
     expect(useChatStore.getState().isPanelOpen).toBe(true);
   });
 
+  it('stays open when clicking the top-bar theme/language controls (data-chat-keep-open)', () => {
+    useChatStore.getState().openPanel();
+    const { container } = render(
+      <>
+        <div data-chat-keep-open>
+          <button type="button">EN</button>
+        </div>
+        <ChatPanel role="guest" />
+      </>,
+    );
+    const control = container.querySelector('[data-chat-keep-open] button') as HTMLElement;
+    fireEvent.mouseDown(control);
+    expect(useChatStore.getState().isPanelOpen).toBe(true);
+  });
+
   it('renders messages from the store', () => {
     useChatStore.getState().openPanel();
     useChatStore.getState().setHistory([

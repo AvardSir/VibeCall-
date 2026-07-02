@@ -32,7 +32,9 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
     const onMouseDown = (e: MouseEvent): void => {
       const target = e.target;
       if (!(target instanceof Node) || panelRef.current?.contains(target)) return;
-      if (target instanceof Element && target.closest('[data-chat-toggle]')) return;
+      // Ignore the chat toggle (owns its own toggle) and the global top-bar controls (theme /
+      // language) — clicking app chrome must not close the panel, only clicking the call area does.
+      if (target instanceof Element && target.closest('[data-chat-toggle], [data-chat-keep-open]')) return;
       closePanel();
     };
     document.addEventListener('mousedown', onMouseDown);
@@ -69,8 +71,9 @@ export function ChatPanel({ role }: ChatPanelProps): JSX.Element {
             selfIdentity={selfIdentity}
             onOpenImage={(src, alt) => setLightbox({ src, alt })}
           />
-          {/* Figma: ~65px fade over the last messages, above the input row. */}
-          <div className="pointer-events-none absolute inset-x-3 bottom-0 h-16 bg-gradient-to-b from-transparent to-slate-100 dark:to-surface-elevated" />
+          {/* Figma: ~65px fade over the last messages, above the input row. inset-x matches the message
+              list's horizontal padding (px-6) so the fade spans the text column. */}
+          <div className="pointer-events-none absolute inset-x-6 bottom-0 h-16 bg-gradient-to-b from-transparent to-slate-100 dark:to-surface-elevated" />
         </div>
         <ChatInput onSend={sendMessage} />
       </aside>
