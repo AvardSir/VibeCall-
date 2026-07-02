@@ -78,7 +78,8 @@ React SDK for track subscriptions and a **custom layout** component for the besp
 
 ### 4.2 State (Zustand — `.claude/rules/30-state-store.md`)
 
-`useCallStore` (extended from Subtask 1):
+`useParticipantsStore` (new in this subtask; Subtask 1's `useMediaStore` / `useConnectionStore` are
+unchanged):
 
 - `participants: Participant[]` — **mirrored** from LiveKit events (server/LiveKit is authoritative;
   the store holds it for rendering, reconciled on events — master rule `30-state-store.md`).

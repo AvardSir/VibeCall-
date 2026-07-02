@@ -5,3 +5,9 @@ backend/.storage/
 backend/.env
 .superpowers/
 *.log
+
+# Local dev binaries (LiveKit server)
+/tools/
+
+# Personal, machine-specific Claude Code settings (never ship personal allowlists)
+.claude/settings.local.json

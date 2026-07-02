@@ -44,6 +44,18 @@ primary owner, e.g. `rooms.ts`). Promote a responsibility to its own folder with
 
 ## Socket.IO
 
-- Per-room channel keyed by room name. Event names are explicit and typed on both ends
-  (define a shared event-payload type module).
+- Per-room channel keyed by room name. Event names are explicit and typed on both ends via
+  `ServerToClientEvents` / `ClientToServerEvents` maps; construct `new Server<ClientToServerEvents,
+  ServerToClientEvents, DefaultEventsMap, SocketData>(…)` so `emit`/`on` are checked. **Reality
+  today:** the maps are **duplicated** on the frontend (`shared/lib/socketEvents.ts`) with a cross-ref
+  comment — this repo is not an npm workspace. A shared contract module is a planned follow-up; until
+  then keep both copies in sync.
+- **Use Socket.IO's own generic `Socket`/`Server` types** in handlers (alias them, e.g. `ChatSocket`
+  / `ChatServer`, with `SocketData` carrying the binding). Do **not** hand-roll structural subtypes
+  of the socket/server API.
+- **Guard every listener.** Wrap each `socket.on(event, …)` body so a throw can't escape into the
+  runtime — `logger.error({ err }, '<event> handler failed')` (mirror this across all events, sync or
+  async). An uncaught throw in a listener can crash the process.
+- **Dependency injection is the house style** — pass a small deps object (mirrors `createApp`'s
+  `AppDeps`); don't switch one module to direct singleton imports and leave the rest on DI.
 - The backend owns chat fully (relay + history + unread); clients send intents, server decides.

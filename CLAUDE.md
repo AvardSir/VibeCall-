@@ -32,6 +32,16 @@ CONTEXT.md            Running project context
 ## Commands
 
 ```bash
+# Docker (recommended) — whole stack with hot-reload from the repo root
+docker compose up --build      # livekit + backend + frontend; browse http://localhost:5173
+docker compose down            # stop and remove the stack
+# Ports: frontend 5173, backend 3000, livekit 7880/7881 + 7882/udp.
+# Docker-specific env (e.g. LIVEKIT_HOST=http://livekit:7880) is set in docker-compose.yml.
+# Dev images are node:22-alpine (musl). node_modules live in anonymous volumes, so after ANY
+# base-image change (or native-dep issue) run `docker compose down -v` once to drop the stale
+# volume, then `docker compose up --build` — otherwise a glibc-era volume shadows the musl modules.
+
+# --- or run natively (LiveKit must run separately) ---
 # LiveKit (local SFU) — run separately, backend needs its API key/secret/URL
 livekit-server --dev
 
@@ -72,6 +82,12 @@ host/guest roles, the host-reconnect grace timer, chat, and attachments.
 > The PRD (`prd-kmb-video-chat.md` v2.0) is now in the repo and is **binding** for product behavior.
 > Where the technical design had diverged from it (name uniqueness, host-token placement, camera-off
 > tile), the PRD wins — the specs have been reconciled to the PRD.
+>
+> **PRD is authoritative; the Figma design is an outdated visual reference** (decided 2026-06-30).
+> Scope is the **full PRD**; on any PRD-vs-Figma conflict, the **PRD wins**. Use Figma only as a
+> visual-style cue for the screens it covers (dark palette, components, room layouts, chat, pre-join);
+> for anything Figma lacks, build per the PRD in a consistent style. See the gap roadmap at
+> `docs/superpowers/plans/2026-06-30-prd-gap-roadmap.md`.
 
 ## Rules (auto-loaded)
 
@@ -83,7 +99,7 @@ working in its area:
 | `00-project-base.md` | Stack, core principles, naming, layout — the base the rest derive from |
 | `10-typescript.md` | Type/interface naming (PascalCase, no `I`), strictness, imports |
 | `20-frontend-structure.md` | Feature-based folders, component & hook conventions |
-| `30-state-store.md` | Zustand: one store per domain, actions-in-store, selector subscriptions |
+| `30-state-store.md` | Zustand: one store per concern (not per domain), actions-in-store, selector subscriptions |
 | `40-styling-and-i18n.md` | Tailwind theming (`dark:`), react-i18next, no hardcoded strings |
 | `50-backend.md` | Node/TS module split, logger, env config, errors, Socket.IO |
 | `60-testing.md` | Co-located tests, what to test, deterministic mocks |
@@ -104,6 +120,6 @@ working in its area:
 ### ALWAYS
 - `PascalCase` types/interfaces with no `I`-prefix; string-literal unions over `enum`
 - Feature-based frontend layout; logic in hooks/stores, components stay presentational
-- One Zustand store per domain; actions live in the store; subscribe to narrow slices
+- One Zustand store per concern (not per domain — no god stores); actions live in the store; subscribe to narrow slices
 - Theme via Tailwind `dark:` variants (Dark default); UI text via react-i18next (EN/RU)
 - Keep `tsc --noEmit` and ESLint clean; co-locate tests (`*.test.ts` next to source)
