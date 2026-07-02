@@ -1,55 +1,53 @@
-# Demo2 deploy (develop → staging.forasoft.com)
+# Demo2 deploy (develop → *.stg.forasoft.com)
 
-Deploys the app to the shared fora-soft demo server via GitLab CI (`deploy_develop` job, currently
-`when: manual`). This is a **scaffold** — the items marked CONFIRM need DevOps sign-off before the
-first deploy.
+Deploys the app to the fora-soft demo server via GitLab CI (`deploy_develop` job, currently
+`when: manual`). Two DevOps answers are still pending (below); the rest is wired up.
 
 ## Architecture
 
-Three dockerized services (per fora-soft "all deps in docker"), each behind an nginx vhost on a
-`*.staging.forasoft.com` subdomain (wildcard SSL is already on the server):
+Three dockerized services (per fora-soft "all deps in docker"), routed by **Traefik** (external
+docker network `traefik`, entrypoint `http`, TLS terminated upstream) via container labels — no nginx
+vhosts. The `kmb-deploy` runner deploys onto the host docker, so the containers live on the server and
+Traefik reaches them over the `traefik` network. Frontend/backend are not published to host ports.
 
-| Service  | Subdomain (dev env)                    | Container port | Notes                          |
-|----------|----------------------------------------|----------------|--------------------------------|
-| frontend | `dev-kmb.stg.forasoft.com`             | 80             | nginx-served SPA               |
-| backend  | `dev-api-kmb.stg.forasoft.com`         | 3000           | REST + Socket.IO (WS)          |
-| livekit  | `dev-livekit-kmb.stg.forasoft.com`     | 7880           | signaling (WSS)                |
+| Service  | Host (dev env)                     | Container port | Routed by |
+|----------|------------------------------------|----------------|-----------|
+| frontend | `dev-kmb.stg.forasoft.com`         | 80             | Traefik   |
+| backend  | `dev-api-kmb.stg.forasoft.com`     | 3000           | Traefik (WS ok) |
+| livekit  | `dev-livekit-kmb.stg.forasoft.com` | 7880           | Traefik (signaling) |
 
-Domain pattern: `*-kmb.stg.forasoft.com` (note: `stg`, and every host ends in `-kmb`).
-Routing + TLS is done by **Traefik** (reverse proxy already on the server) via container labels — no
-manual nginx vhosts and no nginx reload. So `deploy/nginx/*.conf` will be replaced by Traefik labels
-on the services once the Traefik network / entrypoint / certresolver names are known.
-
-LiveKit **media** (ICE) does not go through nginx: UDP range 50000–50100 and/or TCP 7881 + the shared
-coturn TURN, advertising the server's public IP.
-
-## Prerequisites (before flipping the deploy to automatic)
-
-1. **GitLab → Settings → CI/CD → Variables** (scope: the `develop`/demo environment):
-   - `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-   - `LIVEKIT_URL` = `wss://dev-livekit-kmb.stg.forasoft.com`
-   - `CORS_ORIGIN` = `https://dev-kmb.stg.forasoft.com`
-   - `VITE_API_BASE_URL` = `https://dev-api-kmb.stg.forasoft.com`
-2. **Traefik labels** (replaces the nginx vhosts): once the Traefik network / entrypoint /
-   certresolver names are known, add routing labels to the services in `docker-compose.develop.yml`.
-3. **Still CONFIRM with DevOps**:
-   - Traefik: docker network name, HTTPS entrypoint name, certresolver name.
-   - LiveKit media: is a public UDP range open, or route media via coturn TURN?
-     (coturn creds from the wiki: `forasoft` / `ajhfcjanfqccthdth`.) Wire the choice into `livekit.yaml`.
+LiveKit **media** (WebRTC ICE) bypasses Traefik: published host ports — TCP 7881 + UDP 50000–50100 —
+with `rtc.use_external_ip` advertising the server IP. If that UDP range is not open, drop it and route
+media via the shared coturn TURN (creds in the wiki: `forasoft` / `ajhfcjanfqccthdth`) in `livekit.yaml`.
 
 ## Confirmed by DevOps
 
-- Runner tag **`kmb-deploy`**, **docker executor** → CI `image:` works as-is.
-- Domains: `*-kmb.stg.forasoft.com` (per-host TLS via Traefik + Let's Encrypt).
-- Server public IP: **167.233.84.103** (used for `rtc.use_external_ip`).
+- Runner **`kmb-deploy`**, **docker executor**, deploys onto the **host docker** (containers persist,
+  Traefik-visible).
+- Traefik: network **`traefik`**, entrypoint **`http`**, **no certresolver** (TLS upstream of Traefik).
+- Domains `*-kmb.stg.forasoft.com` — `dev-kmb` / `dev-api-kmb` / `dev-livekit-kmb` already resolve.
+- Server public IP **167.233.84.103** (LiveKit `rtc.use_external_ip`).
+
+## Still pending (2 answers)
+
+1. **Public scheme HTTPS vs HTTP.** Camera/mic/screen-share need a secure context (HTTPS) on a real
+   domain — plain HTTP breaks them. This sets the schemes in the variables below (`https/wss` vs `http/ws`).
+2. **LiveKit media:** is UDP 50000–50100 open, or should we drop it and use coturn TURN? Adjust the
+   `livekit` ports in `docker-compose.develop.yml` + `livekit.yaml` accordingly.
+
+## Your action — GitLab → Settings → CI/CD → Variables (scope: develop)
+
+- `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
+- `LIVEKIT_URL` = `wss://dev-livekit-kmb.stg.forasoft.com`  (`ws://` if the edge is HTTP)
+- `CORS_ORIGIN` = `https://dev-kmb.stg.forasoft.com`  (`http://` if the edge is HTTP)
+- `VITE_API_BASE_URL` = `https://dev-api-kmb.stg.forasoft.com`  (`http://` if the edge is HTTP)
 
 ## Files
 
-- `../docker-compose.develop.yml` — standalone demo stack (livekit + backend + frontend).
+- `../docker-compose.develop.yml` — standalone demo stack (livekit + backend + frontend) with Traefik labels.
 - `livekit.yaml` — LiveKit prod config (mounted into the livekit container).
-- `nginx/kmb-lashin.staging.conf` — the three vhosts for ops.
 
 ## First deploy
 
-Push `develop`, then in the pipeline run the manual `deploy_develop` job. Once verified, change its
+Push `develop`, then run the manual `deploy_develop` job in the pipeline. Once verified, change its
 `when: manual` → `when: on_success` in `.gitlab-ci.yml`.

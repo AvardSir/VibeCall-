@@ -71,13 +71,14 @@ backend:
     - npm run build
 
 # --------------------------------------------------------------------------------------------------
-# Deploy to demo2 (staging.forasoft.com) — build + run our compose on the shared demo server, per the
-# fora-soft `.common` pattern (dind image, demoserver-2 runner). Gated `when: manual` so a push to
-# develop does NOT auto-deploy until the prerequisites are in place (see deploy/README.md):
-#   - GitLab CI/CD Variables scoped to the demo env: LIVEKIT_API_KEY/SECRET, LIVEKIT_URL, CORS_ORIGIN,
-#     VITE_API_BASE_URL;
-#   - the three nginx vhosts (deploy/nginx/kmb-lashin.staging.conf) installed + reloaded by ops;
+# Deploy to demo2 — build + run docker-compose.develop.yml on the kmb-deploy runner (deploys onto the
+# host docker; Traefik routes to the containers via the `traefik` network). Gated `when: manual` so a
+# push to develop does NOT auto-deploy until the remaining prerequisites are in place (see
+# deploy/README.md):
+#   - GitLab CI/CD Variables scoped to the develop env: LIVEKIT_API_KEY/SECRET, LIVEKIT_URL,
+#     CORS_ORIGIN, VITE_API_BASE_URL (schemes depend on the public HTTPS-vs-HTTP answer);
 #   - LiveKit media path (UDP range vs coturn TURN) confirmed with DevOps.
+# Routing/TLS is handled by Traefik labels in the compose file — no nginx vhosts.
 # Flip `when: manual` → `when: on_success` once the first manual deploy is verified.
 deploy_develop:
   stage: deploy
