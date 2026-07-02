@@ -28,3 +28,11 @@ export type ChatMessage = {
   sentAt: number;
   text: string;
 };
+
+export type CallParticipant = {
+  identity: string;
+  name: string;
+  isLocal: boolean;
+  isCameraEnabled: boolean;
+  isMicrophoneEnabled: boolean;
+};

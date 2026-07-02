@@ -37,6 +37,9 @@ docker compose up --build      # livekit + backend + frontend; browse http://loc
 docker compose down            # stop and remove the stack
 # Ports: frontend 5173, backend 3000, livekit 7880/7881 + 7882/udp.
 # Docker-specific env (e.g. LIVEKIT_HOST=http://livekit:7880) is set in docker-compose.yml.
+# Dev images are node:22-alpine (musl). node_modules live in anonymous volumes, so after ANY
+# base-image change (or native-dep issue) run `docker compose down -v` once to drop the stale
+# volume, then `docker compose up --build` — otherwise a glibc-era volume shadows the musl modules.
 
 # --- or run natively (LiveKit must run separately) ---
 # LiveKit (local SFU) — run separately, backend needs its API key/secret/URL

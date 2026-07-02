@@ -10,6 +10,8 @@ import { TopBar, useApplyUiPreferences } from './features/preferences';
 import { useConnectionStore } from './stores/useConnectionStore';
 import { useMediaStore } from './stores/useMediaStore';
 import { useChatStore } from './stores/useChatStore';
+import { useParticipantsStore } from './stores/useParticipantsStore';
+import { SocketProvider } from './shared/lib/SocketProvider';
 
 const ROOM_NAME = 'main';
 
@@ -24,6 +26,7 @@ export function App(): JSX.Element {
   const resetConnection = useConnectionStore((s) => s.reset);
   const resetMedia = useMediaStore((s) => s.reset);
   const resetChat = useChatStore((s) => s.reset);
+  const resetParticipants = useParticipantsStore((s) => s.reset);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +69,7 @@ export function App(): JSX.Element {
     resetConnection();
     resetMedia();
     resetChat();
+    resetParticipants();
     recheckCapacity();
   }
 
@@ -78,17 +82,16 @@ export function App(): JSX.Element {
     content = <ConnectErrorScreen onRetry={recheckCapacity} />;
   } else if (view === 'in-call' && session) {
     content = (
-      <>
+      <SocketProvider>
         <CallShell
           accessToken={session.accessToken}
           serverUrl={session.livekitUrl}
-          displayName={session.displayName}
           onLeave={leave}
           onConnectError={() => setView('connect-error')}
           onRoomFull={() => setView('full')}
         />
         <ChatPanel role={session.role} />
-      </>
+      </SocketProvider>
     );
   } else {
     content = <PreJoinScreen onEnter={(name) => void handleEnter(name)} />;
