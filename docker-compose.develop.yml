@@ -1,0 +1,69 @@
+# Demo2 (develop) stack — STANDALONE (do NOT overlay on the dev docker-compose.yml; that one is
+# hot-reload/--dev). Deployed by the GitLab `deploy_develop` job:
+#   docker-compose -p kmb-lashin_develop -f docker-compose.develop.yml up -d --build --force-recreate
+#
+# Config is injected from GitLab CI/CD Variables (Settings → CI/CD → Variables), scoped to the demo
+# environment — nothing secret lives here. Expected variables:
+#   LIVEKIT_API_KEY, LIVEKIT_API_SECRET
+#   LIVEKIT_URL        = wss://dev-kmb-lashin-livekit.staging.forasoft.com   (browser-facing signaling)
+#   CORS_ORIGIN        = https://dev-kmb-lashin.staging.forasoft.com          (frontend origin)
+#   VITE_API_BASE_URL  = https://dev-kmb-lashin-api.staging.forasoft.com      (baked into the FE build)
+#
+# CONFIRM with DevOps before first deploy:
+#   - host ports below must not collide with other projects on the shared server (docker ps -f publish=<port>)
+#   - the UDP range for LiveKit media (or TURN-only) — see deploy/livekit.yaml
+#   - the three nginx vhosts (deploy/nginx/*.conf) are installed and reloaded by an ops maintainer
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"                       # signaling ← nginx WSS subdomain
+      - "7881:7881"                       # ICE/TCP fallback
+      - "50000-50100:50000-50100/udp"     # ICE/UDP (only if the range is open on demo2)
+    restart: unless-stopped
+    networks: [kmb-net]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET}"
+      LIVEKIT_URL: "${LIVEKIT_URL}"       # browser-facing (must match the FE build + token audience)
+      LIVEKIT_HOST: "http://livekit:7880" # backend → LiveKit admin API, in-network
+      PORT: "3000"
+      CORS_ORIGIN: "${CORS_ORIGIN}"
+      ATTACHMENT_STORAGE_PATH: "/app/uploads"
+    volumes:
+      - kmb-uploads:/app/uploads          # persist attachments across redeploys
+    ports:
+      - "3010:3000"                       # ← nginx api subdomain proxies here (host port: avoid clashes)
+    depends_on: [livekit]
+    restart: unless-stopped
+    networks: [kmb-net]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL}"
+    ports:
+      - "8080:80"                         # ← nginx frontend subdomain proxies here
+    depends_on: [backend]
+    restart: unless-stopped
+    networks: [kmb-net]
+
+volumes:
+  kmb-uploads:
+
+networks:
+  kmb-net:
+    driver: bridge
