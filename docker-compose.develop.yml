@@ -22,12 +22,11 @@ version: "3.8"
 
 services:
   livekit:
-    image: livekit/livekit-server:latest   # TODO: pin a specific version for reproducible prod builds
-    command: ["--config", "/etc/livekit.yaml"]
+    build:
+      context: ./deploy
+      dockerfile: livekit.Dockerfile       # config baked in — host docker can't bind-mount the CI workspace
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
-    volumes:
-      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
     # Media ports on the host (WebRTC bypasses Traefik). CONFIRM the UDP range is open, else use TURN.
     ports:
       - "7881:7881"                       # ICE/TCP fallback
