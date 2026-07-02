@@ -47,7 +47,7 @@ export type ChatGatewayDeps = {
   config: Pick<AppConfig, 'corsOrigin'>;
   admin: Pick<LivekitAdmin, 'listParticipants'>;
   chat: ChatService;
-  registry: Pick<RoomRegistry, 'claimShare' | 'releaseShare'>;
+  registry: Pick<RoomRegistry, 'claimShare' | 'releaseShare' | 'getActiveSharer'>;
 };
 
 export async function handleJoinChat(
@@ -71,6 +71,10 @@ export async function handleJoinChat(
   socket.data.binding = { identity: match.identity, displayName: match.name, roomName };
   socket.join(roomName);
   socket.emit('chat_history', deps.chat.history(roomName));
+  // Bring a late joiner in sync with an in-progress share: without this, a socket that connects while
+  // someone is already sharing never learns the active sharer (share_state only fires on claim/release)
+  // and stays stuck in the grid layout, never subscribing to the share view.
+  socket.emit('share_state', { activeSharerId: deps.registry.getActiveSharer(roomName) });
 }
 
 const MAX_ATTACHMENTS_PER_MESSAGE = 5;

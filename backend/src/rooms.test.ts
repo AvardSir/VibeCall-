@@ -137,4 +137,13 @@ describe('createRoomRegistry', () => {
     expect(registry.get(room.roomId)?.activeSharerId).toBeNull();
     expect(registry.clearShare(room.roomId)).toBe(false); // already clear
   });
+
+  it('getActiveSharer reflects the current sharer and null for none/unknown rooms', () => {
+    const registry = createRoomRegistry();
+    const room = registry.create();
+    expect(registry.getActiveSharer(room.roomId)).toBeNull();
+    registry.claimShare(room.roomId, 'p_1');
+    expect(registry.getActiveSharer(room.roomId)).toBe('p_1');
+    expect(registry.getActiveSharer('ghost')).toBeNull();
+  });
 });

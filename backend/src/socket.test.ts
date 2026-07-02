@@ -71,7 +71,11 @@ function makeDeps(participants: { identity: string; name: string }[], roomId = '
       listParticipants: vi.fn(async (id: string) => (id === roomId ? participants : [])),
     },
     chat: createChatService({ now: () => 1000, newId: () => `m${++seq}` }),
-    registry: { claimShare: vi.fn((): ShareClaimResult => ({ ok: true })), releaseShare: vi.fn(() => true) },
+    registry: {
+      claimShare: vi.fn((): ShareClaimResult => ({ ok: true })),
+      releaseShare: vi.fn(() => true),
+      getActiveSharer: vi.fn(() => null),
+    },
   };
 }
 
@@ -123,7 +127,21 @@ describe('handleJoinChat', () => {
 
     expect(socket.data.binding).toEqual({ identity: 'p_1', displayName: 'Ann', roomName: 'r1' });
     expect(joined).toEqual(['r1']);
-    expect(emitted).toEqual([{ event: 'chat_history', payload: [] }]);
+    expect(emitted).toEqual([
+      { event: 'chat_history', payload: [] },
+      { event: 'share_state', payload: { activeSharerId: null } },
+    ]);
+  });
+
+  it('syncs a late joiner with the in-progress share via share_state', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.registry.getActiveSharer as Mock).mockReturnValue('p_0');
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
+
+    expect(deps.registry.getActiveSharer).toHaveBeenCalledWith('r1');
+    expect(emitted).toContainEqual({ event: 'share_state', payload: { activeSharerId: 'p_0' } });
   });
 
   it('rejects a non-member: no bind, no join, message_failed NOT_A_MEMBER', async () => {

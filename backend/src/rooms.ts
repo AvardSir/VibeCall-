@@ -30,6 +30,7 @@ export type RoomRegistry = {
   claimShare(roomId: string, identity: string): ShareClaimResult;
   releaseShare(roomId: string, identity: string): boolean;
   clearShare(roomId: string): boolean;
+  getActiveSharer(roomId: string): string | null;
 };
 
 export type RoomRegistryOptions = {
@@ -135,6 +136,9 @@ export function createRoomRegistry(options: RoomRegistryOptions = {}): RoomRegis
       if (!room || room.activeSharerId === null) return false;
       room.activeSharerId = null;
       return true;
+    },
+    getActiveSharer(roomId: string): string | null {
+      return rooms.get(roomId)?.activeSharerId ?? null;
     },
   };
 }
