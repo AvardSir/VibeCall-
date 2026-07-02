@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocalParticipant } from '@livekit/components-react';
 import { Toggle } from '../../../shared/ui/Toggle';
 import { Button } from '../../../shared/ui/Button';
+import { Tooltip } from '../../../shared/ui/Tooltip';
 import { useMediaStore } from '../../../stores/useMediaStore';
 import { useChatStore } from '../../../stores/useChatStore';
 
@@ -17,10 +18,8 @@ export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
   const isCamOn = useMediaStore((s) => s.isCamOn);
   const setMicOn = useMediaStore((s) => s.setMicOn);
   const setCamOn = useMediaStore((s) => s.setCamOn);
-  const isPanelOpen = useChatStore((s) => s.isPanelOpen);
   const unreadCount = useChatStore((s) => s.unreadCount);
-  const openPanel = useChatStore((s) => s.openPanel);
-  const closePanel = useChatStore((s) => s.closePanel);
+  const togglePanel = useChatStore((s) => s.togglePanel);
 
   // Reconcile published tracks with the store's desired state.
   useEffect(() => {
@@ -33,12 +32,16 @@ export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
 
   return (
     <div className="flex items-center justify-center gap-3 p-4">
-      <Toggle label={t('micToggle')} pressed={isMicOn} onChange={setMicOn} />
-      <Toggle label={t('cameraToggle')} pressed={isCamOn} onChange={setCamOn} />
+      <Tooltip label={isMicOn ? t('micTooltipOn') : t('micTooltipOff')}>
+        <Toggle label={t('micToggle')} pressed={isMicOn} onChange={setMicOn} />
+      </Tooltip>
+      <Tooltip label={isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff')}>
+        <Toggle label={t('cameraToggle')} pressed={isCamOn} onChange={setCamOn} />
+      </Tooltip>
       <button
         type="button"
         aria-label={tc('openChat')}
-        onClick={() => (isPanelOpen ? closePanel() : openPanel())}
+        onClick={togglePanel}
         className="relative rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted"
       >
         {tc('openChat')}
@@ -51,9 +54,11 @@ export function ControlsBar({ onLeave }: ControlsBarProps): JSX.Element {
           </span>
         )}
       </button>
-      <Button variant="ghost" onClick={onLeave}>
-        {t('leave')}
-      </Button>
+      <Tooltip label={t('leaveTooltip')}>
+        <Button variant="ghost" onClick={onLeave}>
+          {t('leave')}
+        </Button>
+      </Tooltip>
     </div>
   );
 }

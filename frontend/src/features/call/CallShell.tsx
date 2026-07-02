@@ -5,13 +5,12 @@ import { ConnectionError, ConnectionErrorReason } from 'livekit-client';
 import '@livekit/components-styles';
 import { useConnectionStore } from '../../stores/useConnectionStore';
 import { useMediaStore } from '../../stores/useMediaStore';
-import { OwnTile } from './components/OwnTile';
+import { VideoGrid } from './components/VideoGrid';
 import { ControlsBar } from './components/ControlsBar';
 
 export type CallShellProps = {
   accessToken: string;
   serverUrl: string;
-  displayName: string;
   onLeave: () => void;
   onConnectError: () => void;
   onRoomFull: () => void;
@@ -20,7 +19,6 @@ export type CallShellProps = {
 export function CallShell({
   accessToken,
   serverUrl,
-  displayName,
   onLeave,
   onConnectError,
   onRoomFull,
@@ -56,11 +54,8 @@ export function CallShell({
       onDisconnected={onLeave}
       className="flex min-h-full flex-col"
     >
-      <div className="flex flex-1 items-center justify-center p-6">
-        {/* Subtask 3 replaces this single tile with the 2x2 remote grid. */}
-        <div className="w-full max-w-2xl">
-          <OwnTile displayName={displayName} />
-        </div>
+      <div className="flex flex-1 items-center justify-center">
+        <VideoGrid />
       </div>
       <ControlsBar onLeave={onLeave} />
       <RoomAudioRenderer />

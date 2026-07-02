@@ -29,6 +29,12 @@ export const en = {
     leave: 'Leave',
     micToggle: 'Microphone',
     cameraToggle: 'Camera',
+    waiting: 'Waiting for someone to join…',
+    cameraTooltipOn: 'Turn camera off',
+    cameraTooltipOff: 'Turn camera on',
+    micTooltipOn: 'Mute microphone',
+    micTooltipOff: 'Unmute microphone',
+    leaveTooltip: 'Leave the call',
   },
   chat: {
     title: 'Chat',

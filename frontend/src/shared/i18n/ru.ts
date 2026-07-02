@@ -33,6 +33,12 @@ export const ru: Translations = {
     leave: 'Выйти',
     micToggle: 'Микрофон',
     cameraToggle: 'Камера',
+    waiting: 'Ожидаем, пока кто-нибудь присоединится…',
+    cameraTooltipOn: 'Выключить камеру',
+    cameraTooltipOff: 'Включить камеру',
+    micTooltipOn: 'Выключить микрофон',
+    micTooltipOff: 'Включить микрофон',
+    leaveTooltip: 'Покинуть звонок',
   },
   chat: {
     title: 'Чат',

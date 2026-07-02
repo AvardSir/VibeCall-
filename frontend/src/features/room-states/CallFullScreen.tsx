@@ -9,8 +9,8 @@ export function CallFullScreen({ onBackToHome }: CallFullScreenProps): JSX.Eleme
   const { t } = useTranslation('roomStates');
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 text-center">
-      <Text variant="title">{t('fullTitle')}</Text>
-      <Text variant="body">{t('fullBody')}</Text>
+      <Text tag="h1" size="2xl" weight="semibold">{t('fullTitle')}</Text>
+      <Text tag="p" className="text-slate-400">{t('fullBody')}</Text>
       <Button variant="ghost" onClick={onBackToHome}>{t('backToHome')}</Button>
     </div>
   );
