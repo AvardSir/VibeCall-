@@ -25,7 +25,7 @@ describe('ChatPanel', () => {
     useChatStore.getState().openPanel();
     render(<ChatPanel role="guest" />);
     const panel = screen.getByRole('complementary');
-    expect(panel).toHaveClass('w-[340px]', 'bg-slate-100');
+    expect(panel).toHaveClass('w-chat-panel', 'bg-slate-100');
     expect(screen.getByRole('button', { name: 'Close chat' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Chat' })).toBeInTheDocument();
   });

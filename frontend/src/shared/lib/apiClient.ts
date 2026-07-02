@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import urlJoin from 'url-join';
 import type { Attachment, CreateRoomResult, JoinError, JoinResult, RoomStatus, UploadResult } from '../types';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+import { apiBaseUrl } from './env';
 
 // Endpoint URL builders kept in one place so paths are not scattered across call sites.
-const roomsUrl = (): string => urlJoin(BASE_URL, 'rooms');
+const roomsUrl = (): string => urlJoin(apiBaseUrl, 'rooms');
 const roomStatusUrl = (roomId: string): string => urlJoin(roomsUrl(), encodeURIComponent(roomId));
 const joinUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'join');
 const endUrl = (roomId: string): string => urlJoin(roomStatusUrl(roomId), 'end');
@@ -106,5 +105,5 @@ export async function uploadAttachment(roomId: string, memberToken: string, file
 // Absolute URL: attachment.url is a backend-relative path, so a native <img>/<a> using it as-is
 // would resolve against the Vite dev server, not the backend — hence the BASE_URL prefix.
 export function attachmentDownloadUrl(attachment: Attachment, memberToken: string): string {
-  return `${urlJoin(BASE_URL, attachment.url)}?token=${encodeURIComponent(memberToken)}`;
+  return `${urlJoin(apiBaseUrl, attachment.url)}?token=${encodeURIComponent(memberToken)}`;
 }

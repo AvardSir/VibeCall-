@@ -171,9 +171,12 @@ hooks/stores) and `40-styling-and-i18n.md` (Tailwind `dark:`, all strings via `t
 - **`AttachmentThumbnail`**: image thumbnail. For animated types (GIF/WebP) draw the first frame to
   a `<canvas>` for the still list view; click opens the lightbox. `alt` = file name.
 - **`FileChip`**: file icon + name + human size + download control (`<a download href={url+token}>`).
-- **`ImageLightbox`**: React portal. Semi-transparent backdrop (**not** fully black); centered
-  `<img>` `object-contain`, scaled to fit viewport, **never enlarged beyond native size**; the call
-  runs behind it. Close via `×` button, `Esc`, or backdrop click. **View-only** (no download inside).
+- **`ImageLightbox`**: React portal. **DEVIATION (2026-07-02, intentional):** the backdrop is
+  **opaque (`bg-black`)**, not the semi-transparent "call runs behind it" backdrop originally
+  specified here — an opaque backdrop was adopted deliberately to fix a **zoom-dim flicker** during
+  open, and is kept on purpose (code and spec reconciled here). Centered `<img>` `object-contain`,
+  scaled to fit viewport, **never enlarged beyond native size**. Close via `×` button, `Esc`, or
+  backdrop click. **View-only** (no download inside).
   Animated images animate here. Accessibility: focus moves into the overlay on open and returns to
   the originating thumbnail on close; close button has an accessible label.
 - **`ChatMessageItem`**: below the text, render an attachments block — images via

@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import type { Socket, DefaultEventsMap } from 'socket.io';
 import type { AppConfig } from './config.js';
+import { MAX_ATTACHMENTS_PER_MESSAGE } from './config.js';
 import type { LivekitAdmin } from './livekitAdmin.js';
 import type { ChatService, ChatMessage, ChatErrorCode } from './chat.js';
 import type { Attachment } from './attachments.js';
@@ -76,8 +77,6 @@ export async function handleJoinChat(
   // and stays stuck in the grid layout, never subscribing to the share view.
   socket.emit('share_state', { activeSharerId: deps.registry.getActiveSharer(roomName) });
 }
-
-const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 
 export function handleSendMessage(
   socket: ChatSocket,
