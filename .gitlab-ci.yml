@@ -15,11 +15,13 @@ stages:
   - validate
   - deploy
 
-# Defaults shared by the validation jobs: Node 22 (matches the app) on the shared demo2 runner.
+# Defaults shared by the validation jobs: Node 22 (matches the app) on the project's runner.
+# tag kmb-deploy = this project's dedicated runner (per DevOps). Assumes a docker executor so `image:`
+# applies; if it's a shell executor, validation needs Node on the host instead of an image.
 default:
   image: node:22-alpine
   tags:
-    - demoserver-2
+    - kmb-deploy
 
 # Run validation on merge requests and on the default/integration branches — not twice for the same
 # commit (branch pipeline is skipped when an MR pipeline exists).
@@ -81,7 +83,7 @@ deploy_develop:
   stage: deploy
   image: registry.s2.git.fora-soft.com/forasoft/dind
   tags:
-    - demoserver-2
+    - kmb-deploy
   environment:
     name: develop
     url: https://dev-kmb-lashin.staging.forasoft.com
