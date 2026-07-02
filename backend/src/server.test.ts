@@ -39,7 +39,6 @@ function makeAppAndIo(): { app: ReturnType<typeof createApp>; io: ChatServer } {
   };
   const chat = {
     history: vi.fn(() => []),
-    validateText: vi.fn(),
     build: vi.fn(),
     append: vi.fn(),
     clear: vi.fn(),

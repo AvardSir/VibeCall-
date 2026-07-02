@@ -47,7 +47,8 @@ export function createApp(deps: AppDeps): Express {
     // synchronously into Express's error pipeline) — map it onto the same FILE_TOO_LARGE
     // contract as attachments.ts so callers see one consistent 413 shape either way.
     if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-      res.status(StatusCodes.REQUEST_TOO_LONG).json({ error: 'FILE_TOO_LARGE' });
+      const e = new AppError('FILE_TOO_LARGE');
+      res.status(e.status).json({ error: e.code });
       return;
     }
     if (err instanceof AppError) {
