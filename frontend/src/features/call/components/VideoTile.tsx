@@ -63,14 +63,14 @@ export function VideoTile({
           {!isMicrophoneEnabled && (
             <span
               data-testid="corner-mute"
-              className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(31,34,36,0.5)]"
+              className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-surface-elevated/50"
             >
               <Icon name="micOff" className="h-4 w-4 text-white" />
             </span>
           )}
           <span
             data-testid="name-label"
-            className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-[9px] bg-[rgba(31,34,36,0.5)] py-1 pl-1.5 pr-2.5"
+            className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-[9px] bg-surface-elevated/50 py-1 pl-1.5 pr-2.5"
           >
             <Icon name={isMicrophoneEnabled ? 'micOn' : 'micOff'} className="h-5 w-5 text-white" />
             <span className="text-sm font-light text-white">{label}</span>
@@ -79,7 +79,7 @@ export function VideoTile({
       ) : (
         // Camera off: mic-state glyph centered above the name on a dark background — no avatar (FR-14).
         <div className="grid h-full place-items-center">
-          <div className="flex flex-col items-center gap-2 rounded-[9px] bg-[rgba(31,34,36,0.5)] px-4 py-3">
+          <div className="flex flex-col items-center gap-2 rounded-[9px] bg-surface-elevated/50 px-4 py-3">
             <span data-testid="center-mic">
               <Icon name={isMicrophoneEnabled ? 'micOn' : 'micOff'} className="h-8 w-8 text-white" />
             </span>

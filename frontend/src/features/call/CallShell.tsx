@@ -104,7 +104,7 @@ export function CallShell({
       // grid and the bottom-right controls (host Copy link + Chat) aren't covered by the panel.
       className={clsx(
         'relative flex h-full flex-col overflow-hidden transition-[padding] duration-200',
-        isPanelOpen && 'pr-[340px]',
+        isPanelOpen && 'pr-chat-panel',
       )}
     >
       {graceSecondsLeft !== null ? <GraceOverlay secondsLeft={graceSecondsLeft} /> : null}

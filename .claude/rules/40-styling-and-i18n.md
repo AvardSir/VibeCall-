@@ -17,6 +17,9 @@
   text-2xl`); there is no `text-md` / `text-xxs` / `text-display-*`. Don't emit class names that
   resolve to nothing.
 - Desktop only (≥1024px) — no responsive breakpoints below that are required.
+- **Inline SVG icons use `currentColor`** — author icon `fill`/`stroke` as `currentColor` (never a
+  baked hex) so an icon inherits its color from the surrounding `text-*` class and adapts to the
+  `dark:` theme for free. Set the color on the icon's container via Tailwind, not inside the SVG.
 
 ## Shared UI (styling ownership)
 

@@ -1,23 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { validateMessageText, createChatService, MAX_TEXT_LENGTH } from './chat.js';
+import { validateMessage, createChatService, MAX_TEXT_LENGTH } from './chat.js';
 
-describe('validateMessageText', () => {
+describe('validateMessage', () => {
   it('accepts normal text and returns it verbatim', () => {
-    expect(validateMessageText('hello')).toEqual({ ok: true, value: 'hello' });
+    expect(validateMessage({ text: 'hello', attachmentCount: 0 })).toEqual({ ok: true, value: 'hello' });
   });
 
   it('rejects blank / whitespace-only as EMPTY_MESSAGE', () => {
-    expect(validateMessageText('   ')).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
-    expect(validateMessageText('')).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
-  });
-
-  it('rejects non-string as EMPTY_MESSAGE', () => {
-    expect(validateMessageText(undefined)).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
-    expect(validateMessageText(42)).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
+    expect(validateMessage({ text: '   ', attachmentCount: 0 })).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
+    expect(validateMessage({ text: '', attachmentCount: 0 })).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
   });
 
   it('rejects > 1000 chars as TEXT_TOO_LONG', () => {
-    expect(validateMessageText('a'.repeat(MAX_TEXT_LENGTH + 1))).toEqual({
+    expect(validateMessage({ text: 'a'.repeat(MAX_TEXT_LENGTH + 1), attachmentCount: 0 })).toEqual({
       ok: false,
       code: 'TEXT_TOO_LONG',
     });
@@ -25,7 +20,7 @@ describe('validateMessageText', () => {
 
   it('accepts exactly 1000 chars', () => {
     const text = 'a'.repeat(MAX_TEXT_LENGTH);
-    expect(validateMessageText(text)).toEqual({ ok: true, value: text });
+    expect(validateMessage({ text, attachmentCount: 0 })).toEqual({ ok: true, value: text });
   });
 });
 

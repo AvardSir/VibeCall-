@@ -6,11 +6,11 @@ import { Text } from '../../../shared/ui/Text';
 import { Tooltip } from '../../../shared/ui/Tooltip';
 import { useChatStore } from '../../../stores/useChatStore';
 import type { StagedFile } from '../../../stores/useChatStore';
-import { validateStagedFile } from '../lib/validateAttachment';
+import { ALLOWED_EXTENSIONS, validateStagedFile } from '../lib/validateAttachment';
 
 const MAX_TEXT_LENGTH = 1000;
 const COUNTER_THRESHOLD = 900;
-const ACCEPT_EXTENSIONS = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip';
+const ACCEPT_EXTENSIONS = Array.from(ALLOWED_EXTENSIONS, (e) => '.' + e).join(',');
 
 // Clipboard image blobs often arrive without a usable filename; normalize the name from the MIME
 // type so the shared extension-based validation (validateStagedFile) accepts a pasted screenshot.

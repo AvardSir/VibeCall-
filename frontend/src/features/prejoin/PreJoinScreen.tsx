@@ -47,16 +47,16 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
           <Text size="sm" className="text-center text-text-muted">{t('awaitingPermission')}</Text>
         ) : null}
         {cameraPermission === 'denied' && micPermission !== 'denied' ? (
-          <Text size="sm" className="text-center text-amber-400">{t('cameraDenied')}</Text>
+          <Text size="sm" className="text-center text-warning">{t('cameraDenied')}</Text>
         ) : null}
         {micPermission === 'denied' && cameraPermission !== 'denied' ? (
-          <Text size="sm" className="text-center text-amber-400">{t('micDenied')}</Text>
+          <Text size="sm" className="text-center text-warning">{t('micDenied')}</Text>
         ) : null}
         {bothDenied ? (
-          <Text size="sm" className="text-center text-amber-400">{t('bothDenied')}</Text>
+          <Text size="sm" className="text-center text-warning">{t('bothDenied')}</Text>
         ) : null}
         {error ? (
-          <Text size="sm" className="text-center text-amber-400">{t('common:connectError')}</Text>
+          <Text size="sm" className="text-center text-warning">{t('common:connectError')}</Text>
         ) : null}
 
         <div className="flex w-full flex-col items-center gap-4">

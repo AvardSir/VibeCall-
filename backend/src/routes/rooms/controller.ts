@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
 import type { AppConfig } from '../../config.js';
 import type { LivekitAdmin } from '../../livekitAdmin.js';
 import type { TokenMinter } from '../../livekitTokens.js';
@@ -39,7 +40,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
     const room = registry.create();
     // Create the LiveKit room now so the first participant can connect immediately.
     await admin.ensureRoom(room.roomId);
-    res.status(201).json({ roomId: room.roomId, hostToken: room.hostToken });
+    res.status(StatusCodes.CREATED).json({ roomId: room.roomId, hostToken: room.hostToken });
   }
 
   async function getStatus(req: Request, res: Response): Promise<void> {
@@ -117,7 +118,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
     void attachments
       .deleteRoomFolder(roomId)
       .catch((err: unknown) => logger.error({ err, room: roomId }, 'attachment cleanup on end failed'));
-    res.sendStatus(204);
+    res.sendStatus(StatusCodes.NO_CONTENT);
   }
 
   async function remove(req: Request, res: Response): Promise<void> {
@@ -131,7 +132,7 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
     emitParticipantRemoved(io, roomId, targetIdentity); // guest learns the reason before the kick
     registry.revokeMemberToken(roomId, targetIdentity); // cut off attachment upload/download immediately
     await admin.removeParticipant(roomId, targetIdentity);
-    res.sendStatus(204);
+    res.sendStatus(StatusCodes.NO_CONTENT);
   }
 
   return { create, getStatus, join, end, remove };
