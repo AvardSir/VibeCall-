@@ -111,10 +111,9 @@ describe('useChat', () => {
     expect(useChatStore.getState().messages[0]!.status).toBe('failed');
   });
 
-  it('sendMessage uploads staged files then relays metadata and clears staged on success', async () => {
+  it('sendMessage uploads the passed files then relays their metadata on success', async () => {
     const uploaded = { fileId: 'f1', name: 'a.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/f1' };
     mockUploadAttachment.mockResolvedValue({ ok: true, data: uploaded });
-    useChatStore.getState().addStaged(new File(['content'], 'a.png', { type: 'image/png' }));
 
     const { result } = renderHook(() => useChat('guest'));
     await act(async () => {
@@ -128,13 +127,10 @@ describe('useChat', () => {
       event: 'send_message',
       payload: { text: 'with file', attachments: [uploaded] },
     });
-    expect(useChatStore.getState().stagedAttachments).toEqual([]);
   });
 
-  it('sendMessage keeps staged files and marks failed when an upload fails', async () => {
+  it('sendMessage marks failed and does not relay when an upload fails', async () => {
     mockUploadAttachment.mockResolvedValue({ ok: false, error: 'FILE_TOO_LARGE' });
-    const file = new File(['content'], 'a.png', { type: 'image/png' });
-    useChatStore.getState().addStaged(file);
 
     const { result } = renderHook(() => useChat('guest'));
     await act(async () => {
@@ -145,6 +141,25 @@ describe('useChat', () => {
 
     expect(fake.emitted.find((e) => e.event === 'send_message')).toBeUndefined();
     expect(useChatStore.getState().messages[0]!.status).toBe('failed');
+  });
+
+  // Staging is owned by the composer (ChatInput), which consumes staged files synchronously at send
+  // time; sendMessage never touches the staged store (so a slow upload can't wipe a newly-staged file).
+  it('sendMessage does not clear the staged store', async () => {
+    mockUploadAttachment.mockResolvedValue({
+      ok: true,
+      data: { fileId: 'f1', name: 'a.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/f1' },
+    });
+    const file = new File(['content'], 'a.png', { type: 'image/png' });
+    useChatStore.getState().addStaged(file);
+
+    const { result } = renderHook(() => useChat('guest'));
+    await act(async () => {
+      result.current.sendMessage('with file', [makeStagedFile('a.png')]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     expect(useChatStore.getState().stagedAttachments).toEqual([{ id: expect.any(String), file }]);
   });
 });

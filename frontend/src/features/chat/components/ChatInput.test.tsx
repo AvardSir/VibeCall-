@@ -88,6 +88,20 @@ describe('ChatInput', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled();
   });
 
+  it('sends a staged file only once even when Send is clicked repeatedly', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    await userEvent.upload(screen.getByTestId('attach-input'), new File(['x'], 'a.png', { type: 'image/png' }));
+    const send = screen.getByRole('button', { name: 'Send' });
+    await userEvent.click(send);
+    await userEvent.click(send);
+    await userEvent.click(send);
+    expect(onSend).toHaveBeenCalledTimes(1);
+    expect(useChatStore.getState().stagedAttachments).toHaveLength(0);
+    // With text and staging both cleared, Send is disabled again — no path to a duplicate.
+    expect(send).toBeDisabled();
+  });
+
   it('shows the tooManyFiles error when a 6th file is attempted', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const input = screen.getByTestId('attach-input');
@@ -96,6 +110,17 @@ describe('ChatInput', () => {
     }
     await userEvent.upload(input, new File(['x'], 'f5.png', { type: 'image/png' }));
     expect(screen.getByText('You can attach up to 5 files per message.')).toBeInTheDocument();
+  });
+
+  it('clears the tooManyFiles error after the message is sent', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    for (let i = 0; i < 6; i++) {
+      await userEvent.upload(input, new File(['x'], `f${i}.png`, { type: 'image/png' }));
+    }
+    expect(screen.getByText('You can attach up to 5 files per message.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.queryByText('You can attach up to 5 files per message.')).not.toBeInTheDocument();
   });
 
   it('stages an image pasted from the clipboard (Ctrl+V) as a chip', () => {

@@ -16,7 +16,6 @@ export function useChat(role: ParticipantRole): UseChatResult {
   const receiveMessage = useChatStore((s) => s.receiveMessage);
   const addOptimistic = useChatStore((s) => s.addOptimistic);
   const markFailed = useChatStore((s) => s.markFailed);
-  const clearStaged = useChatStore((s) => s.clearStaged);
 
   const joinedRef = useRef(false);
   const clientSeq = useRef(0);
@@ -102,7 +101,6 @@ export function useChat(role: ParticipantRole): UseChatResult {
           if (results.every((r) => r.ok)) {
             const uploaded = results.map((r) => (r as Extract<UploadResult, { ok: true }>).data);
             socket.emit('send_message', { text, attachments: uploaded });
-            clearStaged();
           } else {
             markFailed();
           }
@@ -111,7 +109,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
         }
       })();
     },
-    [addOptimistic, markFailed, clearStaged, localParticipant, socket],
+    [addOptimistic, markFailed, localParticipant, socket],
   );
 
   return { sendMessage };
