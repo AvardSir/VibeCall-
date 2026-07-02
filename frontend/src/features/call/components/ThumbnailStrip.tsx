@@ -21,7 +21,13 @@ export function ThumbnailStrip({ onRemoveGuest }: ThumbnailStripProps = {}): JSX
   );
 
   return (
-    <div data-testid="thumbnail-strip" className="flex h-32 shrink-0 gap-2 overflow-x-auto px-4 pb-4">
+    <div
+      data-testid="thumbnail-strip"
+      // justify-center keeps the tiles centered under the shared screen; the parent (LiveKitRoom) already
+      // reserves pr-[340px] when the chat panel is open, so centering tracks the shrunken area for free.
+      // ≤4 tiles never overflow the width, so justify-center + overflow-x-auto don't clip.
+      className="flex h-32 shrink-0 justify-center gap-2 overflow-x-auto px-4 pb-4"
+    >
       {participants.map((p) => (
         <div key={p.identity} className="aspect-video h-full shrink-0">
           <ParticipantTile
