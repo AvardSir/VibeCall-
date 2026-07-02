@@ -15,8 +15,8 @@
 #   CORS_ORIGIN        = https://dev-kmb.stg.forasoft.com
 #   VITE_API_BASE_URL  = https://dev-api-kmb.stg.forasoft.com      (baked into the FE build)
 #
-# STILL CONFIRM with DevOps (does not block this file):
-#   - LiveKit media: is the UDP range below open, or should we drop it and use coturn TURN?
+# LiveKit media: UDP (confirmed). The host publishes UDP 50000-50100 (+ TCP 7881 fallback); the
+# server firewall must allow that inbound UDP range. No TURN.
 
 version: "3.8"
 

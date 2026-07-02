@@ -29,11 +29,11 @@ media via the shared coturn TURN (creds in the wiki: `forasoft` / `ajhfcjanfqcct
   variables use `https` / `wss`.
 - Domains `*-kmb.stg.forasoft.com` — `dev-kmb` / `dev-api-kmb` / `dev-livekit-kmb` already resolve.
 - Server public IP **167.233.84.103** (LiveKit `rtc.use_external_ip`).
+- **LiveKit media: UDP** — the host publishes UDP 50000–50100 (+ TCP 7881 fallback); the firewall
+  must open that inbound UDP range. No TURN needed.
 
-## Still pending (1 answer)
-
-- **LiveKit media:** is UDP 50000–50100 open, or should we drop it and use coturn TURN? Adjust the
-  `livekit` ports in `docker-compose.develop.yml` + `livekit.yaml` accordingly.
+All infra questions answered — the only thing left before the first deploy is setting the GitLab
+variables below.
 
 ## Your action — GitLab → Settings → CI/CD → Variables (scope: develop)
 
