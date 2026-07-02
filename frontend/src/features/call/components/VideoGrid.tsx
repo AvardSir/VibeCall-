@@ -44,7 +44,7 @@ export type VideoGridProps = {
 
 export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
   const { t } = useTranslation('call');
-  // Roster sync now lives in CallShell (runs in both grid and share layouts); this component only reads.
+  // Roster sync now lives in CallStage (the always-mounted in-room parent); this component only reads.
   const participants = useParticipantsStore((s) => s.participants);
   const cameraTracks = useTracks([Track.Source.Camera]);
 

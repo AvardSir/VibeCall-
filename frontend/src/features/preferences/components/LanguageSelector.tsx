@@ -11,20 +11,19 @@ export type LanguageSelectorProps = {
 export function LanguageSelector({ language, groupLabel, onChange }: LanguageSelectorProps): JSX.Element {
   return (
     <div role="group" aria-label={groupLabel} className="flex items-center gap-0.5 rounded-full bg-black/5 p-0.5 dark:bg-white/10">
-      <LanguageButton code="en" text="EN" active={language === 'en'} onClick={onChange} />
-      <LanguageButton code="ru" text="RU" active={language === 'ru'} onClick={onChange} />
+      <LanguageButton code="en" active={language === 'en'} onClick={onChange} />
+      <LanguageButton code="ru" active={language === 'ru'} onClick={onChange} />
     </div>
   );
 }
 
 type LanguageButtonProps = {
   code: Language;
-  text: string;
   active: boolean;
   onClick: (language: Language) => void;
 };
 
-function LanguageButton({ code, text, active, onClick }: LanguageButtonProps): JSX.Element {
+function LanguageButton({ code, active, onClick }: LanguageButtonProps): JSX.Element {
   return (
     <button
       type="button"
@@ -34,7 +33,7 @@ function LanguageButton({ code, text, active, onClick }: LanguageButtonProps): J
         active ? 'bg-accent text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
       }`}
     >
-      {text}
+      {code.toUpperCase()}
     </button>
   );
 }
