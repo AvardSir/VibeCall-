@@ -11,6 +11,8 @@ describe('ControlButton', () => {
     const btn = screen.getByRole('button', { name: 'Mute microphone' });
     expect(btn).toHaveClass('size-12', 'rounded-[30px]');
     expect(btn).toHaveClass('bg-slate-800', 'text-white'); // default variant = white (light-base)
+    // NFR-2: explicit theme-aware focus-visible ring, not the browser default outline
+    expect(btn).toHaveClass('focus-visible:outline-2', 'focus-visible:outline-accent');
     expect(container.querySelector('svg')).not.toBeNull();
   });
 

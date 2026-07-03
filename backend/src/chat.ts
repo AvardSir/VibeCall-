@@ -20,15 +20,18 @@ export type MessageValidation =
   | { ok: false; code: 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' };
 
 // Text may be blank when at least one attachment is present (an attachment-only message).
+// Leading/trailing whitespace is trimmed here so the trimmed value is what gets built, stored,
+// and broadcast (VAL-ChatText) — callers use `value`, never the raw input.
 export function validateMessage(input: { text: string; attachmentCount: number }): MessageValidation {
   const { text, attachmentCount } = input;
-  if (text.trim().length === 0 && attachmentCount === 0) {
+  const trimmed = text.trim();
+  if (trimmed.length === 0 && attachmentCount === 0) {
     return { ok: false, code: 'EMPTY_MESSAGE' };
   }
-  if (text.length > MAX_TEXT_LENGTH) {
+  if (trimmed.length > MAX_TEXT_LENGTH) {
     return { ok: false, code: 'TEXT_TOO_LONG' };
   }
-  return { ok: true, value: text };
+  return { ok: true, value: trimmed };
 }
 
 export type ChatService = {

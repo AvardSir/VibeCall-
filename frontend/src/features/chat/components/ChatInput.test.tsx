@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../../../shared/i18n';
 import { ChatInput } from './ChatInput';
@@ -53,14 +53,25 @@ describe('ChatInput', () => {
     expect(field).toHaveValue('a\nb');
   });
 
-  it('shows the character counter only from 900 characters', async () => {
+  it('shows the remaining-character counter only from 900 characters', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const field = screen.getByPlaceholderText('Type a message…');
     await userEvent.click(field);
     await userEvent.paste('a'.repeat(899));
-    expect(screen.queryByText(/\/1000$/)).not.toBeInTheDocument();
-    await userEvent.paste('a'); // now 900
-    expect(screen.getByText('900/1000')).toBeInTheDocument();
+    expect(screen.queryByText(/characters left/)).not.toBeInTheDocument();
+    await userEvent.paste('a'); // now 900 → 100 remaining
+    expect(screen.getByText('100 characters left')).toBeInTheDocument();
+  });
+
+  it('restores a pending composer draft (e.g. a retried message) into the field and consumes it', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    expect(field).toHaveValue('');
+    act(() => {
+      useChatStore.setState({ composerDraft: 'try me again' });
+    });
+    expect(field).toHaveValue('try me again');
+    expect(useChatStore.getState().composerDraft).toBeNull(); // consumed, won't re-apply
   });
 
   it('stages a valid image and shows it as a chip', async () => {

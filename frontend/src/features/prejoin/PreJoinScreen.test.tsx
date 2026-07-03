@@ -5,7 +5,9 @@ import { PreJoinScreen } from './PreJoinScreen';
 import { useMediaStore } from '../../stores/useMediaStore';
 
 function fakeStream(): MediaStream {
-  return { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
+  // addTrack is exercised by useDevicePermissions when it merges the granted mic track into the
+  // camera preview stream (both-granted path); a real MediaStream has it, so the mock must too.
+  return { getTracks: () => [{ stop: vi.fn() }], addTrack: vi.fn() } as unknown as MediaStream;
 }
 
 beforeEach(() => {

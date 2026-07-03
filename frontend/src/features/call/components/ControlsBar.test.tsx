@@ -144,4 +144,46 @@ describe('ControlsBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Share your screen' }));
     expect(toggle).toHaveBeenCalledOnce();
   });
+
+  it('disables the mic control and blocks turning it on when microphone permission is denied', () => {
+    useMediaStore.setState({ micPermission: 'denied', isMicOn: false });
+    renderControls();
+    const micBtn = screen.getByRole('button', { name: 'Unmute microphone' });
+    expect(micBtn).toBeDisabled();
+    fireEvent.click(micBtn);
+    expect(useMediaStore.getState().isMicOn).toBe(false);
+  });
+
+  it('disables the camera control and blocks turning it on when camera permission is denied', () => {
+    useMediaStore.setState({ cameraPermission: 'denied', isCamOn: false });
+    renderControls();
+    const camBtn = screen.getByRole('button', { name: 'Turn camera on' });
+    expect(camBtn).toBeDisabled();
+    fireEvent.click(camBtn);
+    expect(useMediaStore.getState().isCamOn).toBe(false);
+  });
+
+  it('reverts the camera toggle and shows an inline error when enabling the camera fails', async () => {
+    setCamEnabled.mockRejectedValueOnce(new Error('denied'));
+    renderControls();
+    expect(
+      await screen.findByText('Unable to access camera. Please check your device or browser settings.'),
+    ).toBeInTheDocument();
+    expect(useMediaStore.getState().isCamOn).toBe(false);
+  });
+
+  it('reverts the mic toggle and shows an inline error when enabling the mic fails', async () => {
+    setMicEnabled.mockRejectedValueOnce(new Error('denied'));
+    renderControls();
+    expect(
+      await screen.findByText('Unable to access microphone. Please check your device or browser settings.'),
+    ).toBeInTheDocument();
+    expect(useMediaStore.getState().isMicOn).toBe(false);
+  });
+
+  it('separates the destructive control from the media toggles with extra spacing', () => {
+    renderControls({ role: 'guest' });
+    const leaveBtn = screen.getByRole('button', { name: 'Leave the call' });
+    expect(leaveBtn.closest('.ml-6')).not.toBeNull();
+  });
 });

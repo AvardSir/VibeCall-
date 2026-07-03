@@ -13,7 +13,7 @@ export type LinkButtonProps = {
 // The verbatim link styling shared by the room-state screens — extracted as-is to remove the 5x
 // duplication with zero visual change (identical classes to the previous inline <Link>).
 const LINK_BUTTON_CLASSES =
-  'rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted';
+  'rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 export function LinkButton({ to, children, className, ref }: LinkButtonProps): JSX.Element {
   return (

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ClipboardEvent, FormEvent, JSX, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../../../shared/ui/Icon';
@@ -33,6 +33,18 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
   const addStaged = useChatStore((s) => s.addStaged);
   const removeStaged = useChatStore((s) => s.removeStaged);
   const clearStaged = useChatStore((s) => s.clearStaged);
+  const composerDraft = useChatStore((s) => s.composerDraft);
+  const clearComposerDraft = useChatStore((s) => s.clearComposerDraft);
+
+  // A retried failed message restores its text into the composer via the store (its attachments are
+  // re-staged there). Apply it during render (React bails once text already equals the draft), then
+  // consume the pending draft in an effect — keeping the local setState out of the effect body.
+  if (composerDraft !== null && composerDraft !== text) {
+    setText(composerDraft);
+  }
+  useEffect(() => {
+    if (composerDraft !== null) clearComposerDraft();
+  }, [composerDraft, clearComposerDraft]);
 
   const canSend = text.trim().length > 0 || stagedAttachments.length > 0;
 
@@ -183,7 +195,9 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
         </Text>
       )}
       {text.length >= COUNTER_THRESHOLD && (
-        <span className="self-end text-xs text-slate-500">{t('charCount', { length: text.length })}</span>
+        <span className="self-end text-xs text-slate-500">
+          {t('charCount', { remaining: MAX_TEXT_LENGTH - text.length })}
+        </span>
       )}
     </form>
   );

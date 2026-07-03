@@ -12,7 +12,7 @@ export function ThemeToggle({ theme, label, onToggle }: ThemeToggleProps): JSX.E
       type="button"
       aria-label={label}
       onClick={onToggle}
-      className="grid h-9 w-9 place-items-center rounded-full text-slate-700 transition hover:bg-black/5 dark:text-slate-200 dark:hover:bg-white/10"
+      className="grid h-9 w-9 place-items-center rounded-full text-slate-700 transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent dark:text-slate-200 dark:hover:bg-white/10"
     >
       {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
     </button>

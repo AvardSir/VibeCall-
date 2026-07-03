@@ -49,6 +49,10 @@ export type ChatGatewayDeps = {
   admin: Pick<LivekitAdmin, 'listParticipants'>;
   chat: ChatService;
   registry: Pick<RoomRegistry, 'claimShare' | 'releaseShare' | 'getActiveSharer'>;
+  // Current host-reconnect countdown for a room in grace, or null when it is not in grace.
+  // Late-bound to the grace service in server.ts (io is created before grace, so this is read
+  // through a closure rather than holding a direct reference).
+  getGraceRemaining: (roomId: string) => number | null;
 };
 
 export async function handleJoinChat(
@@ -76,6 +80,13 @@ export async function handleJoinChat(
   // someone is already sharing never learns the active sharer (share_state only fires on claim/release)
   // and stays stuck in the grid layout, never subscribing to the share view.
   socket.emit('share_state', { activeSharerId: deps.registry.getActiveSharer(roomName) });
+  // Bring a socket that joins mid-grace in sync at once (FR-4): grace_tick otherwise only fires on
+  // the ~1s broadcast, so without this the host-disconnect overlay would not show until the next
+  // tick. Emit the live countdown directly to the joining socket when the room is in grace.
+  const graceRemaining = deps.getGraceRemaining(roomName);
+  if (graceRemaining !== null) {
+    socket.emit('grace_tick', { secondsLeft: graceRemaining });
+  }
 }
 
 export function handleSendMessage(

@@ -48,6 +48,17 @@ describe('ImageLightbox', () => {
     expect(closeButton).toHaveFocus();
   });
 
+  it('dims with a semi-transparent backdrop (not fully opaque) so the call stays visible behind', () => {
+    const { container } = render(<ImageLightbox src="x" alt="c" onClose={vi.fn()} />);
+
+    // The dim is a dedicated aria-hidden layer; it must use a translucent black, never opaque bg-black.
+    const dim = container.querySelector('[aria-hidden="true"]');
+    expect(dim).not.toBeNull();
+    expect((dim as Element).className).toContain('bg-black/70');
+    // Guard against a regression back to the opaque `bg-black` (with no /opacity suffix).
+    expect((dim as Element).className).not.toMatch(/\bbg-black(?!\/)/);
+  });
+
   it('removes the keydown listener on unmount', () => {
     const onClose = vi.fn();
     const { unmount } = render(<ImageLightbox src="x" alt="c" onClose={onClose} />);

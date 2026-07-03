@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createRoom } from '../shared/lib/apiClient';
 import { Button } from '../shared/ui/Button';
 import { Text } from '../shared/ui/Text';
+import { UnsupportedBrowserNotice } from '../shared/ui/UnsupportedBrowserNotice';
 
 export function LandingPage(): JSX.Element {
   const { t } = useTranslation('landing');
@@ -42,6 +43,8 @@ export function LandingPage(): JSX.Element {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-6 text-center">
+      {/* FR-31/ES-814: non-blocking unsupported-browser notice on the host's first screen. */}
+      <UnsupportedBrowserNotice />
       {/* FR-30: the landing page shows the app name/logo. Wordmark = "КМБ" in the brand accent blue. */}
       <Text tag="h1" size="2xl" weight="bold" className="text-accent">{t('appName')}</Text>
       <Text tag="p" size="md" className="text-text-muted">{t('tagline')}</Text>

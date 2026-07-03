@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocalParticipant } from '@livekit/components-react';
 import { ControlButton } from '../../../shared/ui/ControlButton';
@@ -17,6 +17,8 @@ export type ControlsBarProps = {
   participantUrl: string;
 };
 
+const DEVICE_ERROR_DISMISS_MS = 4000;
+
 export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: ControlsBarProps): JSX.Element {
   const { t } = useTranslation('call');
   const { t: tc } = useTranslation('chat');
@@ -25,11 +27,33 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
   const isCamOn = useMediaStore((s) => s.isCamOn);
   const setMicOn = useMediaStore((s) => s.setMicOn);
   const setCamOn = useMediaStore((s) => s.setCamOn);
+  const micPermission = useMediaStore((s) => s.micPermission);
+  const cameraPermission = useMediaStore((s) => s.cameraPermission);
   const unreadCount = useChatStore((s) => s.unreadCount);
   const togglePanel = useChatStore((s) => s.togglePanel);
   const isPanelOpen = useChatStore((s) => s.isPanelOpen);
   const markAllRead = useChatStore((s) => s.markAllRead);
   const { isSharing, isBusy, error: shareError, toggle: toggleShare } = useScreenShare();
+
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Show an inline device-access error that auto-dismisses (mirrors the shareError pattern).
+  const showDeviceError = useCallback((message: string): void => {
+    setDeviceError(message);
+    if (dismissTimerRef.current !== null) clearTimeout(dismissTimerRef.current);
+    dismissTimerRef.current = setTimeout(() => setDeviceError(null), DEVICE_ERROR_DISMISS_MS);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (dismissTimerRef.current !== null) clearTimeout(dismissTimerRef.current);
+    },
+    [],
+  );
+
+  const micDenied = micPermission === 'denied';
+  const camDenied = cameraPermission === 'denied';
 
   const shareTooltip = isBusy
     ? t('shareTooltipBusy')
@@ -37,14 +61,31 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
       ? t('shareTooltipActive')
       : t('shareTooltipIdle');
 
-  // Reconcile published tracks with the store's desired state.
+  // Reconcile published tracks with the store's desired state. On failure (e.g. permission revoked
+  // mid-call), revert the store toggle to its previous value and surface an inline error.
   useEffect(() => {
-    void localParticipant.setMicrophoneEnabled(isMicOn);
-  }, [localParticipant, isMicOn]);
+    localParticipant.setMicrophoneEnabled(isMicOn).catch(() => {
+      setMicOn(!isMicOn);
+      showDeviceError(t('micAccessError'));
+    });
+  }, [localParticipant, isMicOn, setMicOn, showDeviceError, t]);
 
   useEffect(() => {
-    void localParticipant.setCameraEnabled(isCamOn);
-  }, [localParticipant, isCamOn]);
+    localParticipant.setCameraEnabled(isCamOn).catch(() => {
+      setCamOn(!isCamOn);
+      showDeviceError(t('cameraAccessError'));
+    });
+  }, [localParticipant, isCamOn, setCamOn, showDeviceError, t]);
+
+  const handleToggleMic = (): void => {
+    if (micDenied) return; // guard: a denied device can never be turned on from here
+    setMicOn(!isMicOn);
+  };
+
+  const handleToggleCam = (): void => {
+    if (camDenied) return;
+    setCamOn(!isCamOn);
+  };
 
   const handleToggleChat = (): void => {
     if (!isPanelOpen) markAllRead(); // opening the panel marks everything read
@@ -53,12 +94,13 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
 
   const micLabel = isMicOn ? t('micTooltipOn') : t('micTooltipOff');
   const camLabel = isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff');
+  const inlineError = shareError ?? deviceError;
 
   return (
     <div className="relative p-4">
-      {shareError ? (
+      {inlineError ? (
         <p className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full text-sm text-amber-400">
-          {shareError}
+          {inlineError}
         </p>
       ) : null}
 
@@ -67,14 +109,16 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
           <ControlButton
             icon={isMicOn ? 'micOn' : 'micOff'}
             label={micLabel}
-            onClick={() => setMicOn(!isMicOn)}
+            disabled={micDenied}
+            onClick={handleToggleMic}
           />
         </Tooltip>
         <Tooltip label={camLabel}>
           <ControlButton
             icon={isCamOn ? 'camOn' : 'camOff'}
             label={camLabel}
-            onClick={() => setCamOn(!isCamOn)}
+            disabled={camDenied}
+            onClick={handleToggleCam}
           />
         </Tooltip>
         <Tooltip label={shareTooltip}>
@@ -87,15 +131,18 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
             iconClassName="h-[26px] w-[26px]"
           />
         </Tooltip>
-        {role === 'host' ? (
-          <Tooltip label={t('endCallTooltip')}>
-            <ControlButton icon="hangup" label={t('endCallTooltip')} variant="danger" onClick={onEndCall} />
-          </Tooltip>
-        ) : (
-          <Tooltip label={t('leaveTooltip')}>
-            <ControlButton icon="hangup" label={t('leaveTooltip')} variant="danger" onClick={onLeave} />
-          </Tooltip>
-        )}
+        {/* Extra separation (ml-6, 24px) keeps the destructive control clear of the media toggles. */}
+        <div className="ml-6">
+          {role === 'host' ? (
+            <Tooltip label={t('endCallTooltip')}>
+              <ControlButton icon="hangup" label={t('endCallTooltip')} variant="danger" onClick={onEndCall} />
+            </Tooltip>
+          ) : (
+            <Tooltip label={t('leaveTooltip')}>
+              <ControlButton icon="hangup" label={t('leaveTooltip')} variant="danger" onClick={onLeave} />
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <div className="absolute bottom-4 right-7 flex items-center gap-4">
@@ -113,10 +160,9 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
           {unreadCount > 0 && (
             <span
               data-testid="chat-unread"
-              className="pointer-events-none absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-xs text-white"
-            >
-              {unreadCount}
-            </span>
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-accent"
+            />
           )}
         </div>
       </div>

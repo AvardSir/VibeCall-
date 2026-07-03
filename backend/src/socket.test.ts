@@ -76,6 +76,7 @@ function makeDeps(participants: { identity: string; name: string }[], roomId = '
       releaseShare: vi.fn(() => true),
       getActiveSharer: vi.fn(() => null),
     },
+    getGraceRemaining: vi.fn(() => null),
   };
 }
 
@@ -142,6 +143,27 @@ describe('handleJoinChat', () => {
 
     expect(deps.registry.getActiveSharer).toHaveBeenCalledWith('r1');
     expect(emitted).toContainEqual({ event: 'share_state', payload: { activeSharerId: 'p_0' } });
+  });
+
+  it('emits the current grace countdown to a socket that joins mid-grace (FR-4)', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.getGraceRemaining as Mock).mockReturnValue(42);
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
+
+    expect(deps.getGraceRemaining).toHaveBeenCalledWith('r1');
+    expect(emitted).toContainEqual({ event: 'grace_tick', payload: { secondsLeft: 42 } });
+  });
+
+  it('does not emit grace_tick when the room is not in grace', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.getGraceRemaining as Mock).mockReturnValue(null);
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
+
+    expect(emitted.find((e) => e.event === 'grace_tick')).toBeUndefined();
   });
 
   it('rejects a non-member: no bind, no join, message_failed NOT_A_MEMBER', async () => {

@@ -25,6 +25,9 @@ export function useRoomLifecycle({ identity, onRoomEnded, onRemoved }: UseRoomLi
   }, [identity, onRoomEnded, onRemoved]);
 
   useEffect(() => {
+    // `grace_tick` carries both the per-second broadcast and the one-shot value the backend emits
+    // to a socket that joins while the room is already in grace (FR-4). The same handler serves
+    // both, so a mid-grace joiner's host-disconnect overlay shows immediately on connect.
     const onTick = (payload: { secondsLeft: number }): void => setGrace(payload.secondsLeft);
     const onCancelled = (): void => setGrace(null);
     const onEnded = (payload: { reason: RoomEndReason }): void => {

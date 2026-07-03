@@ -51,7 +51,16 @@ async function main(): Promise<void> {
   // `io` and `grace` reference each other (grace broadcasts over `io`; `end`/`remove` cancel
   // grace over the same `io`), so `io` is created first (detached from any http server), then
   // handed to the grace service, and both are passed into the Express app afterwards.
-  const io: ChatServer = createSocketServer({ config, admin, chat, registry });
+  // `io` is created before `grace` (grace broadcasts over `io`), so the socket gateway reads the
+  // live grace countdown through a closure over `grace` rather than a direct reference. `grace` is
+  // always assigned before any socket can join, so the guard is only for the temporal dead zone.
+  const io: ChatServer = createSocketServer({
+    config,
+    admin,
+    chat,
+    registry,
+    getGraceRemaining: (roomId) => grace.remainingSeconds(roomId),
+  });
   const grace = createGraceService({
     registry,
     admin,

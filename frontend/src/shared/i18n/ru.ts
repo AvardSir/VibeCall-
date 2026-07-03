@@ -62,6 +62,8 @@ export const ru: Translations = {
     youAreSharing: 'Вы показываете свой экран',
     shareError: 'Не удалось показать экран. Проверьте разрешения браузера.',
     shareBusy: 'Кто-то уже показывает экран',
+    cameraAccessError: 'Не удалось получить доступ к камере. Проверьте устройство или настройки браузера.',
+    micAccessError: 'Не удалось получить доступ к микрофону. Проверьте устройство или настройки браузера.',
   },
   chat: {
     title: 'Чат',
@@ -70,7 +72,7 @@ export const ru: Translations = {
     empty: 'Сообщений пока нет.',
     sending: 'Отправка…',
     notDelivered: 'Не доставлено',
-    charCount: '{{length}}/1000',
+    charCount: 'Осталось символов: {{remaining}}',
     openChat: 'Чат',
     closeChat: 'Закрыть чат',
     attach: 'Прикрепить файлы',
@@ -99,5 +101,6 @@ export const ru: Translations = {
     removeDialogTitle: 'Удалить {{name}} из звонка?',
     removeConfirm: 'Удалить',
     removeCancel: 'Отмена',
+    unsupportedBrowser: 'Ваш браузер может не поддерживать видеозвонки. Используйте последнюю версию Chrome, Firefox, Safari или Edge.',
   },
 };
