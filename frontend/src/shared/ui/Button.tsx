@@ -16,7 +16,7 @@ export type ButtonProps = {
 
 // Figma CTA button: 10px radius, 28/12 padding → 48px tall with 16px/lh24 label at weight 452.
 const BASE =
-  'inline-flex items-center justify-center rounded-[10px] px-7 py-3 text-base font-[452] transition disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center rounded-[10px] px-7 py-3 text-base font-[452] transition disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-white hover:bg-accent-strong',

@@ -37,6 +37,16 @@ export function ScreenShareView(): JSX.Element {
       ) : (
         <div data-testid="share-placeholder" className="h-full w-full rounded-xl bg-black" />
       )}
+      {participants.length === 1 && (
+        // Lone host sharing (ES-HostAlone): keep the "waiting for someone to join" notice visible
+        // as a centered overlay even in the screen-share layout.
+        <p
+          data-testid="waiting-notice"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded bg-black/60 px-4 py-2 text-sm text-white"
+        >
+          {t('waiting')}
+        </p>
+      )}
     </div>
   );
 }

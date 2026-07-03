@@ -22,6 +22,16 @@ describe('validateMessage', () => {
     const text = 'a'.repeat(MAX_TEXT_LENGTH);
     expect(validateMessage({ text, attachmentCount: 0 })).toEqual({ ok: true, value: text });
   });
+
+  it('trims leading/trailing whitespace and returns the trimmed value', () => {
+    expect(validateMessage({ text: '  hi  ', attachmentCount: 0 })).toEqual({ ok: true, value: 'hi' });
+    expect(validateMessage({ text: '\n\tspaced\t\n', attachmentCount: 0 })).toEqual({ ok: true, value: 'spaced' });
+  });
+
+  it('measures length against the trimmed text (trailing spaces do not overflow the limit)', () => {
+    const text = 'a'.repeat(MAX_TEXT_LENGTH) + '   ';
+    expect(validateMessage({ text, attachmentCount: 0 })).toEqual({ ok: true, value: 'a'.repeat(MAX_TEXT_LENGTH) });
+  });
 });
 
 describe('createChatService', () => {

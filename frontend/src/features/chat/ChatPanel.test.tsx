@@ -109,7 +109,8 @@ describe('ChatPanel', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('img', { name: 'c.png' }));
+    // The non-animated image thumbnail is now a focusable role="button" (PRD FR-27 a11y), not a bare img.
+    fireEvent.click(screen.getByRole('button', { name: 'c.png' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     // Exact name: the panel header now also carries a "Close chat" control, so /close/i is ambiguous.

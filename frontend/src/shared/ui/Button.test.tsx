@@ -9,6 +9,8 @@ describe('Button', () => {
     const el = screen.getByRole('button', { name: 'Join' });
     expect(el).toHaveClass('rounded-[10px]', 'px-7', 'py-3', 'text-base', 'font-[452]');
     expect(el).toHaveClass('bg-accent', 'text-white', 'hover:bg-accent-strong');
+    // NFR-2: explicit theme-aware focus-visible ring, not the browser default outline
+    expect(el).toHaveClass('focus-visible:outline-2', 'focus-visible:outline-accent');
     expect(el).toHaveAttribute('type', 'button');
   });
 

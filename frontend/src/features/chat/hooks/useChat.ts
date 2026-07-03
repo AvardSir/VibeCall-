@@ -45,7 +45,13 @@ export function useChat(role: ParticipantRole): UseChatResult {
 
     const handleChatMessage = (message: ChatMessage): void => receiveMessage(message, identity);
 
-    const handleMessageFailed = (): void => markFailed();
+    // The server's `message_failed` event carries only an error code, no client id, so it cannot be
+    // mapped to a specific optimistic bubble. Fall back to the oldest still-sending message. (The
+    // upload-failure path, by contrast, knows its client id and flips that exact message.)
+    const handleMessageFailed = (): void => {
+      const oldestSending = useChatStore.getState().messages.find((m) => m.status === 'sending');
+      if (oldestSending) markFailed(oldestSending.key);
+    };
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
@@ -83,6 +89,10 @@ export function useChat(role: ParticipantRole): UseChatResult {
       const { roomId, memberToken } = localParticipant;
       const clientId = `c_${clientSeq.current++}`;
 
+      // Trim leading/trailing whitespace so the optimistic bubble matches what the server broadcasts
+      // (the backend trims in validateMessage — VAL-ChatText).
+      const trimmedText = text.trim();
+
       // Blob-URL previews let the optimistic bubble render attachments immediately, before the
       // upload resolves; ChatMessageItem (Task 17) swaps them for tokened URLs once delivered.
       const previews: Attachment[] = files.map((sf) => ({
@@ -93,19 +103,20 @@ export function useChat(role: ParticipantRole): UseChatResult {
         kind: sf.file.type.startsWith('image/') ? 'image' : 'file',
         url: URL.createObjectURL(sf.file),
       }));
-      addOptimistic(clientId, text, localParticipant, previews);
+      // Retain the staged files on the optimistic item so a failed send can be restored & resent.
+      addOptimistic(clientId, trimmedText, localParticipant, previews, files);
 
       void (async () => {
         try {
           const results = await Promise.all(files.map((sf) => uploadAttachment(roomId, memberToken, sf.file)));
           if (results.every((r) => r.ok)) {
             const uploaded = results.map((r) => (r as Extract<UploadResult, { ok: true }>).data);
-            socket.emit('send_message', { text, attachments: uploaded });
+            socket.emit('send_message', { text: trimmedText, attachments: uploaded });
           } else {
-            markFailed();
+            markFailed(clientId);
           }
         } catch {
-          markFailed();
+          markFailed(clientId);
         }
       })();
     },

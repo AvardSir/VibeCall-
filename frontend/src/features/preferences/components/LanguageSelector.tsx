@@ -29,7 +29,7 @@ function LanguageButton({ code, active, onClick }: LanguageButtonProps): JSX.Ele
       type="button"
       aria-pressed={active}
       onClick={() => onClick(code)}
-      className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+      className={`rounded-full px-2.5 py-1 text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
         active ? 'bg-accent text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
       }`}
     >

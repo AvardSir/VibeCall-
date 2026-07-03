@@ -39,7 +39,7 @@ export function ControlButton({
       onClick={onClick}
       disabled={disabled}
       className={clsx(
-        'inline-flex size-12 items-center justify-center rounded-[30px] transition disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex size-12 items-center justify-center rounded-[30px] transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         VARIANT_CLASSES[variant],
       )}
     >

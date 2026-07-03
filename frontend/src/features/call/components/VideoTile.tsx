@@ -32,9 +32,10 @@ export function VideoTile({
     <div
       data-speaking={isSpeaking ? 'true' : undefined}
       className={clsx(
-        // Camera-off fill: grey in light theme (like the chat surfaces), dark in dark theme. The
-        // overlaid name/mic pills are semi-transparent dark and stay readable on either fill.
-        'group relative h-full w-full overflow-hidden rounded-[12px] bg-slate-200 dark:bg-surface-elevated',
+        // Camera-off fill: video tiles keep a DARK backing in BOTH themes (Design Considerations
+        // §12) — `surface-elevated` is a fixed dark token, so no light-theme override. The overlaid
+        // name/mic pills are semi-transparent dark and stay readable on it.
+        'group relative h-full w-full overflow-hidden rounded-[12px] bg-surface-elevated',
         // Active-speaker highlight (project accent blue) — the design has no green.
         isSpeaking && 'ring-4 ring-accent',
       )}

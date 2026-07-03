@@ -3,6 +3,7 @@ import type { FormEvent, JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/Button';
 import { Text } from '../../shared/ui/Text';
+import { UnsupportedBrowserNotice } from '../../shared/ui/UnsupportedBrowserNotice';
 import { useDevicePermissions } from './hooks/useDevicePermissions';
 import { validateName } from './nameValidation';
 import { useMediaStore } from '../../stores/useMediaStore';
@@ -40,6 +41,8 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
       {/* PRD/wireframe (H2) layout: a wider card with a large full-width camera preview, the device
           toggles + permission notices, then the name field and CTA — all inside one card. */}
       <div className="flex w-[560px] flex-col gap-4 rounded-[12px] bg-slate-100 p-8 dark:bg-surface-elevated">
+        {/* FR-31/ES-814: non-blocking unsupported-browser notice on the guest's first screen. */}
+        <UnsupportedBrowserNotice />
         <CameraPreview stream={previewStream} />
         <DeviceToggles />
 

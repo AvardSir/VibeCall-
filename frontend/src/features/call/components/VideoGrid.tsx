@@ -79,7 +79,11 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
         })}
       </div>
       {count === 1 && (
-        <p className="absolute bottom-24 rounded bg-black/60 px-4 py-2 text-sm text-white">
+        // Lone-host notice: a CENTERED overlay on the single tile (ES-HostAlone), not a bottom pill.
+        <p
+          data-testid="waiting-notice"
+          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/60 px-4 py-2 text-sm text-white"
+        >
           {t('waiting')}
         </p>
       )}
