@@ -132,6 +132,19 @@ describe('ChatMessageItem attachments', () => {
     expect(onOpenImage).toHaveBeenCalledWith(expect.stringContaining('?token='), 'photo.png');
   });
 
+  it('aligns own-message attachments to the right (matching the right-aligned text)', () => {
+    const attachments = [
+      { fileId: 'f1', name: 'a.png', size: 100, mime: 'image/png', kind: 'image' as const, url: '/attachments/f1' },
+      { fileId: 'f2', name: 'b.png', size: 100, mime: 'image/png', kind: 'image' as const, url: '/attachments/f2' },
+    ];
+    const { rerender } = render(
+      <ChatMessageItem item={item({ text: '', senderIdentity: 'p_self', attachments })} isOwn isFirstInGroup />,
+    );
+    expect(screen.getByTestId('attachments')).toHaveClass('justify-end');
+    rerender(<ChatMessageItem item={item({ text: '', attachments })} isOwn={false} isFirstInGroup />);
+    expect(screen.getByTestId('attachments')).not.toHaveClass('justify-end');
+  });
+
   it('renders a file attachment as a download link containing the token and file name', () => {
     render(
       <ChatMessageItem
