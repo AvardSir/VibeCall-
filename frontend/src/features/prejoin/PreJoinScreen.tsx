@@ -37,7 +37,7 @@ export function PreJoinScreen({ onEnter, submitting = false, role = 'guest', err
   }
 
   return (
-    <div className="mx-auto flex min-h-full flex-col items-center justify-center p-8">
+    <div className="mx-auto flex min-h-full flex-col items-center justify-center p-4">
       {/* PRD/wireframe (H2) layout: a wider card with a large full-width camera preview, the device
           toggles + permission notices, then the name field and CTA — all inside one card. */}
       <div className="flex w-[560px] flex-col gap-4 rounded-[12px] bg-slate-100 p-8 dark:bg-surface-elevated">
