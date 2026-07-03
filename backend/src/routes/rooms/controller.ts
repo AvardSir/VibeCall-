@@ -81,11 +81,10 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
     if (count >= cap) throw new AppError('FULL');
 
     const identity = generateIdentity();
-    const accessToken =
-      role === 'host'
-        ? await minter.mintHostToken({ identity, displayName: name, room: roomId })
-        : await minter.mintGuestToken({ identity, displayName: name, room: roomId });
-    if (role === 'host') registry.setHostIdentity(roomId, identity);
+    const accessToken = isHost
+      ? await minter.mintHostToken({ identity, displayName: name, room: roomId })
+      : await minter.mintGuestToken({ identity, displayName: name, room: roomId });
+    if (isHost) registry.setHostIdentity(roomId, identity);
 
     const memberToken = registry.recordMemberToken(roomId, identity);
 

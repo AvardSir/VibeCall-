@@ -9,7 +9,7 @@ const joinBodySchema = z.object({ name: nameSchema, hostToken: z.string().option
 export function parseJoinBody(body: unknown): { name: string; hostToken?: string } {
   const result = joinBodySchema.safeParse(body);
   if (!result.success) throw new AppError('INVALID_NAME');
-  return { name: result.data.name, hostToken: result.data.hostToken };
+  return result.data;
 }
 
 // end/remove are host-only paths: a malformed body is treated the same as a bad room/token
