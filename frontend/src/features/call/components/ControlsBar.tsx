@@ -95,6 +95,9 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
   const micLabel = isMicOn ? t('micTooltipOn') : t('micTooltipOff');
   const camLabel = isCamOn ? t('cameraTooltipOn') : t('cameraTooltipOff');
   const inlineError = shareError ?? deviceError;
+  // Host ends the call for everyone; a guest only leaves. Same destructive control, different intent.
+  const hangupLabel = role === 'host' ? t('endCallTooltip') : t('leaveTooltip');
+  const onHangup = role === 'host' ? onEndCall : onLeave;
 
   return (
     <div className="relative p-4">
@@ -133,15 +136,9 @@ export function ControlsBar({ onLeave, onEndCall, role, participantUrl }: Contro
         </Tooltip>
         {/* Extra separation (ml-6, 24px) keeps the destructive control clear of the media toggles. */}
         <div className="ml-6">
-          {role === 'host' ? (
-            <Tooltip label={t('endCallTooltip')}>
-              <ControlButton icon="hangup" label={t('endCallTooltip')} variant="danger" onClick={onEndCall} />
-            </Tooltip>
-          ) : (
-            <Tooltip label={t('leaveTooltip')}>
-              <ControlButton icon="hangup" label={t('leaveTooltip')} variant="danger" onClick={onLeave} />
-            </Tooltip>
-          )}
+          <Tooltip label={hangupLabel}>
+            <ControlButton icon="hangup" label={hangupLabel} variant="danger" onClick={onHangup} />
+          </Tooltip>
         </div>
       </div>
 

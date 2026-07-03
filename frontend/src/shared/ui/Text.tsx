@@ -1,5 +1,4 @@
-import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
-import type { JSX } from 'react';
+import type { ElementType, HTMLAttributes, JSX, ReactNode, Ref } from 'react';
 import clsx from 'clsx';
 import { Slot } from './Slot';
 
