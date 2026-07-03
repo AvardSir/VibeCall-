@@ -48,11 +48,15 @@ export type ChatGatewayDeps = {
   config: Pick<AppConfig, 'corsOrigin'>;
   admin: Pick<LivekitAdmin, 'listParticipants'>;
   chat: ChatService;
-  registry: Pick<RoomRegistry, 'claimShare' | 'releaseShare' | 'getActiveSharer'>;
+  registry: Pick<RoomRegistry, 'claimShare' | 'releaseShare' | 'getActiveSharer' | 'get' | 'clearShare'>;
   // Current host-reconnect countdown for a room in grace, or null when it is not in grace.
-  // Late-bound to the grace service in server.ts (io is created before grace, so this is read
-  // through a closure rather than holding a direct reference).
+  // Late-bound to the grace service in server.ts (io is created before grace, so these are read
+  // through closures rather than holding a direct reference).
   getGraceRemaining: (roomId: string) => number | null;
+  // startGrace: called when a host socket disconnects (treat as an unexpected drop, PRD US-14/FR-4).
+  // cancelGrace: called when the host returns over the socket while the room is in grace.
+  startGrace: (roomId: string) => void;
+  cancelGrace: (roomId: string) => void;
 };
 
 export async function handleJoinChat(
@@ -80,12 +84,41 @@ export async function handleJoinChat(
   // someone is already sharing never learns the active sharer (share_state only fires on claim/release)
   // and stays stuck in the grid layout, never subscribing to the share view.
   socket.emit('share_state', { activeSharerId: deps.registry.getActiveSharer(roomName) });
+  // A host returning over the socket during grace cancels the countdown (PRD US-14). Connection-state
+  // recovery is off, so a transient drop reconnects as a NEW socket that re-runs join_chat with the
+  // host's existing identity (still === room.hostIdentity, because no REST re-join rotated it). A full
+  // page reload cancels earlier, via the REST re-join path (routes/rooms/controller). Guests never cancel.
+  const room = deps.registry.get(roomName);
+  if (room && match.identity === room.hostIdentity && room.status === 'grace') {
+    deps.cancelGrace(roomName);
+    return;
+  }
   // Bring a socket that joins mid-grace in sync at once (FR-4): grace_tick otherwise only fires on
   // the ~1s broadcast, so without this the host-disconnect overlay would not show until the next
   // tick. Emit the live countdown directly to the joining socket when the room is in grace.
   const graceRemaining = deps.getGraceRemaining(roomName);
   if (graceRemaining !== null) {
     socket.emit('grace_tick', { secondsLeft: graceRemaining });
+  }
+}
+
+// Treat a host Socket.IO disconnect (tab close, network loss) as an unexpected drop that starts the
+// 60s grace period (PRD US-14 / FR-4). Exported for unit testing; wired to the socket 'disconnect'
+// event in createSocketServer.
+export function handleDisconnect(socket: ChatSocket, io: ChatServer, deps: ChatGatewayDeps): void {
+  const binding = socket.data.binding;
+  if (!binding) return; // never completed join_chat → not a room member, nothing to do
+  const room = deps.registry.get(binding.roomName);
+  if (!room) return;
+  // The `status === 'active'` guard mirrors the participant_left webhook: an intentional End call sets
+  // status to 'ending' first, so it never trips grace. Grace is also started from that webhook;
+  // startGrace is idempotent, so both firing for a single drop is safe.
+  if (binding.identity === room.hostIdentity && room.status === 'active') {
+    // Force-clear any active share, mirroring the webhook path, so a stale sharer is not left set.
+    if (deps.registry.clearShare(binding.roomName)) {
+      broadcastShareState(io, binding.roomName, null);
+    }
+    deps.startGrace(binding.roomName);
   }
 }
 
@@ -178,6 +211,13 @@ export function createSocketServer(deps: ChatGatewayDeps): ChatServer {
         handleReleaseShare(socket, io, deps);
       } catch (err: unknown) {
         logger.error({ err }, 'release_share handler failed');
+      }
+    });
+    socket.on('disconnect', () => {
+      try {
+        handleDisconnect(socket, io, deps);
+      } catch (err: unknown) {
+        logger.error({ err }, 'disconnect handler failed');
       }
     });
   });

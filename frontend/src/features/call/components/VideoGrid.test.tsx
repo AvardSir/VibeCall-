@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '../../../shared/i18n';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
+import { useConnectionStore } from '../../../stores/useConnectionStore';
 import type { CallParticipant } from '../../../shared/types';
 
 // The grid is what we test; roster sync now lives in CallShell, so we just drive the store directly.
@@ -34,6 +35,7 @@ function roster(count: number): CallParticipant[] {
 
 beforeEach(() => {
   useParticipantsStore.getState().reset();
+  useConnectionStore.getState().reset();
 });
 
 describe('VideoGrid', () => {
@@ -46,6 +48,15 @@ describe('VideoGrid', () => {
     expect(grid).toHaveAttribute('data-count', '1');
     // 1-up is a 16:9 box sized height-first so it fills the vertical space (width derived).
     expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
+  });
+
+  it('suppresses the "Waiting…" notice while the room is in host grace', () => {
+    useParticipantsStore.getState().setParticipants(roster(1));
+    useConnectionStore.getState().setGraceSecondsLeft(47);
+    render(<VideoGrid />);
+    // The lone guest during host grace should see only the GraceOverlay (rendered by CallShell),
+    // not the misleading "Waiting for someone to join…" notice.
+    expect(screen.queryByText('Waiting for someone to join…')).not.toBeInTheDocument();
   });
 
   it('renders two tiles and no notice for two participants', () => {
