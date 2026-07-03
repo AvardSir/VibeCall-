@@ -26,12 +26,14 @@ export function createWebhookHandler(deps: WebhookDeps): RequestHandler {
       const roomId = event.room?.name;
       const identity = event.participant?.identity;
       const room = roomId !== undefined ? deps.registry.get(roomId) : undefined;
-      if (room && room.activeSharerId === identity) {
-        if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId);
-      }
-      if (room && identity === room.hostIdentity && room.status === 'active') {
-        if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId); // grace force-clears any active share
-        deps.grace.startGrace(room.roomId);
+      if (room) {
+        if (room.activeSharerId === identity) {
+          if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId);
+        }
+        if (identity === room.hostIdentity && room.status === 'active') {
+          if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId); // grace force-clears any active share
+          deps.grace.startGrace(room.roomId);
+        }
       }
     }
     res.sendStatus(200);

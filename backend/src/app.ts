@@ -12,7 +12,6 @@ import type { ChatServer } from './socket.js';
 import type { AttachmentService } from './attachments.js';
 import type { ChatService } from './chat.js';
 import { AppError } from './errors.js';
-import type { ErrorCode } from './errors.js';
 import { logger } from './logger.js';
 import { createRootRouter } from './routes/index.js';
 
@@ -52,8 +51,7 @@ export function createApp(deps: AppDeps): Express {
       return;
     }
     if (err instanceof AppError) {
-      const code: ErrorCode = err.code;
-      res.status(err.status).json({ error: code });
+      res.status(err.status).json({ error: err.code });
       return;
     }
     logger.error({ err }, 'unhandled error in request');
