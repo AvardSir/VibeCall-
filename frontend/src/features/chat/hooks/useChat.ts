@@ -3,7 +3,7 @@ import { useSocket } from '../../../shared/hooks/useSocket';
 import { useChatStore } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
 import { uploadAttachment } from '../../../shared/lib/apiClient';
-import type { ChatMessage, ParticipantRole, Attachment, UploadResult } from '../../../shared/types';
+import type { ChatMessage, ParticipantRole, Attachment, UploadResult, ChatErrorCode } from '../../../shared/types';
 import type { StagedFile } from '../../../stores/useChatStore';
 
 export type UseChatResult = { sendMessage: (text: string, files?: StagedFile[]) => void };
@@ -45,10 +45,14 @@ export function useChat(role: ParticipantRole): UseChatResult {
 
     const handleChatMessage = (message: ChatMessage): void => receiveMessage(message, identity);
 
-    // The server's `message_failed` event carries only an error code, no client id, so it cannot be
-    // mapped to a specific optimistic bubble. Fall back to the oldest still-sending message. (The
-    // upload-failure path, by contrast, knows its client id and flips that exact message.)
-    const handleMessageFailed = (): void => {
+    // The server echoes the failing message's client id, so flip that exact optimistic bubble. Fall
+    // back to the oldest still-sending message if the id is absent (e.g. a join-time NOT_A_MEMBER,
+    // which carries no client id).
+    const handleMessageFailed = (e: { code: ChatErrorCode; clientId?: string }): void => {
+      if (e.clientId !== undefined) {
+        markFailed(e.clientId);
+        return;
+      }
       const oldestSending = useChatStore.getState().messages.find((m) => m.status === 'sending');
       if (oldestSending) markFailed(oldestSending.key);
     };
@@ -110,7 +114,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
           const results = await Promise.all(files.map((sf) => uploadAttachment(roomId, memberToken, sf.file)));
           if (results.every((r) => r.ok)) {
             const uploaded = results.map((r) => (r as Extract<UploadResult, { ok: true }>).data);
-            socket.emit('send_message', { text: trimmedText, attachments: uploaded });
+            socket.emit('send_message', { text: trimmedText, attachments: uploaded, clientId });
           } else {
             markFailed(clientId);
           }

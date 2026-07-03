@@ -246,6 +246,34 @@ describe('handleSendMessage', () => {
     expect(deps.chat.history('main')).toHaveLength(1);
   });
 
+  it('echoes the sender clientId on the broadcast but keeps it out of stored history', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
+    const { io, broadcasts } = makeIo();
+
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, {
+      text: 'hi',
+      clientId: 'c_7',
+    });
+
+    expect(broadcasts[0]!.payload).toMatchObject({ text: 'hi', clientId: 'c_7' });
+    // The persisted copy must not carry the transient, sender-local clientId.
+    expect(deps.chat.history('main')[0]).not.toHaveProperty('clientId');
+  });
+
+  it('echoes the clientId on a send failure so the exact bubble is marked failed', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket, emitted } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
+    const { io } = makeIo();
+
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, {
+      text: '   ',
+      clientId: 'c_9',
+    });
+
+    expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'EMPTY_MESSAGE', clientId: 'c_9' } }]);
+  });
+
   it('keeps distinct senderIdentity for two participants sharing a display name', () => {
     const deps = makeDeps([
       { identity: 'p_1', name: 'Ann' },

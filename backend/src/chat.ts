@@ -9,6 +9,9 @@ export type ChatMessage = {
   sentAt: number; // epoch ms; rendered as HH:MM on the client
   text: string; // max 1000 chars
   attachments: Attachment[];
+  // Present only on the live broadcast of a just-sent message: echoes the sender's client-generated
+  // id so the sender reconciles the exact optimistic bubble. Never persisted to history.
+  clientId?: string;
 };
 
 export type ChatErrorCode = 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' | 'NOT_A_MEMBER' | 'TOO_MANY_ATTACHMENTS';
