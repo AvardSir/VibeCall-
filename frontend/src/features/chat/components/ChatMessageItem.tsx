@@ -73,7 +73,9 @@ export function ChatMessageItem({ item: m, isOwn, isFirstInGroup, onOpenImage }:
         nameRow
       )}
       {m.attachments.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-2">
+        // Own attachments hug the right edge to match the right-aligned text bubble; incoming stay left.
+        <div data-testid="attachments" className={clsx('mt-1 flex flex-wrap gap-2', isOwn && 'justify-end')}>
+
           {m.attachments.map((a) => {
             const src = attachmentSrc(a);
             return a.kind === 'image' ? (

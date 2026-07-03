@@ -18,9 +18,11 @@ function item(over: Partial<ChatItem>): ChatItem {
 }
 
 describe('MessageList', () => {
-  it('renders the empty state when there are no messages', () => {
-    render(<MessageList items={[]} selfIdentity="p_self" />);
+  it('renders the empty state with an icon and message when there are no messages', () => {
+    const { container } = render(<MessageList items={[]} selfIdentity="p_self" />);
     expect(screen.getByText('No messages yet.')).toBeInTheDocument();
+    // Figma empty state shows a picture/placeholder glyph above the copy.
+    expect(container.querySelector('svg')).not.toBeNull();
   });
 
   it('renders messages in order with their text bodies', () => {
@@ -68,11 +70,11 @@ describe('MessageList', () => {
     const { rerender, container } = render(
       <MessageList items={[item({ key: '1', text: 'first' })]} selfIdentity="p_self" />,
     );
-    const ul = container.querySelector('ul');
-    if (!ul) throw new Error('list not rendered');
+    const scroll = container.querySelector<HTMLElement>('[data-testid="message-scroll"]');
+    if (!scroll) throw new Error('scroll container not rendered');
     // jsdom reports 0 for layout metrics; simulate an overflowing list.
-    Object.defineProperty(ul, 'scrollHeight', { configurable: true, value: 500 });
-    expect(ul.scrollTop).toBe(0);
+    Object.defineProperty(scroll, 'scrollHeight', { configurable: true, value: 500 });
+    expect(scroll.scrollTop).toBe(0);
 
     rerender(
       <MessageList
@@ -80,6 +82,6 @@ describe('MessageList', () => {
         selfIdentity="p_self"
       />,
     );
-    expect(ul.scrollTop).toBe(500); // stuck to the newest message
+    expect(scroll.scrollTop).toBe(500); // stuck to the newest message
   });
 });

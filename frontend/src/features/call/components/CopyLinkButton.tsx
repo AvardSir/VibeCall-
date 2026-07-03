@@ -8,6 +8,37 @@ export type CopyLinkButtonProps = { url: string };
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
+// Copy resiliently: prefer the async Clipboard API, but fall back to a transient hidden-textarea +
+// execCommand when it is unavailable or rejects (seen with keyboard activation / non-secure contexts).
+// Returns whether the copy succeeded so the caller can show the right feedback.
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to the legacy fallback
+  }
+  try {
+    if (typeof document.queryCommandSupported === 'function' && document.queryCommandSupported('copy')) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    }
+  } catch {
+    // ignore — reported as failure below
+  }
+  return false;
+}
+
 export function CopyLinkButton({ url }: CopyLinkButtonProps): JSX.Element {
   const { t } = useTranslation('call');
   const [state, setState] = useState<CopyState>('idle');
@@ -21,12 +52,11 @@ export function CopyLinkButton({ url }: CopyLinkButtonProps): JSX.Element {
   );
 
   async function handleCopy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(url);
+    if (await copyToClipboard(url)) {
       setState('copied');
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setState('idle'), 2000);
-    } catch {
+    } else {
       setState('failed');
     }
   }
