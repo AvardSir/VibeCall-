@@ -10,7 +10,8 @@ import { logger } from './logger.js';
 
 export type JoinChatPayload = { roomId: string; identity: string; role: 'host' | 'guest' };
 // NOTE: mirrored on the frontend (frontend/src/shared/lib/socketEvents.ts) — keep both in sync.
-export type SendMessagePayload = { text: string; attachments?: Attachment[] };
+// `clientId` is the sender's optimistic-bubble id, echoed back so the sender reconciles the exact one.
+export type SendMessagePayload = { text: string; attachments?: Attachment[]; clientId?: string };
 
 export type ChatSocketBinding = { identity: string; displayName: string; roomName: string };
 
@@ -23,7 +24,7 @@ export type RoomEndReason = 'host_ended' | 'grace_expired';
 export type ServerToClientEvents = {
   chat_history: (messages: ChatMessage[]) => void;
   chat_message: (message: ChatMessage) => void;
-  message_failed: (e: { code: ChatErrorCode }) => void;
+  message_failed: (e: { code: ChatErrorCode; clientId?: string }) => void;
   grace_tick: (payload: { secondsLeft: number }) => void;
   grace_cancelled: () => void;
   room_ended: (payload: { reason: RoomEndReason }) => void;
@@ -128,19 +129,21 @@ export function handleSendMessage(
   deps: ChatGatewayDeps,
   payload: SendMessagePayload,
 ): void {
+  // Echoed back on any failure/broadcast so the sender flips or reconciles the exact optimistic bubble.
+  const clientId = payload?.clientId;
   const binding = socket.data.binding;
   if (!binding) {
-    socket.emit('message_failed', { code: 'NOT_A_MEMBER' });
+    socket.emit('message_failed', { code: 'NOT_A_MEMBER', clientId });
     return;
   }
   const attachments = payload?.attachments ?? [];
   if (attachments.length > MAX_ATTACHMENTS_PER_MESSAGE) {
-    socket.emit('message_failed', { code: 'TOO_MANY_ATTACHMENTS' });
+    socket.emit('message_failed', { code: 'TOO_MANY_ATTACHMENTS', clientId });
     return;
   }
   const validation = deps.chat.validateMessage({ text: payload?.text ?? '', attachmentCount: attachments.length });
   if (!validation.ok) {
-    socket.emit('message_failed', { code: validation.code });
+    socket.emit('message_failed', { code: validation.code, clientId });
     return;
   }
   const message = deps.chat.build({
@@ -151,7 +154,8 @@ export function handleSendMessage(
     attachments,
   });
   deps.chat.append(message);
-  io.to(binding.roomName).emit('chat_message', message);
+  // Attach clientId to the broadcast copy only — the stored `message` (history) stays clientId-free.
+  io.to(binding.roomName).emit('chat_message', { ...message, clientId });
 }
 
 export function broadcastShareState(io: ChatServer, roomName: string, activeSharerId: string | null): void {

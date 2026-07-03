@@ -80,8 +80,14 @@ export const useChatStore = create<ChatState>()((set) => ({
     set((state) => {
       const delivered = toDelivered(message);
       if (message.senderIdentity === selfIdentity) {
-        // Reconcile with the first still-sending own message (FIFO send order).
-        const idx = state.messages.findIndex((m) => m.status === 'sending');
+        // Reconcile the exact optimistic bubble by the echoed client id — matching by id, not "the
+        // first still-sending item", is required because sends resolve out of order (a quick text can
+        // be delivered while an earlier attachment is still uploading). Fall back to the oldest sending
+        // item if the id is absent (defensive; the server echoes it for own sends).
+        const idx =
+          message.clientId !== undefined
+            ? state.messages.findIndex((m) => m.key === message.clientId)
+            : state.messages.findIndex((m) => m.status === 'sending');
         if (idx !== -1) {
           const messages = state.messages.slice();
           messages[idx] = delivered;

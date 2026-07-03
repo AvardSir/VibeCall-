@@ -66,6 +66,22 @@ describe('useChatStore', () => {
     expect(msgs[0]).toMatchObject({ key: 'srv-echo', status: 'delivered' });
   });
 
+  it('reconciles the exact optimistic bubble by clientId when echoes arrive out of send order', () => {
+    // Two own messages in flight: c1 (a slow photo) then c2 (a quick text). The text's echo lands first.
+    useChatStore.getState().addOptimistic('c1', 'photo', SELF);
+    useChatStore.getState().addOptimistic('c2', 'quick', SELF);
+    useChatStore
+      .getState()
+      .receiveMessage(
+        serverMsg({ id: 'srv-c2', senderIdentity: SELF.identity, text: 'quick', clientId: 'c2' }),
+        SELF.identity,
+      );
+    const msgs = useChatStore.getState().messages;
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0]).toMatchObject({ key: 'c1', status: 'sending' }); // the photo is left untouched
+    expect(msgs[1]).toMatchObject({ key: 'srv-c2', status: 'delivered' }); // only the text reconciled
+  });
+
   it('markFailed flips the item matched by client id (not the first sending item)', () => {
     useChatStore.getState().addOptimistic('c1', 'a', SELF);
     useChatStore.getState().addOptimistic('c2', 'b', SELF);

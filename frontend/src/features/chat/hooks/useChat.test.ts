@@ -98,10 +98,13 @@ describe('useChat', () => {
       await Promise.resolve();
     });
     expect(useChatStore.getState().messages[0]).toMatchObject({ text: 'hello', status: 'sending' });
-    expect(fake.emitted).toContainEqual({ event: 'send_message', payload: { text: 'hello', attachments: [] } });
+    expect(fake.emitted).toContainEqual({
+      event: 'send_message',
+      payload: { text: 'hello', attachments: [], clientId: 'c_0' },
+    });
   });
 
-  it('message_failed flips the pending item to failed', async () => {
+  it('message_failed without a clientId flips the oldest pending item (fallback)', async () => {
     const { result } = renderHook(() => useChat('guest'));
     await act(async () => {
       result.current.sendMessage('oops', []);
@@ -109,6 +112,20 @@ describe('useChat', () => {
     });
     act(() => fake.trigger('message_failed', { code: 'TEXT_TOO_LONG' }));
     expect(useChatStore.getState().messages[0]!.status).toBe('failed');
+  });
+
+  it('message_failed with a clientId flips that exact pending item, not the oldest', async () => {
+    const { result } = renderHook(() => useChat('guest'));
+    await act(async () => {
+      result.current.sendMessage('first', []);
+      result.current.sendMessage('second', []);
+      await Promise.resolve();
+    });
+    // 'second' (c_1) fails while 'first' (c_0) is still in flight — only 'second' must flip.
+    act(() => fake.trigger('message_failed', { code: 'TEXT_TOO_LONG', clientId: 'c_1' }));
+    const msgs = useChatStore.getState().messages;
+    expect(msgs.find((m) => m.text === 'first')!.status).toBe('sending');
+    expect(msgs.find((m) => m.text === 'second')!.status).toBe('failed');
   });
 
   it('sendMessage uploads the passed files then relays their metadata on success', async () => {
@@ -125,7 +142,7 @@ describe('useChat', () => {
     expect(mockUploadAttachment).toHaveBeenCalledWith('r_test', 'mt', expect.any(File));
     expect(fake.emitted).toContainEqual({
       event: 'send_message',
-      payload: { text: 'with file', attachments: [uploaded] },
+      payload: { text: 'with file', attachments: [uploaded], clientId: 'c_0' },
     });
   });
 
