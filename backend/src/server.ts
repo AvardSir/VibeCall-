@@ -60,6 +60,8 @@ async function main(): Promise<void> {
     chat,
     registry,
     getGraceRemaining: (roomId) => grace.remainingSeconds(roomId),
+    startGrace: (roomId) => grace.startGrace(roomId),
+    cancelGrace: (roomId) => grace.cancelGrace(roomId),
   });
   const grace = createGraceService({
     registry,

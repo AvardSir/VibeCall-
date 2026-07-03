@@ -14,6 +14,8 @@ export function ScreenShareView(): JSX.Element {
   const activeSharerId = useParticipantsStore((s) => s.activeSharerId);
   const participants = useParticipantsStore((s) => s.participants);
   const localIdentity = useConnectionStore((s) => s.localParticipant?.identity ?? null);
+  // Suppress the "waiting" notice during host grace — the GraceOverlay banner is shown instead.
+  const inGrace = useConnectionStore((s) => s.graceSecondsLeft !== null);
   const shareTracks = useTracks([Track.Source.ScreenShare]);
 
   const shareTrack: TrackReference | undefined = shareTracks.find(
@@ -37,7 +39,7 @@ export function ScreenShareView(): JSX.Element {
       ) : (
         <div data-testid="share-placeholder" className="h-full w-full rounded-xl bg-black" />
       )}
-      {participants.length === 1 && (
+      {participants.length === 1 && !inGrace && (
         // Lone host sharing (ES-HostAlone): keep the "waiting for someone to join" notice visible
         // as a centered overlay even in the screen-share layout.
         <p

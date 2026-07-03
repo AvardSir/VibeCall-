@@ -64,6 +64,18 @@ describe('ScreenShareView', () => {
     expect(screen.getByText('Waiting for someone to join…')).toBeInTheDocument();
   });
 
+  it('suppresses the "Waiting…" notice while the room is in host grace', () => {
+    useTracksMock.mockReturnValue([{ participant: { identity: 'p_me' } }]);
+    useConnectionStore
+      .getState()
+      .setLocalParticipant({ identity: 'p_me', displayName: 'Me', roomId: 'r1', memberToken: 'mt' });
+    useParticipantsStore.getState().setParticipants([participant('p_me', 'Me')]);
+    useParticipantsStore.getState().setActiveSharerId('p_me');
+    useConnectionStore.getState().setGraceSecondsLeft(47);
+    render(<ScreenShareView />);
+    expect(screen.queryByTestId('waiting-notice')).not.toBeInTheDocument();
+  });
+
   it('hides the "Waiting…" notice once another participant is present', () => {
     useTracksMock.mockReturnValue([{ participant: { identity: 'p_1' } }]);
     useParticipantsStore

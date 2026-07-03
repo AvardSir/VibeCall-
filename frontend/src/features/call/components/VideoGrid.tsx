@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Track } from 'livekit-client';
 import { useTracks } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
+import { useConnectionStore } from '../../../stores/useConnectionStore';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
 import { ParticipantTile } from './ParticipantTile';
 
@@ -43,6 +44,9 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
   const { t } = useTranslation('call');
   // Roster sync now lives in CallStage (the always-mounted in-room parent); this component only reads.
   const participants = useParticipantsStore((s) => s.participants);
+  // During host grace the GraceOverlay banner is shown instead; suppress the "waiting" notice so the
+  // guest does not see both "Waiting for someone to join…" and "The host lost connection…" at once.
+  const inGrace = useConnectionStore((s) => s.graceSecondsLeft !== null);
   const cameraTracks = useTracks([Track.Source.Camera]);
 
   const trackByIdentity = new Map<string, TrackReference>(
@@ -78,7 +82,7 @@ export function VideoGrid({ onRemoveGuest }: VideoGridProps = {}): JSX.Element {
           );
         })}
       </div>
-      {count === 1 && (
+      {count === 1 && !inGrace && (
         // Lone-host notice: a CENTERED overlay on the single tile (ES-HostAlone), not a bottom pill.
         <p
           data-testid="waiting-notice"
