@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { createRoom } from '../shared/lib/apiClient';
 import { Button } from '../shared/ui/Button';
+import { FieldError } from '../shared/ui/FieldError';
 import { Text } from '../shared/ui/Text';
 import { UnsupportedBrowserNotice } from '../shared/ui/UnsupportedBrowserNotice';
 
@@ -51,7 +52,7 @@ export function LandingPage(): JSX.Element {
       <Button type="button" onClick={() => void handleStart()} disabled={busy}>
         {t('startCall')}
       </Button>
-      {error ? <p className="text-sm text-amber-400">{t('startCallError')}</p> : null}
+      {error ? <FieldError asterisk={false}>{t('startCallError')}</FieldError> : null}
     </div>
   );
 }
