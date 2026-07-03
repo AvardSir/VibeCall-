@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ClipboardEvent, FormEvent, JSX, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FieldError } from '../../../shared/ui/FieldError';
 import { Icon } from '../../../shared/ui/Icon';
 import { Text } from '../../../shared/ui/Text';
 import { Tooltip } from '../../../shared/ui/Tooltip';
@@ -189,11 +190,7 @@ export function ChatInput({ onSend }: ChatInputProps): JSX.Element {
           <Icon name="send" className="h-[34px] w-[34px] text-accent" />
         </button>
       </div>
-      {error && (
-        <Text size="xs" className="text-red-400">
-          {error}
-        </Text>
-      )}
+      {error && <FieldError>{error}</FieldError>}
       {text.length >= COUNTER_THRESHOLD && (
         <span className="self-end text-xs text-slate-500">
           {t('charCount', { remaining: MAX_TEXT_LENGTH - text.length })}

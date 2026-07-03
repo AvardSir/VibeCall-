@@ -26,7 +26,7 @@ export function MessageList({ items, selfIdentity, onOpenImage }: MessageListPro
     // Figma Frame 1321314319: an image/placeholder glyph above the "no messages" copy.
     return (
       <div className="grid flex-1 place-content-center justify-items-center gap-3 text-slate-400 dark:text-slate-500">
-        <Icon name="noMessages" className="h-10 w-10" />
+        <Icon name="noMessages" className="h-[54px] w-20" />
         <span className="text-sm">{t('empty')}</span>
       </div>
     );

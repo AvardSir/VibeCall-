@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FieldError } from '../../../shared/ui/FieldError';
 import type { NameErrorKey } from '../nameValidation';
 
 export type NameInputProps = {
@@ -33,10 +34,7 @@ export function NameInput({ value, onChange, errorKey, showError }: NameInputPro
         }`}
       />
       {showInlineError ? (
-        <span id={hintId} className="flex items-start gap-1 text-sm font-light leading-[18px] text-danger">
-          <span aria-hidden="true">*</span>
-          <span>{t(errorKey)}</span>
-        </span>
+        <FieldError id={hintId}>{t(errorKey)}</FieldError>
       ) : (
         // Persistent requirement hint so the rules are visible up front; the specific validation
         // error (empty / length / chars) replaces it after an invalid Join/Enter-call submit.
