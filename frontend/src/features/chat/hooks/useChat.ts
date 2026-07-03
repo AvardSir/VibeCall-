@@ -82,8 +82,7 @@ export function useChat(role: ParticipantRole): UseChatResult {
   }, [phase, localParticipant, role, socket]);
 
   const sendMessage = useCallback(
-    // `files` is optional so `sendMessage` stays assignable to ChatInput's `onSend(text)` until
-    // Task 16 wires staged attachments through; text-only sends pass no files.
+    // `files` defaults to empty so text-only sends can call `sendMessage(text)` without attachments.
     (text: string, files: StagedFile[] = []) => {
       if (!localParticipant) return;
       const { roomId, memberToken } = localParticipant;
