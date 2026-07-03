@@ -63,7 +63,7 @@ export function CopyLinkButton({ url }: CopyLinkButtonProps): JSX.Element {
 
   return (
     <div className="relative flex flex-col items-center">
-      <Tooltip label={t('copyLink')}>
+      <Tooltip label={t('copyLink')} suppressed={state !== 'idle'}>
         <ControlButton icon="link" label={t('copyLink')} onClick={() => void handleCopy()} iconClassName="h-[26px] w-[26px]" />
       </Tooltip>
       {state === 'copied' ? (

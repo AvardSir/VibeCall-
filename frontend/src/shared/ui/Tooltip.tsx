@@ -6,6 +6,9 @@ export type TooltipProps = {
   label: string;
   children: ReactNode;
   placement?: 'top' | 'bottom';
+  // Force the tooltip hidden regardless of hover/focus — used when a transient message (e.g. the
+  // "Link copied!" confirmation) occupies the same space and must not be overlapped by the tooltip.
+  suppressed?: boolean;
 };
 
 const OPEN_DELAY_MS = 400;
@@ -16,7 +19,7 @@ const OPEN_EVENT = 'kmb:tooltip-open';
 // Dep-free custom tooltip (native `title` can't be styled to the design). Shows after a short hover
 // delay and on keyboard focus; hidden on leave/blur and on click. JS-controlled (not CSS group-hover)
 // so it can enforce the delay and the single-open-at-a-time rule.
-export function Tooltip({ label, children, placement = 'top' }: TooltipProps): JSX.Element {
+export function Tooltip({ label, children, placement = 'top', suppressed = false }: TooltipProps): JSX.Element {
   const id = useId();
   const [open, setOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,7 +87,7 @@ export function Tooltip({ label, children, placement = 'top' }: TooltipProps): J
         className={clsx(
           'pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-[8px] bg-slate-800 px-3 py-1.5 text-sm font-semibold leading-[18px] text-white shadow transition-opacity duration-100 dark:bg-white dark:text-surface',
           position,
-          open ? 'opacity-100' : 'opacity-0',
+          open && !suppressed ? 'opacity-100' : 'opacity-0',
         )}
       >
         {label}
