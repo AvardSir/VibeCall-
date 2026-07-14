@@ -6,7 +6,7 @@
 
 **Architecture:** One stateless-per-process Express + Socket.IO service holding an in-memory room registry. Media is handled entirely by a local LiveKit SFU; this service never touches media. It talks to LiveKit two ways: it generates client access tokens with the `livekit-server-sdk` `AccessToken` helper, and it performs host actions (remove participant, end room) via `RoomServiceClient`. LiveKit webhooks notify the service of participant/room events, which drive the host-grace timer.
 
-**Tech Stack:** Node 20+, TypeScript, Express, Socket.IO, `livekit-server-sdk`, `multer` (uploads), Vitest + Supertest (tests), `tsx` (dev runner).
+**Tech Stack:** Node.js 22, TypeScript, Express, Socket.IO, `livekit-server-sdk`, `multer` (uploads), Vitest + Supertest (tests), `tsx` (dev runner), ESLint (lint), a small `logger` module (no `console.log`).
 
 ## Global Constraints
 
@@ -29,14 +29,16 @@
 - Create: `backend/package.json`
 - Create: `backend/tsconfig.json`
 - Create: `backend/vitest.config.ts`
+- Create: `backend/eslint.config.js`
 - Create: `backend/.env.example`
 - Create: `backend/src/config.ts`
+- Create: `backend/src/logger.ts`
 - Test: `backend/src/config.test.ts`
 
 **Interfaces:**
 - Consumes: nothing (first task).
 - Produces: `loadConfig(env: NodeJS.ProcessEnv): AppConfig` where
-  `AppConfig = { port: number; livekitUrl: string; livekitApiKey: string; livekitApiSecret: string; storageRoot: string; corsOrigin: string }`. Throws `Error` if a required var is missing.
+  `AppConfig = { port: number; livekitUrl: string; livekitApiKey: string; livekitApiSecret: string; storageRoot: string; corsOrigin: string; publicBaseUrl?: string }`. Throws `Error` if a required var is missing. `loadConfig` fills `publicBaseUrl` from `PUBLIC_BASE_URL`, falling back to `corsOrigin`; consumers also `?? cfg.corsOrigin` so test fixtures may omit it.
 
 - [ ] **Step 1: Initialize the package**
 
@@ -45,8 +47,11 @@ Run:
 mkdir -p backend/src && cd backend
 npm init -y
 npm install express socket.io livekit-server-sdk multer cors
-npm install -D typescript tsx vitest supertest @types/express @types/multer @types/cors @types/supertest @types/node
+npm install -D typescript tsx vitest supertest @types/express @types/multer @types/cors @types/supertest @types/node \
+  eslint @eslint/js typescript-eslint
 ```
+
+Target Node.js 22; add `"engines": { "node": ">=22" }` to `backend/package.json`.
 
 - [ ] **Step 2: Write `backend/tsconfig.json`**
 
@@ -74,8 +79,61 @@ Set `"type": "module"` in `backend/package.json`, and add scripts:
   "build": "tsc",
   "start": "node dist/server.js",
   "test": "vitest run",
-  "test:watch": "vitest"
+  "test:watch": "vitest",
+  "lint": "eslint .",
+  "lint:fix": "eslint . --fix",
+  "typecheck": "tsc --noEmit"
 }
+```
+
+- [ ] **Step 2b: Write `backend/eslint.config.js`** (flat config; `noInlineConfig` enforces "no inline `// eslint-disable`" per the project rules)
+
+```js
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  { ignores: ['dist'] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' },
+    rules: {
+      'no-console': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
+  // logger.ts is the single sanctioned console sink.
+  {
+    files: ['**/logger.ts'],
+    rules: { 'no-console': 'off' },
+  },
+  // Tests use loose casts (e.g. `grace as any`) to inject fakes — relax there only.
+  {
+    files: ['**/*.test.ts'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+  },
+);
+```
+
+- [ ] **Step 2c: Write `backend/src/logger.ts`** (the single application logger — no raw `console.log` anywhere else)
+
+```ts
+type Level = 'info' | 'warn' | 'error';
+
+function emit(level: Level, message: string, meta?: Record<string, unknown>): void {
+  const line = JSON.stringify({ ts: new Date().toISOString(), level, message, ...meta });
+  // This module is the single sanctioned console sink (no-console is disabled for it in
+  // eslint.config.js); everything else logs through `logger`.
+  const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+  sink(line);
+}
+
+export const logger = {
+  info: (message: string, meta?: Record<string, unknown>) => emit('info', message, meta),
+  warn: (message: string, meta?: Record<string, unknown>) => emit('warn', message, meta),
+  error: (message: string, meta?: Record<string, unknown>) => emit('error', message, meta),
+};
 ```
 
 - [ ] **Step 3: Write `backend/vitest.config.ts`**
@@ -97,6 +155,8 @@ LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=devsecret_change_me_32_chars_min
 STORAGE_ROOT=./.storage
 CORS_ORIGIN=http://localhost:5173
+# Public base for participant links (defaults to CORS_ORIGIN if omitted)
+PUBLIC_BASE_URL=http://localhost:5173
 ```
 
 - [ ] **Step 5: Write the failing test `backend/src/config.test.ts`**
@@ -144,6 +204,7 @@ export type AppConfig = {
   livekitApiSecret: string;
   storageRoot: string;
   corsOrigin: string;
+  publicBaseUrl?: string; // base for participant links; loadConfig defaults it to corsOrigin
 };
 
 function required(env: NodeJS.ProcessEnv, key: string): string {
@@ -160,6 +221,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     livekitApiSecret: required(env, 'LIVEKIT_API_SECRET'),
     storageRoot: required(env, 'STORAGE_ROOT'),
     corsOrigin: required(env, 'CORS_ORIGIN'),
+    publicBaseUrl: env.PUBLIC_BASE_URL ?? required(env, 'CORS_ORIGIN'),
   };
 }
 ```
@@ -264,13 +326,18 @@ git commit -m "feat(backend): add name validation"
 - Produces: a `RoomRegistry` class with methods:
   - `createRoom(): RoomState` — generates `roomName` (`r_<hex>`) and `hostToken` (`h_<hex>`), `status='active'`, empty participants/history.
   - `get(roomName: string): RoomState | undefined`
-  - `addParticipant(roomName, p: Participant): { ok: true } | { ok: false; code: 'NOT_FOUND' | 'ENDED' | 'FULL' }`
+  - `addParticipant(roomName, p: Participant): { ok: true } | { ok: false; code: 'NOT_FOUND' | 'ENDED' | 'FULL' | 'NAME_TAKEN' }` — rejects a `displayName` already used in the room (case-insensitive).
   - `removeParticipant(roomName, identity): void`
   - `isHostToken(roomName, hostToken): boolean`
-  - `endRoom(roomName): void` — sets `status='ended'`, clears participants + chatHistory.
-  - Types `RoomState`, `Participant` exactly as in spec §3.1 (minus `graceTimer`/`graceEndsAt`, added in Task 7).
+  - `isMember(roomName, memberToken): boolean` — true if any participant in the room holds that `memberToken` (attachment access check).
+  - `endRoom(roomName): void` — sets `status='ended'`, clears participants + chatHistory + active share.
+  - `claimShare(roomName, identity): { ok: true } | { ok: false; code: 'BUSY' | 'NOT_FOUND' }` — first caller wins; idempotent for the current sharer; rejects ended rooms.
+  - `releaseShare(roomName, identity): boolean` — clears the share only if `identity` is the current sharer; returns whether it changed.
+  - `clearShare(roomName): boolean` — unconditionally clears any active share; returns whether it changed.
+  - Types `RoomState`, `Participant` exactly as in spec §3.1 (minus `graceTimer`/`graceEndsAt`, added in Task 7). `RoomState.activeSharerId` starts `null`.
+  - `reapRooms({ idleMs, endedTtlMs }): string[]` — drops empty idle `active` rooms and old `ended` rooms (never `grace`); returns removed room names for attachment cleanup.
   - `MAX_PARTICIPANTS = 4` exported constant.
-  - Accepts an optional id generator in the constructor for deterministic tests: `new RoomRegistry(genId?: () => string)`.
+  - Accepts optional injectables in the constructor for deterministic tests: `new RoomRegistry(genId?: () => string, now?: () => number)` (`now` defaults to `Date.now`; `createdAt` uses it).
 
 - [ ] **Step 1: Write the failing test `backend/src/rooms.test.ts`**
 
@@ -283,7 +350,7 @@ function makeRegistry() {
   return new RoomRegistry(() => `id${n++}`);
 }
 const guest = (identity: string) => ({
-  identity, displayName: identity, role: 'guest' as const, joinedAt: 0,
+  identity, displayName: identity, role: 'guest' as const, joinedAt: 0, memberToken: `mt_${identity}`,
 });
 
 describe('RoomRegistry', () => {
@@ -318,6 +385,53 @@ describe('RoomRegistry', () => {
     const r = reg.createRoom();
     expect(reg.isHostToken(r.roomName, r.hostToken)).toBe(true);
     expect(reg.isHostToken(r.roomName, 'wrong')).toBe(false);
+  });
+
+  it('reaps empty idle rooms and old ended rooms, never the occupied or grace ones', () => {
+    let n = 0;
+    let clock = 1000;
+    const reg = new RoomRegistry(() => `id${n++}`, () => clock);
+    const idle = reg.createRoom();                 // created, never joined
+    const live = reg.createRoom();
+    reg.addParticipant(live.roomName, guest('Ann')); // occupied
+    const ended = reg.createRoom();
+    reg.endRoom(ended.roomName);
+
+    clock = 1000 + 11 * 60_000; // +11 minutes
+    const removed = reg.reapRooms({ idleMs: 10 * 60_000, endedTtlMs: 60 * 60_000 });
+    expect(removed).toContain(idle.roomName);        // empty & idle → reaped
+    expect(removed).not.toContain(live.roomName);    // occupied → kept
+    expect(removed).not.toContain(ended.roomName);   // ended but within TTL → kept
+    expect(reg.get(idle.roomName)).toBeUndefined();
+  });
+
+  it('recognizes a member by their token', () => {
+    const reg = makeRegistry();
+    const r = reg.createRoom();
+    reg.addParticipant(r.roomName, guest('Ann'));
+    expect(reg.isMember(r.roomName, 'mt_Ann')).toBe(true);
+    expect(reg.isMember(r.roomName, 'mt_nobody')).toBe(false);
+    expect(reg.isMember(r.roomName, '')).toBe(false);
+  });
+
+  it('rejects a duplicate display name (case-insensitive)', () => {
+    const reg = makeRegistry();
+    const r = reg.createRoom();
+    expect(reg.addParticipant(r.roomName, guest('Ann'))).toEqual({ ok: true });
+    expect(reg.addParticipant(r.roomName, guest('ann'))).toEqual({ ok: false, code: 'NAME_TAKEN' });
+  });
+
+  it('arbitrates a single active screen share', () => {
+    const reg = makeRegistry();
+    const r = reg.createRoom();
+    expect(r.activeSharerId).toBeNull();
+    expect(reg.claimShare(r.roomName, 'Ann')).toEqual({ ok: true });
+    expect(r.activeSharerId).toBe('Ann');
+    expect(reg.claimShare(r.roomName, 'Boris')).toEqual({ ok: false, code: 'BUSY' });
+    expect(reg.claimShare(r.roomName, 'Ann')).toEqual({ ok: true }); // idempotent for the holder
+    expect(reg.releaseShare(r.roomName, 'Boris')).toBe(false); // not the sharer
+    expect(reg.releaseShare(r.roomName, 'Ann')).toBe(true);
+    expect(r.activeSharerId).toBeNull();
   });
 
   it('clears chat history when the room ends', () => {
@@ -363,6 +477,7 @@ export type Participant = {
   displayName: string;
   role: 'host' | 'guest';
   joinedAt: number;
+  memberToken: string; // opaque per-participant token proving room membership (attachments)
 };
 
 export type RoomState = {
@@ -373,16 +488,19 @@ export type RoomState = {
   participants: Map<string, Participant>;
   createdAt: number;
   chatHistory: ChatMessage[];
+  activeSharerId: string | null;
 };
 
 export const MAX_PARTICIPANTS = 4;
 
-type AddResult = { ok: true } | { ok: false; code: 'NOT_FOUND' | 'ENDED' | 'FULL' };
+type AddResult = { ok: true } | { ok: false; code: 'NOT_FOUND' | 'ENDED' | 'FULL' | 'NAME_TAKEN' };
 
 export class RoomRegistry {
   private rooms = new Map<string, RoomState>();
-  private counter = 0;
-  constructor(private genId: () => string = () => Math.random().toString(16).slice(2, 10)) {}
+  constructor(
+    private genId: () => string = () => Math.random().toString(16).slice(2, 10),
+    private now: () => number = () => Date.now(),
+  ) {}
 
   createRoom(): RoomState {
     const room: RoomState = {
@@ -390,8 +508,9 @@ export class RoomRegistry {
       hostToken: `h_${this.genId()}`,
       status: 'active',
       participants: new Map(),
-      createdAt: this.counter++,
+      createdAt: this.now(),
       chatHistory: [],
+      activeSharerId: null,
     };
     this.rooms.set(room.roomName, room);
     return room;
@@ -406,6 +525,10 @@ export class RoomRegistry {
     if (!room) return { ok: false, code: 'NOT_FOUND' };
     if (room.status === 'ended') return { ok: false, code: 'ENDED' };
     if (room.participants.size >= MAX_PARTICIPANTS) return { ok: false, code: 'FULL' };
+    const nameTaken = [...room.participants.values()].some(
+      (existing) => existing.displayName.toLowerCase() === p.displayName.toLowerCase(),
+    );
+    if (nameTaken) return { ok: false, code: 'NAME_TAKEN' };
     room.participants.set(p.identity, p);
     if (p.role === 'host') room.hostIdentity = p.identity;
     return { ok: true };
@@ -420,12 +543,66 @@ export class RoomRegistry {
     return !!room && room.hostToken === hostToken;
   }
 
+  isMember(roomName: string, memberToken: string): boolean {
+    const room = this.rooms.get(roomName);
+    if (!room || !memberToken) return false;
+    return [...room.participants.values()].some((p) => p.memberToken === memberToken);
+  }
+
   endRoom(roomName: string): void {
     const room = this.rooms.get(roomName);
     if (!room) return;
     room.status = 'ended';
     room.participants.clear();
     room.chatHistory.length = 0;
+    room.activeSharerId = null;
+  }
+
+  claimShare(
+    roomName: string,
+    identity: string,
+  ): { ok: true } | { ok: false; code: 'BUSY' | 'NOT_FOUND' } {
+    const room = this.rooms.get(roomName);
+    if (!room || room.status !== 'active') return { ok: false, code: 'NOT_FOUND' };
+    if (room.activeSharerId && room.activeSharerId !== identity) return { ok: false, code: 'BUSY' };
+    room.activeSharerId = identity;
+    return { ok: true };
+  }
+
+  releaseShare(roomName: string, identity: string): boolean {
+    const room = this.rooms.get(roomName);
+    if (!room || room.activeSharerId !== identity) return false;
+    room.activeSharerId = null;
+    return true;
+  }
+
+  clearShare(roomName: string): boolean {
+    const room = this.rooms.get(roomName);
+    if (!room || room.activeSharerId === null) return false;
+    room.activeSharerId = null;
+    return true;
+  }
+
+  /**
+   * Forget rooms that are safe to drop so the in-memory registry can't grow without bound:
+   * empty `active` rooms older than `idleMs` (created but never joined, or fully emptied), and
+   * `ended` rooms older than `endedTtlMs` (kept a while so link revisits still resolve to S2).
+   * Rooms in `grace` are never reaped. Returns the removed room names so the caller can delete
+   * their attachment folders.
+   */
+  reapRooms(opts: { idleMs: number; endedTtlMs: number }): string[] {
+    const now = this.now();
+    const removed: string[] = [];
+    for (const [name, room] of this.rooms) {
+      const age = now - room.createdAt;
+      const idleEmpty = room.status === 'active' && room.participants.size === 0 && age > opts.idleMs;
+      const endedExpired = room.status === 'ended' && age > opts.endedTtlMs;
+      if (idleEmpty || endedExpired) {
+        this.rooms.delete(name);
+        removed.push(name);
+      }
+    }
+    return removed;
   }
 }
 ```
@@ -433,7 +610,7 @@ export class RoomRegistry {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/rooms.test.ts`
-Expected: PASS (5 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -756,7 +933,7 @@ git commit -m "feat(backend): add attachment validation and disk storage"
 - Consumes: `RoomRegistry`, `createAccessToken`, `LiveKitAdmin`, `AttachmentStore`, `classifyUpload`, `validateName`, `AppConfig`.
 - Produces: `createApp(deps): express.Express` where
   `deps = { cfg: AppConfig; registry: RoomRegistry; admin: LiveKitAdmin; store: AttachmentStore; tokenFn: typeof createAccessToken; genId: () => string }`.
-  Routes per spec §3.2. All error responses are `{ error: <CODE> }` with these codes: `NOT_FOUND`, `ENDED`, `FULL`, `NAME_EMPTY`, `NAME_LENGTH`, `FORBIDDEN`, `UNSUPPORTED_TYPE`, `TOO_LARGE`, `NO_FILE`.
+  Routes per spec §3.2. All error responses are `{ error: <CODE> }` with these codes: `NOT_FOUND`, `ENDED`, `FULL`, `NAME_EMPTY`, `NAME_LENGTH`, `NAME_TAKEN`, `FORBIDDEN`, `UNSUPPORTED_TYPE`, `TOO_LARGE`, `NO_FILE`.
 
 - [ ] **Step 1: Write the failing test `backend/src/app.test.ts`**
 
@@ -816,6 +993,14 @@ describe('REST API', () => {
       .then(r => expect(r.body.error).toBe('NAME_LENGTH'));
   });
 
+  it('POST join rejects a duplicate name in the same room (case-insensitive)', async () => {
+    const created = (await request(ctx.app).post('/rooms')).body;
+    await request(ctx.app).post(`/rooms/${created.roomName}/join`).send({ name: 'Ann' }).expect(200);
+    await request(ctx.app).post(`/rooms/${created.roomName}/join`)
+      .send({ name: 'ann' }).expect(409)
+      .then(r => expect(r.body.error).toBe('NAME_TAKEN'));
+  });
+
   it('POST join issues a host token when hostToken matches', async () => {
     const created = (await request(ctx.app).post('/rooms')).body;
     const res = await request(ctx.app).post(`/rooms/${created.roomName}/join`)
@@ -838,14 +1023,15 @@ describe('REST API', () => {
 
   it('POST remove requires a valid host token', async () => {
     const created = (await request(ctx.app).post('/rooms')).body;
-    await request(ctx.app).post(`/rooms/${created.roomName}/join`)
-      .send({ name: 'Boris' });
+    const joined = (await request(ctx.app).post(`/rooms/${created.roomName}/join`)
+      .send({ name: 'Boris' })).body;
+    expect(joined.identity).toBe('Boris'); // display name doubles as identity
     await request(ctx.app).post(`/rooms/${created.roomName}/remove`)
-      .send({ hostToken: 'wrong', targetIdentity: 'x' }).expect(403)
+      .send({ hostToken: 'wrong', targetIdentity: joined.identity }).expect(403)
       .then(r => expect(r.body.error).toBe('FORBIDDEN'));
     await request(ctx.app).post(`/rooms/${created.roomName}/remove`)
-      .send({ hostToken: created.hostToken, targetIdentity: 'Boris' }).expect(200);
-    expect(ctx.removed).toContain('Boris');
+      .send({ hostToken: created.hostToken, targetIdentity: joined.identity }).expect(200);
+    expect(ctx.removed).toContain(joined.identity);
   });
 
   it('POST end requires host token and deletes the room', async () => {
@@ -856,9 +1042,19 @@ describe('REST API', () => {
     expect(ctx.registry.get(created.roomName)!.status).toBe('ended');
   });
 
-  it('POST attachments rejects an unsupported type', async () => {
+  it('POST attachments requires a valid member token', async () => {
     const created = (await request(ctx.app).post('/rooms')).body;
     await request(ctx.app).post(`/rooms/${created.roomName}/attachments`)
+      .attach('file', Buffer.from('hello'), { filename: 'plan.pdf', contentType: 'application/pdf' })
+      .expect(403)
+      .then(r => expect(r.body.error).toBe('FORBIDDEN'));
+  });
+
+  it('POST attachments rejects an unsupported type', async () => {
+    const created = (await request(ctx.app).post('/rooms')).body;
+    const { memberToken } = (await request(ctx.app).post(`/rooms/${created.roomName}/join`).send({ name: 'Ann' })).body;
+    await request(ctx.app).post(`/rooms/${created.roomName}/attachments`)
+      .set('x-member-token', memberToken)
       .attach('file', Buffer.from('x'), { filename: 'a.exe', contentType: 'application/x-msdownload' })
       .expect(400)
       .then(r => expect(r.body.error).toBe('UNSUPPORTED_TYPE'));
@@ -866,7 +1062,9 @@ describe('REST API', () => {
 
   it('POST attachments stores a valid file and returns metadata', async () => {
     const created = (await request(ctx.app).post('/rooms')).body;
+    const { memberToken } = (await request(ctx.app).post(`/rooms/${created.roomName}/join`).send({ name: 'Ann' })).body;
     const res = await request(ctx.app).post(`/rooms/${created.roomName}/attachments`)
+      .set('x-member-token', memberToken)
       .attach('file', Buffer.from('hello'), { filename: 'plan.pdf', contentType: 'application/pdf' })
       .expect(200);
     expect(res.body.kind).toBe('file');
@@ -915,7 +1113,7 @@ export function createApp(deps: AppDeps): Express {
     res.json({
       roomName: room.roomName,
       hostToken: room.hostToken,
-      participantUrl: `${cfg.corsOrigin}/r/${room.roomName}`,
+      participantUrl: `${cfg.publicBaseUrl ?? cfg.corsOrigin}/r/${room.roomName}`,
     });
   });
 
@@ -936,19 +1134,31 @@ export function createApp(deps: AppDeps): Express {
 
     const isHost = !!hostToken && registry.isHostToken(room.roomName, hostToken);
     const role: 'host' | 'guest' = isHost ? 'host' : 'guest';
-    const identity = v.value; // display name doubles as identity; collisions handled by LiveKit suffixing
+
+    // The host is authenticated by hostToken, not by name. On (re)join, release any
+    // slot it previously held (reserved during grace) so reconnecting — and freeing
+    // its old name — does not trip the duplicate-name check below.
+    if (isHost && room.hostIdentity) {
+      registry.removeParticipant(room.roomName, room.hostIdentity);
+    }
+
+    // Display name doubles as identity; names are unique within a room (enforced by
+    // addParticipant), so identities never collide. Host actions target this value.
+    const identity = v.value;
+    // Per-participant secret proving room membership for attachment upload/download.
+    const memberToken = `m_${genId()}`;
 
     const add = registry.addParticipant(room.roomName, {
-      identity, displayName: v.value, role, joinedAt: Date.now(),
+      identity, displayName: v.value, role, joinedAt: Date.now(), memberToken,
     });
     if (!add.ok) {
       const code = add.code;
-      const status = code === 'FULL' ? 409 : code === 'ENDED' ? 410 : 404;
+      const status = code === 'FULL' || code === 'NAME_TAKEN' ? 409 : code === 'ENDED' ? 410 : 404;
       return res.status(status).json({ error: code });
     }
 
     const accessToken = await tokenFn(cfg, { roomName: room.roomName, identity, name: v.value, role });
-    res.json({ accessToken, livekitUrl: cfg.livekitUrl, role, identity });
+    res.json({ accessToken, livekitUrl: cfg.livekitUrl, role, identity, memberToken });
   });
 
   app.post('/rooms/:roomName/remove', async (req, res) => {
@@ -976,9 +1186,17 @@ export function createApp(deps: AppDeps): Express {
     res.json({ ok: true });
   });
 
+  // Membership proof: token from the `x-member-token` header (uploads, via fetch) or the
+  // `token` query param (downloads, so native <img>/<a> can carry it).
+  const memberTokenOf = (req: express.Request): string =>
+    String(req.get('x-member-token') ?? req.query.token ?? '');
+
   app.post('/rooms/:roomName/attachments', upload.single('file'), async (req, res) => {
     const room = registry.get(req.params.roomName);
     if (!room) return res.status(404).json({ error: 'NOT_FOUND' });
+    if (!registry.isMember(room.roomName, memberTokenOf(req))) {
+      return res.status(403).json({ error: 'FORBIDDEN' });
+    }
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'NO_FILE' });
     const cls = classifyUpload(file.mimetype, file.size);
@@ -991,6 +1209,7 @@ export function createApp(deps: AppDeps): Express {
       size: file.size,
       mime: file.mimetype,
       kind: cls.kind,
+      // Tokenless URL; each member appends its own `?token=<memberToken>` when fetching.
       url: `/attachments/${room.roomName}/${fileId}/${encodeURIComponent(file.originalname)}`,
     });
   });
@@ -998,6 +1217,9 @@ export function createApp(deps: AppDeps): Express {
   app.get('/attachments/:roomName/:fileId/:name', (req, res) => {
     const room = registry.get(req.params.roomName);
     if (!room || room.status === 'ended') return res.status(404).json({ error: 'NOT_FOUND' });
+    if (!registry.isMember(room.roomName, memberTokenOf(req))) {
+      return res.status(403).json({ error: 'FORBIDDEN' });
+    }
     const path = store.pathFor(req.params.roomName, req.params.fileId, req.params.name);
     res.sendFile(path, (err) => { if (err && !res.headersSent) res.status(404).json({ error: 'NOT_FOUND' }); });
   });
@@ -1009,7 +1231,7 @@ export function createApp(deps: AppDeps): Express {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/app.test.ts`
-Expected: PASS (9 tests). The multer `fileSize` limit returns a Multer error for oversized uploads — that is acceptable; the explicit `TOO_LARGE` body is asserted only via `classifyUpload` in Task 5.
+Expected: PASS (11 tests). The multer `fileSize` limit returns a Multer error for oversized uploads — that is acceptable; the explicit `TOO_LARGE` body is asserted only via `classifyUpload` in Task 5.
 
 - [ ] **Step 5: Commit**
 
@@ -1048,7 +1270,7 @@ function setup() {
   let n = 0;
   const registry = new RoomRegistry(() => `id${n++}`);
   const room = registry.createRoom();
-  registry.addParticipant(room.roomName, { identity: 'Ann', displayName: 'Ann', role: 'host', joinedAt: 0 });
+  registry.addParticipant(room.roomName, { identity: 'Ann', displayName: 'Ann', role: 'host', joinedAt: 0, memberToken: 'mt_Ann' });
   const deleted: string[] = [];
   const admin = { removeParticipant: async () => {}, deleteRoom: async (r: string) => { deleted.push(r); } };
   const store = new AttachmentStore(mkdtempSync(join(tmpdir(), 'kmb-grace-')));
@@ -1176,7 +1398,7 @@ git commit -m "feat(backend): add host-reconnect grace controller"
 
 ---
 
-### Task 8: Chat service (history, send, unread)
+### Task 8: Chat service (history, send, validation)
 
 **Files:**
 - Create: `backend/src/chat.ts`
@@ -1324,7 +1546,9 @@ git commit -m "feat(backend): add chat service with history and validation"
 - Produces: `registerSocket(io: Server, deps: { chat: ChatService; registry: RoomRegistry; genId: () => string; now: () => number }): void`. Behavior:
   - On `join_chat` `{ roomName, identity, name }`: socket joins the Socket.IO room `roomName`; server emits `chat_history` `{ messages }` to that socket.
   - On `send_message` `{ roomName, text?, attachments }`: build via `ChatService`; on success emit `chat_message` `{ message }` to everyone in the room; on failure emit `message_failed` `{ code }` to the sender only.
-  - Exposes a helper `broadcastGrace(io, roomName, secondsLeft)` emitting `grace_tick`, `broadcastGraceCancelled`, and `broadcastRoomEnded` emitting `room_ended` — used by the grace controller in Task 10.
+  - On `claim_share` `{ roomName }`: `registry.claimShare(roomName, identity)`; on `ok` emit `share_granted` to the caller and broadcast `share_state { activeSharerId }` to the room; on `BUSY` emit `share_denied { reason: 'busy' }` to the caller only.
+  - On `release_share` `{ roomName }`: if `registry.releaseShare(roomName, identity)` changed anything, broadcast `share_state { activeSharerId: null }` to the room.
+  - Exposes helpers `broadcastGrace(io, roomName, secondsLeft)` (`grace_tick`), `broadcastGraceCancelled`, `broadcastRoomEnded` (`room_ended`), and `broadcastShareState(io, roomName, activeSharerId)` (`share_state`) — used by the grace controller and webhook reset in Tasks 7/10.
 
 - [ ] **Step 1: Write the failing test `backend/src/socket.test.ts`**
 
@@ -1400,6 +1624,25 @@ describe('registerSocket', () => {
     expect((await fail).code).toBe('EMPTY');
     a.close();
   });
+
+  it('grants a screen share to the first claimer and denies the second', async () => {
+    const a = Client(url); const b = Client(url);
+    await Promise.all([waitFor(a, 'connect'), waitFor(b, 'connect')]);
+    a.emit('join_chat', { roomName, identity: 'Ann', name: 'Ann' });
+    b.emit('join_chat', { roomName, identity: 'Boris', name: 'Boris' });
+    await Promise.all([waitFor(a, 'chat_history'), waitFor(b, 'chat_history')]);
+
+    const granted = waitFor(a, 'share_granted');
+    const stateOnB = waitFor(b, 'share_state');
+    a.emit('claim_share', { roomName });
+    await granted;
+    expect((await stateOnB).activeSharerId).toBe('Ann');
+
+    const denied = waitFor(b, 'share_denied');
+    b.emit('claim_share', { roomName });
+    expect((await denied).reason).toBe('busy');
+    a.close(); b.close();
+  });
 });
 ```
 
@@ -1456,7 +1699,29 @@ export function registerSocket(io: Server, deps: SocketDeps): void {
       }
       io.to(p.roomName).emit('chat_message', { message: result.message });
     });
+
+    socket.on('claim_share', (p: { roomName: string }) => {
+      if (!joined || joined.roomName !== p.roomName) return;
+      const result = deps.registry.claimShare(p.roomName, joined.identity);
+      if (!result.ok) {
+        if (result.code === 'BUSY') socket.emit('share_denied', { reason: 'busy' });
+        return;
+      }
+      socket.emit('share_granted', {});
+      io.to(p.roomName).emit('share_state', { activeSharerId: joined.identity });
+    });
+
+    socket.on('release_share', (p: { roomName: string }) => {
+      if (!joined || joined.roomName !== p.roomName) return;
+      if (deps.registry.releaseShare(p.roomName, joined.identity)) {
+        io.to(p.roomName).emit('share_state', { activeSharerId: null });
+      }
+    });
   });
+}
+
+export function broadcastShareState(io: Server, roomName: string, activeSharerId: string | null): void {
+  io.to(roomName).emit('share_state', { activeSharerId });
 }
 
 export function broadcastGrace(io: Server, roomName: string, secondsLeft: number): void {
@@ -1473,7 +1738,7 @@ export function broadcastRoomEnded(io: Server, roomName: string, reason: 'host_e
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/socket.test.ts`
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -1494,8 +1759,9 @@ git commit -m "feat(backend): add socket.io chat wiring"
 **Interfaces:**
 - Consumes: `RoomRegistry`, `GraceController`.
 - Produces:
-  - `handleWebhookEvent(event: { event: string; participant?: { identity: string }; room?: { name: string } }, deps: { registry: RoomRegistry; grace: GraceController; onHostReturned: (room: string) => void }): void` — pure dispatcher:
-    - `participant_left` where identity === room.hostIdentity and room.status==='active' → `grace.hostLeft(roomName)`.
+  - `handleWebhookEvent(event: { event: string; participant?: { identity: string }; room?: { name: string } }, deps: { registry: RoomRegistry; grace: GraceController; onHostReturned: (room: string) => void; onShareReset: (room: string) => void }): void` — pure dispatcher. Webhooks are authoritative for presence (spec §3.3) and free the screen share on departure (spec §3.6):
+    - `participant_left`, host of an **active** room → `grace.hostLeft(roomName)`; the host's slot is **kept reserved** (not removed) for the grace window; any active share is force-cleared via `registry.clearShare` → `onShareReset`.
+    - `participant_left`, anyone else (guest, or host of a non-active room) → `registry.removeParticipant(roomName, identity)` to free the slot; if the leaver was the active sharer, `registry.releaseShare(roomName, identity)` → `onShareReset`.
     - `participant_joined` where identity === room.hostIdentity and room.status==='grace' → `grace.hostReturned(roomName)` + `onHostReturned`.
   - `server.ts` — composition root: loads config, builds all deps, mounts `createApp`, attaches Socket.IO, wires `GraceController` callbacks to the broadcast helpers, mounts the raw webhook route using `WebhookReceiver` from `livekit-server-sdk`, and listens on `cfg.port`. (Not unit-tested; verified by the smoke test in Task 11.)
 
@@ -1510,28 +1776,33 @@ function setup() {
   let n = 0;
   const registry = new RoomRegistry(() => `id${n++}`);
   const room = registry.createRoom();
-  registry.addParticipant(room.roomName, { identity: 'Ann', displayName: 'Ann', role: 'host', joinedAt: 0 });
+  registry.addParticipant(room.roomName, { identity: 'Ann', displayName: 'Ann', role: 'host', joinedAt: 0, memberToken: 'mt_Ann' });
   const grace = { hostLeft: vi.fn(), hostReturned: vi.fn() };
   return { registry, room, grace };
 }
 
 describe('handleWebhookEvent', () => {
-  it('starts grace when the host leaves an active room', () => {
+  it('starts grace when the host leaves an active room and reserves the host slot', () => {
     const { registry, room, grace } = setup();
     handleWebhookEvent(
       { event: 'participant_left', participant: { identity: 'Ann' }, room: { name: room.roomName } },
-      { registry, grace: grace as any, onHostReturned: () => {} },
+      { registry, grace: grace as any, onHostReturned: () => {}, onShareReset: () => {} },
     );
     expect(grace.hostLeft).toHaveBeenCalledWith(room.roomName);
+    // The host's slot stays reserved during grace.
+    expect(registry.get(room.roomName)!.participants.has('Ann')).toBe(true);
   });
 
-  it('ignores a guest leaving', () => {
+  it('frees the slot when a guest leaves, without starting grace', () => {
     const { registry, room, grace } = setup();
+    registry.addParticipant(room.roomName, { identity: 'Boris', displayName: 'Boris', role: 'guest', joinedAt: 0, memberToken: 'mt_Boris' });
+    expect(registry.get(room.roomName)!.participants.has('Boris')).toBe(true);
     handleWebhookEvent(
       { event: 'participant_left', participant: { identity: 'Boris' }, room: { name: room.roomName } },
-      { registry, grace: grace as any, onHostReturned: () => {} },
+      { registry, grace: grace as any, onHostReturned: () => {}, onShareReset: () => {} },
     );
     expect(grace.hostLeft).not.toHaveBeenCalled();
+    expect(registry.get(room.roomName)!.participants.has('Boris')).toBe(false);
   });
 
   it('cancels grace when the host rejoins', () => {
@@ -1540,10 +1811,23 @@ describe('handleWebhookEvent', () => {
     const onHostReturned = vi.fn();
     handleWebhookEvent(
       { event: 'participant_joined', participant: { identity: 'Ann' }, room: { name: room.roomName } },
-      { registry, grace: grace as any, onHostReturned },
+      { registry, grace: grace as any, onHostReturned, onShareReset: () => {} },
     );
     expect(grace.hostReturned).toHaveBeenCalledWith(room.roomName);
     expect(onHostReturned).toHaveBeenCalledWith(room.roomName);
+  });
+
+  it('frees the screen share when the active sharer leaves', () => {
+    const { registry, room, grace } = setup();
+    registry.addParticipant(room.roomName, { identity: 'Boris', displayName: 'Boris', role: 'guest', joinedAt: 0, memberToken: 'mt_Boris' });
+    registry.claimShare(room.roomName, 'Boris');
+    const onShareReset = vi.fn();
+    handleWebhookEvent(
+      { event: 'participant_left', participant: { identity: 'Boris' }, room: { name: room.roomName } },
+      { registry, grace: grace as any, onHostReturned: () => {}, onShareReset },
+    );
+    expect(registry.get(room.roomName)!.activeSharerId).toBeNull();
+    expect(onShareReset).toHaveBeenCalledWith(room.roomName);
   });
 });
 ```
@@ -1569,6 +1853,7 @@ export type WebhookDeps = {
   registry: RoomRegistry;
   grace: Pick<GraceController, 'hostLeft' | 'hostReturned'>;
   onHostReturned: (roomName: string) => void;
+  onShareReset: (roomName: string) => void;
 };
 
 export function handleWebhookEvent(evt: WebhookEvent, deps: WebhookDeps): void {
@@ -1576,11 +1861,25 @@ export function handleWebhookEvent(evt: WebhookEvent, deps: WebhookDeps): void {
   const identity = evt.participant?.identity;
   if (!roomName || !identity) return;
   const room = deps.registry.get(roomName);
-  if (!room || room.hostIdentity !== identity) return;
+  if (!room) return;
 
-  if (evt.event === 'participant_left' && room.status === 'active') {
-    deps.grace.hostLeft(roomName);
-  } else if (evt.event === 'participant_joined' && room.status === 'grace') {
+  const isHost = room.hostIdentity === identity;
+
+  if (evt.event === 'participant_left') {
+    if (isHost && room.status === 'active') {
+      // Host dropped from an active room: start the 60s grace timer and keep the
+      // host's slot reserved (do NOT remove them) — they may reconnect.
+      deps.grace.hostLeft(roomName);
+      // Host grace ends any active screen share (spec §3.6/§4.4).
+      if (deps.registry.clearShare(roomName)) deps.onShareReset(roomName);
+    } else {
+      // Anyone else leaving (or host leaving a non-active room): free the slot.
+      // Webhooks are authoritative for presence (spec §3.3).
+      deps.registry.removeParticipant(roomName, identity);
+      // If the leaver held the screen share, free it for the next claimer.
+      if (deps.registry.releaseShare(roomName, identity)) deps.onShareReset(roomName);
+    }
+  } else if (evt.event === 'participant_joined' && isHost && room.status === 'grace') {
     deps.grace.hostReturned(roomName);
     deps.onHostReturned(roomName);
   }
@@ -1590,7 +1889,7 @@ export function handleWebhookEvent(evt: WebhookEvent, deps: WebhookDeps): void {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/webhooks.test.ts`
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Implement `backend/src/server.ts` (composition root)**
 
@@ -1600,13 +1899,14 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { loadConfig } from './config';
+import { logger } from './logger';
 import { RoomRegistry } from './rooms';
 import { createLiveKitAdmin } from './livekitAdmin';
 import { AttachmentStore } from './attachments';
 import { createAccessToken } from './livekitTokens';
 import { createApp } from './app';
 import { ChatService } from './chat';
-import { registerSocket, broadcastGrace, broadcastGraceCancelled, broadcastRoomEnded } from './socket';
+import { registerSocket, broadcastGrace, broadcastGraceCancelled, broadcastRoomEnded, broadcastShareState } from './socket';
 import { GraceController } from './grace';
 import { handleWebhookEvent } from './webhooks';
 
@@ -1630,6 +1930,15 @@ const grace = new GraceController({
 
 registerSocket(io, { chat, registry, genId, now: () => Date.now() });
 
+// Forget abandoned rooms so the in-memory registry can't grow without bound: empty rooms never
+// joined within 10 min, and ended rooms after 1 h (link revisits resolve to S2 until then).
+setInterval(() => {
+  for (const roomName of registry.reapRooms({ idleMs: 10 * 60_000, endedTtlMs: 60 * 60_000 })) {
+    void store.deleteRoom(roomName);
+    logger.info('Reaped idle room', { roomName });
+  }
+}, 60_000).unref();
+
 // LiveKit webhooks arrive as a signed text body.
 const receiver = new WebhookReceiver(cfg.livekitApiKey, cfg.livekitApiSecret);
 app.post('/livekit/webhook', express.raw({ type: 'application/webhook+json' }), async (req, res) => {
@@ -1638,15 +1947,17 @@ app.post('/livekit/webhook', express.raw({ type: 'application/webhook+json' }), 
     handleWebhookEvent(evt as any, {
       registry, grace,
       onHostReturned: (room) => broadcastGraceCancelled(io, room),
+      onShareReset: (room) => broadcastShareState(io, room, registry.get(room)?.activeSharerId ?? null),
     });
     res.status(200).end();
-  } catch {
+  } catch (err) {
+    logger.warn('Rejected LiveKit webhook', { error: String(err) });
     res.status(400).end();
   }
 });
 
 httpServer.listen(cfg.port, () => {
-  console.log(`KMB backend listening on :${cfg.port}`);
+  logger.info('KMB backend listening', { port: cfg.port });
 });
 ```
 
@@ -1674,10 +1985,10 @@ git commit -m "feat(backend): add livekit webhook handling and server compositio
 Run: `cd backend && npm test`
 Expected: PASS — all suites green (config, validation, rooms, livekitTokens, livekitAdmin, attachments, app, grace, chat, socket, webhooks).
 
-- [ ] **Step 2: Type-check / build**
+- [ ] **Step 2: Lint, type-check, build**
 
-Run: `npm run build`
-Expected: `tsc` completes with no errors; `dist/` is produced.
+Run: `npm run lint && npm run typecheck && npm run build`
+Expected: ESLint reports **zero** warnings/errors, `tsc --noEmit` is clean, then `tsc` builds and `dist/` is produced. (Per the project rules, a clean lint + typecheck is part of "done".)
 
 - [ ] **Step 3: Write `backend/README.md`**
 
@@ -1696,9 +2007,15 @@ host-reconnect grace, Socket.IO chat, and local-disk attachments.
 
 Configure LiveKit to POST webhooks to `http://localhost:4000/livekit/webhook`.
 
-## Test
+## Test & checks
 
-`npm test`
+```
+npm test         # vitest
+npm run lint     # eslint (zero warnings required)
+npm run typecheck # tsc --noEmit
+```
+
+Requires Node.js 22.
 ````
 
 - [ ] **Step 4: Manual smoke test (LiveKit running)**
@@ -1734,8 +2051,9 @@ git commit -m "docs(backend): add run + smoke-test instructions"
 - §3.1 room registry → Task 2.
 - §3.2 REST API (all 7 routes + attachment download) → Task 6.
 - §3.3 host-reconnect grace → Tasks 7, 10.
-- §3.4 chat over Socket.IO + history + unread/failure → Tasks 8, 9.
-- §3.5 attachments (types, limits, disk, cleanup) → Tasks 5, 6.
+- §3.4 chat over Socket.IO + history + delivery-failure (`message_failed`) → Tasks 8, 9. The unread badge, `Sending…`/delivered status, and roster are client-derived UI state per §3.4 — not server events.
+- §3.5 attachments (types, limits, disk, cleanup, memberToken access control) → Tasks 5, 6 (token issued in Task 6 `/join`, checked on both attachment routes via `registry.isMember`).
+- §3.6 screen-share arbitration (state + claim/release/reset) → Tasks 2, 9, 10 (backs frontend §4.4).
 - §6 error codes → returned by Tasks 1, 5, 6, 8 (frontend maps codes to exact strings).
 - §7 validation rules → Tasks 1, 2, 5, 8.
 

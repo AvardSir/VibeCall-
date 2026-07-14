@@ -1,0 +1,129 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import '../../../shared/i18n';
+import { ChatInput } from './ChatInput';
+import { useChatStore } from '../../../stores/useChatStore';
+
+describe('ChatInput', () => {
+  beforeEach(() => {
+    useChatStore.getState().reset();
+  });
+
+  it('keeps a multi-line textarea and an icon (not text) send button', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    expect(screen.getByRole('textbox')).toBeInTheDocument(); // textarea kept
+    const send = screen.getByRole('button', { name: /send/i });
+    expect(send.querySelector('svg')).not.toBeNull(); // icon, not text
+  });
+
+  it('disables Send when the field is empty or whitespace', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const send = screen.getByRole('button', { name: 'Send' });
+    expect(send).toBeDisabled();
+    await userEvent.type(screen.getByPlaceholderText('Type a message…'), '   ');
+    expect(send).toBeDisabled();
+  });
+
+  it('sends the trimmed-non-empty text and clears the field', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    await userEvent.type(field, 'hello');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(onSend).toHaveBeenCalledWith('hello', []);
+    expect(field).toHaveValue('');
+  });
+
+  it('sends on Enter and clears the field', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    await userEvent.type(field, 'hello{Enter}');
+    expect(onSend).toHaveBeenCalledWith('hello', []);
+    expect(field).toHaveValue('');
+  });
+
+  it('inserts a newline on Shift+Enter without sending', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    await userEvent.type(field, 'a{Shift>}{Enter}{/Shift}b');
+    expect(onSend).not.toHaveBeenCalled();
+    expect(field).toHaveValue('a\nb');
+  });
+
+  it('shows the character counter only from 900 characters', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    await userEvent.click(field);
+    await userEvent.paste('a'.repeat(899));
+    expect(screen.queryByText(/\/1000$/)).not.toBeInTheDocument();
+    await userEvent.paste('a'); // now 900
+    expect(screen.getByText('900/1000')).toBeInTheDocument();
+  });
+
+  it('stages a valid image and shows it as a chip', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    await userEvent.upload(input, file);
+    expect(screen.getByText('a.png')).toBeInTheDocument();
+  });
+
+  it('rejects an unsupported file type and shows the inline error', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    const file = new File(['x'], 'malware.exe', { type: 'application/octet-stream' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByText('Unsupported file type.')).toBeInTheDocument();
+    expect(screen.queryByText('malware.exe')).not.toBeInTheDocument();
+  });
+
+  it('enables Send with empty text when a file is staged', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    await userEvent.upload(input, file);
+    expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled();
+  });
+
+  it('shows the tooManyFiles error when a 6th file is attempted', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    for (let i = 0; i < 5; i++) {
+      await userEvent.upload(input, new File(['x'], `f${i}.png`, { type: 'image/png' }));
+    }
+    await userEvent.upload(input, new File(['x'], 'f5.png', { type: 'image/png' }));
+    expect(screen.getByText('You can attach up to 5 files per message.')).toBeInTheDocument();
+  });
+
+  it('stages an image pasted from the clipboard (Ctrl+V) as a chip', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    // Clipboard image blobs commonly arrive with no filename — the handler must name them.
+    const blob = new File(['x'], '', { type: 'image/png' });
+    fireEvent.paste(field, {
+      clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => blob }] },
+    });
+    expect(screen.getByText('pasted-image-1.png')).toBeInTheDocument();
+  });
+
+  it('ignores a plain-text paste (no image) and stages nothing', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    fireEvent.paste(field, {
+      clipboardData: { items: [{ kind: 'string', type: 'text/plain', getAsFile: () => null }] },
+    });
+    expect(useChatStore.getState().stagedAttachments).toHaveLength(0);
+  });
+
+  it('removes a staged file when its remove button is clicked', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    await userEvent.upload(input, new File(['x'], 'a.png', { type: 'image/png' }));
+    expect(screen.getByText('a.png')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove: a.png' }));
+    expect(screen.queryByText('a.png')).not.toBeInTheDocument();
+  });
+});

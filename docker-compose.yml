@@ -1,0 +1,61 @@
+# Local dev stack: LiveKit SFU + backend control plane + frontend (Vite), all with hot-reload.
+# Run: docker compose up --build
+#
+# Networking: services talk to each other over the kmb-net bridge by service name, but the
+# browser (on the host) reaches them via the published host ports. Hence LIVEKIT_URL stays
+# ws://localhost:7880 (browser → media signaling) while LIVEKIT_HOST is http://livekit:7880
+# (backend → LiveKit admin API, inside the network).
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"       # ws/http signaling
+      - "7881:7881"       # rtc tcp
+      - "7882:7882/udp"   # rtc udp (media)
+    networks:
+      - kmb-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+      LIVEKIT_URL: ws://localhost:7880      # browser-facing (must be reachable from host)
+      LIVEKIT_HOST: http://livekit:7880     # backend-facing admin API (in-network)
+      PORT: "3000"
+      FIXED_ROOM_NAME: main
+      CORS_ORIGIN: http://localhost:5173
+      CHOKIDAR_USEPOLLING: "true"   # poll for changes on Windows/WSL2 bind-mounts (tsx watch)
+    volumes:
+      - ./backend:/app          # source → hot-reload (tsx watch)
+      - /app/node_modules       # anonymous volume: keep container's Linux node_modules
+    depends_on:
+      - livekit
+    networks:
+      - kmb-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    volumes:
+      - ./frontend:/app         # source → HMR
+      - /app/node_modules       # anonymous volume: keep container's Linux node_modules
+    depends_on:
+      - backend
+    networks:
+      - kmb-net
+
+networks:
+  kmb-net:
+    driver: bridge
