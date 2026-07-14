@@ -5,3 +5,6 @@ backend/.storage/
 backend/.env
 .superpowers/
 *.log
+
+# Local dev binaries (LiveKit server)
+/tools/
