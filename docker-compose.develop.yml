@@ -1,0 +1,91 @@
+# Demo2 (develop) stack — STANDALONE (do NOT overlay on the dev docker-compose.yml; that one is
+# hot-reload/--dev). Deployed by the GitLab `deploy_develop` job on the kmb-deploy runner (which
+# deploys onto the host docker, so these containers live on the server and Traefik routes to them):
+#   docker-compose -p kmb-lashin_develop -f docker-compose.develop.yml up -d --build --force-recreate
+#
+# Routing + TLS: Traefik (external network `traefik`, entrypoint `http`) routes by Host label. TLS is
+# terminated upstream of Traefik (no certresolver here). Frontend/backend are NOT published to host
+# ports — Traefik reaches them over the `traefik` network. Only LiveKit MEDIA ports are published,
+# since WebRTC media bypasses Traefik.
+#
+# Config is injected from GitLab CI/CD Variables (scope: develop). Public scheme is HTTPS (TLS upstream
+# of Traefik), so:
+#   LIVEKIT_API_KEY, LIVEKIT_API_SECRET
+#   LIVEKIT_URL        = wss://dev-livekit-kmb.stg.forasoft.com
+#   CORS_ORIGIN        = https://dev-kmb.stg.forasoft.com
+#   VITE_API_BASE_URL  = https://dev-api-kmb.stg.forasoft.com      (baked into the FE build)
+#
+# LiveKit media: UDP (confirmed). The host publishes UDP 50000-50100 (+ TCP 7881 fallback); the
+# server firewall must allow that inbound UDP range. No TURN.
+
+version: "3.8"
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest   # TODO: pin a specific version for reproducible prod builds
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
+    # Media ports on the host (WebRTC bypasses Traefik). CONFIRM the UDP range is open, else use TURN.
+    ports:
+      - "7881:7881"                       # ICE/TCP fallback
+      - "50000-50100:50000-50100/udp"     # ICE/UDP
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.kmb-livekit.rule=Host(`dev-livekit-kmb.stg.forasoft.com`)"
+      - "traefik.http.routers.kmb-livekit.entrypoints=http"
+      - "traefik.http.services.kmb-livekit.loadbalancer.server.port=7880"
+    restart: unless-stopped
+    networks: [traefik, kmb-internal]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET}"
+      LIVEKIT_URL: "${LIVEKIT_URL}"       # browser-facing (must match the FE build + token audience)
+      LIVEKIT_HOST: "http://livekit:7880" # backend → LiveKit admin API over kmb-internal
+      PORT: "3000"
+      CORS_ORIGIN: "${CORS_ORIGIN}"
+      ATTACHMENT_STORAGE_PATH: "/app/uploads"
+    volumes:
+      - kmb-uploads:/app/uploads          # persist attachments across redeploys
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.kmb-api.rule=Host(`dev-api-kmb.stg.forasoft.com`)"
+      - "traefik.http.routers.kmb-api.entrypoints=http"
+      - "traefik.http.services.kmb-api.loadbalancer.server.port=3000"
+    depends_on: [livekit]
+    restart: unless-stopped
+    networks: [traefik, kmb-internal]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.kmb-web.rule=Host(`dev-kmb.stg.forasoft.com`)"
+      - "traefik.http.routers.kmb-web.entrypoints=http"
+      - "traefik.http.services.kmb-web.loadbalancer.server.port=80"
+    depends_on: [backend]
+    restart: unless-stopped
+    networks: [traefik]
+
+volumes:
+  kmb-uploads:
+
+networks:
+  traefik:
+    external: true          # created by Traefik; our services join it for routing
+  kmb-internal:
+    driver: bridge          # backend ↔ livekit private traffic
