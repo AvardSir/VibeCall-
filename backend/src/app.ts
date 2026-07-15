@@ -12,7 +12,6 @@ import type { ChatServer } from './socket.js';
 import type { AttachmentService } from './attachments.js';
 import type { ChatService } from './chat.js';
 import { AppError } from './errors.js';
-import type { ErrorCode } from './errors.js';
 import { logger } from './logger.js';
 import { createRootRouter } from './routes/index.js';
 
@@ -47,12 +46,12 @@ export function createApp(deps: AppDeps): Express {
     // synchronously into Express's error pipeline) — map it onto the same FILE_TOO_LARGE
     // contract as attachments.ts so callers see one consistent 413 shape either way.
     if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-      res.status(StatusCodes.REQUEST_TOO_LONG).json({ error: 'FILE_TOO_LARGE' });
+      const e = new AppError('FILE_TOO_LARGE');
+      res.status(e.status).json({ error: e.code });
       return;
     }
     if (err instanceof AppError) {
-      const code: ErrorCode = err.code;
-      res.status(err.status).json({ error: code });
+      res.status(err.status).json({ error: err.code });
       return;
     }
     logger.error({ err }, 'unhandled error in request');

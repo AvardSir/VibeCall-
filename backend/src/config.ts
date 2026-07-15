@@ -19,6 +19,10 @@ const envSchema = z.object({
 
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
+// Per-message attachment cap. Not env-overridable. Mirrored on the frontend
+// (frontend/src/features/chat/lib/validateAttachment.ts) — keep both in sync.
+export const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+
 export type AppConfig = {
   livekitApiKey: string;
   livekitApiSecret: string;

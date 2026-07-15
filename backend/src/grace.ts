@@ -19,6 +19,12 @@ export type GraceService = {
   startGrace(roomId: string): void;
   cancelGrace(roomId: string): void;
   isInGrace(roomId: string): boolean;
+  /**
+   * Current countdown for a room in grace, computed on demand (same `Math.ceil` basis as the
+   * per-second tick), or `null` when the room is not in grace. Lets a socket that joins mid-grace
+   * be handed the live value immediately instead of waiting for the next ~1s broadcast.
+   */
+  remainingSeconds(roomId: string): number | null;
 };
 
 export function createGraceService(deps: GraceDeps): GraceService {
@@ -26,10 +32,12 @@ export function createGraceService(deps: GraceDeps): GraceService {
   const setIv = deps.setIntervalFn ?? ((h, ms) => setInterval(h, ms));
   const clearIv = deps.clearIntervalFn ?? ((h) => clearInterval(h));
   const timers = new Map<string, ReturnType<typeof setInterval>>();
+  const endsAtByRoom = new Map<string, number>();
 
   function stop(roomId: string): void {
     const t = timers.get(roomId);
     if (t !== undefined) { clearIv(t); timers.delete(roomId); }
+    endsAtByRoom.delete(roomId);
   }
 
   function endExpired(roomId: string): void {
@@ -45,6 +53,7 @@ export function createGraceService(deps: GraceDeps): GraceService {
     startGrace(roomId) {
       if (timers.has(roomId)) return; // idempotent
       const endsAt = now() + deps.graceSeconds * 1000;
+      endsAtByRoom.set(roomId, endsAt);
       deps.registry.startGraceState(roomId, endsAt);
       deps.onTick(roomId, deps.graceSeconds);
       const handle = setIv(() => {
@@ -62,6 +71,12 @@ export function createGraceService(deps: GraceDeps): GraceService {
     },
     isInGrace(roomId) {
       return timers.has(roomId);
+    },
+    remainingSeconds(roomId) {
+      const endsAt = endsAtByRoom.get(roomId);
+      if (endsAt === undefined) return null;
+      const secondsLeft = Math.ceil((endsAt - now()) / 1000);
+      return secondsLeft > 0 ? secondsLeft : null;
     },
   };
 }

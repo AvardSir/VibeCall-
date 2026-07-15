@@ -10,7 +10,7 @@ export function ConnectErrorScreen({ onRetry }: ConnectErrorScreenProps): JSX.El
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 text-center">
       <Text tag="h1" size="2xl" weight="semibold">{t('connectError')}</Text>
-      <Button variant="ghost" onClick={onRetry}>{t('retry')}</Button>
+      <Button variant="primary" onClick={onRetry}>{t('retry')}</Button>
     </div>
   );
 }

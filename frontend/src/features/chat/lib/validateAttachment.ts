@@ -24,6 +24,8 @@ const ALLOWED: Record<string, { mimes: string[]; kind: 'image' | 'file' }> = {
 
 export const ALLOWED_EXTENSIONS = new Set(Object.keys(ALLOWED));
 
+export const MAX_FILES_PER_MESSAGE = 5;
+
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf('.');
   return idx === -1 ? '' : name.slice(idx + 1).toLowerCase();
@@ -35,7 +37,7 @@ type ValidationResult = ValidationSuccess | ValidationFailure;
 
 export function validateStagedFile(file: File, currentCount: number): ValidationResult {
   // 1. Count check first
-  if (currentCount >= 5) {
+  if (currentCount >= MAX_FILES_PER_MESSAGE) {
     return { ok: false, errorKey: 'tooManyFiles' };
   }
 

@@ -9,11 +9,16 @@
 services:
   livekit:
     image: livekit/livekit-server:latest
-    command: --dev --bind 0.0.0.0
+    # --dev supplies the placeholder dev keys (devkey: secret) and relaxed local settings; --config
+    # layers on livekit.dev.yaml, which adds ONLY the webhook block so participant_left events reach
+    # the backend (the host-disconnect 60s grace flow depends on that event — FR-4 / US-14).
+    command: --config /etc/livekit.yaml --dev --bind 0.0.0.0
     ports:
       - "7880:7880"       # ws/http signaling
       - "7881:7881"       # rtc tcp
       - "7882:7882/udp"   # rtc udp (media)
+    volumes:
+      - ./livekit.dev.yaml:/etc/livekit.yaml:ro
     networks:
       - kmb-net
 

@@ -9,6 +9,7 @@ export const en = {
     language: 'Language',
   },
   landing: {
+    appName: 'КМБ',
     tagline: 'Group video calls for up to four people. No sign-up required.',
     startCall: 'Start a call',
     startCallError: 'Unable to start a call right now. Please try again.',
@@ -57,6 +58,8 @@ export const en = {
     youAreSharing: 'You are sharing your screen',
     shareError: 'Unable to share your screen. Please check your browser permissions.',
     shareBusy: 'Someone is already sharing their screen',
+    cameraAccessError: 'Unable to access camera. Please check your device or browser settings.',
+    micAccessError: 'Unable to access microphone. Please check your device or browser settings.',
   },
   chat: {
     title: 'Chat',
@@ -65,7 +68,7 @@ export const en = {
     empty: 'No messages yet.',
     sending: 'Sending…',
     notDelivered: 'Not delivered',
-    charCount: '{{length}}/1000',
+    charCount: '{{remaining}} characters left',
     openChat: 'Chat',
     closeChat: 'Close chat',
     attach: 'Attach files',
@@ -94,5 +97,6 @@ export const en = {
     removeDialogTitle: 'Remove {{name}} from the call?',
     removeConfirm: 'Remove',
     removeCancel: 'Cancel',
+    unsupportedBrowser: 'Your browser may not support video calls. Please use the latest version of Chrome, Firefox, Safari, or Edge.',
   },
 } as const;

@@ -50,6 +50,12 @@ Lighter fallback if the plugin is unwanted: `no-restricted-imports` patterns ban
 - Keep components presentational where possible; push logic into hooks (`useX`) and stores.
 - No data fetching or socket calls inside JSX — do it in hooks/effects or store actions.
 - Subscribe to the **narrowest** store slice a component needs (avoid whole-store subscriptions).
+- **Memoize deliberately, not by default.** `useMemo` / `useCallback` / `React.memo` earn their
+  keep only for a genuinely expensive computation or a referentially-stable prop passed to a
+  memoized child — blanket-wrapping every value and handler adds noise and its own overhead without
+  a measured win. Reach for memoization when there's a concrete reason (a real perf issue, a stable
+  dependency an effect/child needs), and leave plain values plain otherwise. (Inside custom hooks a
+  stable return is often justified; in components it usually isn't.)
 
 ### React 19 conventions
 

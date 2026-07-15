@@ -1,0 +1,13 @@
+# Local-dev LiveKit config, mounted into the livekit container by docker-compose.yml. Combined with
+# `--dev` (which supplies the dev keys `devkey: secret` and relaxed local settings), this adds ONLY
+# the webhook block so LiveKit POSTs room/participant events to the backend. The host-disconnect
+# 60-second grace flow (FR-4 / US-14) is triggered by the `participant_left` webhook — without this
+# the backend never learns the host dropped, so grace never starts and the call never ends.
+webhook:
+  # Sign webhooks with the dev key; the backend WebhookReceiver verifies with the same key/secret
+  # (LIVEKIT_API_KEY=devkey / LIVEKIT_API_SECRET=secret in docker-compose.yml).
+  api_key: devkey
+  urls:
+    # `backend` is the control-plane service name on the kmb-net bridge; the webhook route is
+    # mounted at POST /webhooks/livekit (before express.json(), raw body for signature check).
+    - http://backend:3000/webhooks/livekit

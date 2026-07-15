@@ -66,13 +66,53 @@ describe('useChatStore', () => {
     expect(msgs[0]).toMatchObject({ key: 'srv-echo', status: 'delivered' });
   });
 
-  it('markFailed flips the first sending item to failed', () => {
+  it('reconciles the exact optimistic bubble by clientId when echoes arrive out of send order', () => {
+    // Two own messages in flight: c1 (a slow photo) then c2 (a quick text). The text's echo lands first.
+    useChatStore.getState().addOptimistic('c1', 'photo', SELF);
+    useChatStore.getState().addOptimistic('c2', 'quick', SELF);
+    useChatStore
+      .getState()
+      .receiveMessage(
+        serverMsg({ id: 'srv-c2', senderIdentity: SELF.identity, text: 'quick', clientId: 'c2' }),
+        SELF.identity,
+      );
+    const msgs = useChatStore.getState().messages;
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0]).toMatchObject({ key: 'c1', status: 'sending' }); // the photo is left untouched
+    expect(msgs[1]).toMatchObject({ key: 'srv-c2', status: 'delivered' }); // only the text reconciled
+  });
+
+  it('markFailed flips the item matched by client id (not the first sending item)', () => {
     useChatStore.getState().addOptimistic('c1', 'a', SELF);
     useChatStore.getState().addOptimistic('c2', 'b', SELF);
-    useChatStore.getState().markFailed();
+    // The second send fails while the first is still in flight — only c2 must flip.
+    useChatStore.getState().markFailed('c2');
     const msgs = useChatStore.getState().messages;
-    expect(msgs[0]!.status).toBe('failed');
-    expect(msgs[1]!.status).toBe('sending');
+    expect(msgs[0]!.status).toBe('sending');
+    expect(msgs[1]!.status).toBe('failed');
+  });
+
+  it('markFailed on an unknown id is a no-op', () => {
+    useChatStore.getState().addOptimistic('c1', 'a', SELF);
+    useChatStore.getState().markFailed('nope');
+    expect(useChatStore.getState().messages[0]!.status).toBe('sending');
+  });
+
+  it('retryMessage restores a failed message text + staged files to the composer and drops the bubble', () => {
+    const staged = { id: 's0', file: new File([new Uint8Array([1])], 'a.png', { type: 'image/png' }) };
+    useChatStore.getState().addOptimistic('c1', 'retry me', SELF, [], [staged]);
+    useChatStore.getState().markFailed('c1');
+    useChatStore.getState().retryMessage('c1');
+    const s = useChatStore.getState();
+    expect(s.messages).toEqual([]); // failed bubble removed
+    expect(s.composerDraft).toBe('retry me'); // text handed back to the composer
+    expect(s.stagedAttachments).toEqual([staged]); // attachments re-staged
+  });
+
+  it('clearComposerDraft resets the pending draft', () => {
+    useChatStore.setState({ composerDraft: 'x' });
+    useChatStore.getState().clearComposerDraft();
+    expect(useChatStore.getState().composerDraft).toBeNull();
   });
 
   describe('togglePanel', () => {

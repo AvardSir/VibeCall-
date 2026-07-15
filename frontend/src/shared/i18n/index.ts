@@ -4,7 +4,7 @@ import { en } from './en';
 import { ru } from './ru';
 
 export const i18nReady = i18n.use(initReactI18next).init({
-  resources: { en: en, ru: ru },
+  resources: { en, ru },
   lng: 'en',
   fallbackLng: 'en',
   ns: ['common', 'prejoin', 'call', 'roomStates', 'chat', 'landing'],
