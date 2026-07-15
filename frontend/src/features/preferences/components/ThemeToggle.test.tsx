@@ -9,5 +9,7 @@ describe('ThemeToggle', () => {
     const button = screen.getByRole('button', { name: 'Switch to light theme' });
     fireEvent.click(button);
     expect(onToggle).toHaveBeenCalledTimes(1);
+    // NFR-2: explicit theme-aware focus-visible ring, not the browser default outline
+    expect(button).toHaveClass('focus-visible:outline-2', 'focus-visible:outline-accent');
   });
 });

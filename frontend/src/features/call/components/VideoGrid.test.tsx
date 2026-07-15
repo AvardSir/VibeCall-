@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '../../../shared/i18n';
 import { useParticipantsStore } from '../../../stores/useParticipantsStore';
+import { useConnectionStore } from '../../../stores/useConnectionStore';
 import type { CallParticipant } from '../../../shared/types';
 
 // The grid is what we test; roster sync now lives in CallShell, so we just drive the store directly.
@@ -34,6 +35,7 @@ function roster(count: number): CallParticipant[] {
 
 beforeEach(() => {
   useParticipantsStore.getState().reset();
+  useConnectionStore.getState().reset();
 });
 
 describe('VideoGrid', () => {
@@ -44,7 +46,17 @@ describe('VideoGrid', () => {
     expect(screen.getByText('Waiting for someone to join…')).toBeInTheDocument();
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '1');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1220px]');
+    // 1-up is a 16:9 box sized height-first so it fills the vertical space (width derived).
+    expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
+  });
+
+  it('suppresses the "Waiting…" notice while the room is in host grace', () => {
+    useParticipantsStore.getState().setParticipants(roster(1));
+    useConnectionStore.getState().setGraceSecondsLeft(47);
+    render(<VideoGrid />);
+    // The lone guest during host grace should see only the GraceOverlay (rendered by CallShell),
+    // not the misleading "Waiting for someone to join…" notice.
+    expect(screen.queryByText('Waiting for someone to join…')).not.toBeInTheDocument();
   });
 
   it('renders two tiles and no notice for two participants', () => {
@@ -54,7 +66,8 @@ describe('VideoGrid', () => {
     expect(screen.queryByText('Waiting for someone to join…')).not.toBeInTheDocument();
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '2');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1382px]');
+    // 2-up is the wide 32:9 box — genuinely width-limited, so it stays width-first (capped).
+    expect(grid).toHaveClass('gap-4', 'w-full', 'aspect-[32/9]', 'max-w-[1382px]');
   });
 
   it('renders three tiles for three participants', () => {
@@ -63,7 +76,7 @@ describe('VideoGrid', () => {
     expect(screen.getAllByTestId('video-tile')).toHaveLength(3);
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '3');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1168px]');
+    expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
   });
 
   it('renders four tiles for four participants', () => {
@@ -72,7 +85,7 @@ describe('VideoGrid', () => {
     expect(screen.getAllByTestId('video-tile')).toHaveLength(4);
     const grid = screen.getByTestId('video-grid');
     expect(grid).toHaveAttribute('data-count', '4');
-    expect(grid).toHaveClass('gap-4', 'max-w-[1168px]');
+    expect(grid).toHaveClass('gap-4', 'h-full', 'aspect-video', 'max-w-full');
   });
 
   it('does not wire a remove control on any tile when onRemoveGuest is omitted (guest viewer)', () => {

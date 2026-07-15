@@ -35,7 +35,7 @@ export function AttachmentThumbnail({ src, name, animated, onOpen }: AttachmentT
     img.src = src;
   }, [animated, src]);
 
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onOpen();
@@ -43,11 +43,16 @@ export function AttachmentThumbnail({ src, name, animated, onOpen }: AttachmentT
   }
 
   if (!animated) {
+    // Focusable (role/tabIndex/key handler) like the animated variant so keyboard users can open
+    // the lightbox and focus is restored to this thumbnail when it closes (PRD FR-27 a11y).
     return (
       <img
         src={src}
         alt={name}
+        role="button"
+        tabIndex={0}
         onClick={onOpen}
+        onKeyDown={handleKeyDown}
         className="max-h-40 max-w-40 cursor-pointer rounded-lg object-cover"
       />
     );

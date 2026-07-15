@@ -35,6 +35,16 @@ describe('CopyLinkButton', () => {
     expect(screen.queryByText('Link copied!')).not.toBeInTheDocument();
   });
 
+  it('exposes Copy link as a reachable, enabled native button (keyboard-operable)', () => {
+    // The platform activates a real <button> on Enter/Space; the click test above proves the
+    // activation → "Link copied!" path, so a focusable/enabled native button = keyboard-operable.
+    render(<CopyLinkButton url="https://app/r/r1" />);
+    const btn = screen.getByRole('button', { name: /copy link/i });
+    expect(btn.tagName).toBe('BUTTON');
+    expect(btn).toBeEnabled();
+    expect(btn).not.toHaveAttribute('tabindex', '-1');
+  });
+
   it('shows a fallback with the selectable url when clipboard is denied', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('denied'));
     vi.stubGlobal('navigator', { clipboard: { writeText } });

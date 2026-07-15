@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
 import type { Attachment } from './attachments.js';
 
 export type ChatMessage = {
@@ -10,6 +9,9 @@ export type ChatMessage = {
   sentAt: number; // epoch ms; rendered as HH:MM on the client
   text: string; // max 1000 chars
   attachments: Attachment[];
+  // Present only on the live broadcast of a just-sent message: echoes the sender's client-generated
+  // id so the sender reconciles the exact optimistic bubble. Never persisted to history.
+  clientId?: string;
 };
 
 export type ChatErrorCode = 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' | 'NOT_A_MEMBER' | 'TOO_MANY_ATTACHMENTS';
@@ -20,35 +22,22 @@ export type MessageValidation =
   | { ok: true; value: string }
   | { ok: false; code: 'EMPTY_MESSAGE' | 'TEXT_TOO_LONG' };
 
-// Reason codes are carried as the zod issue message so the first failing check maps straight to
-// a MessageValidation code. Checks are ordered empty-before-length; a value cannot fail both.
-const messageTextSchema = z
-  .string({ error: 'EMPTY_MESSAGE' })
-  .refine((s) => s.trim().length > 0, { error: 'EMPTY_MESSAGE' })
-  .refine((s) => s.length <= MAX_TEXT_LENGTH, { error: 'TEXT_TOO_LONG' });
-
-export function validateMessageText(raw: unknown): MessageValidation {
-  const result = messageTextSchema.safeParse(raw);
-  if (result.success) return { ok: true, value: result.data };
-  const [issue] = result.error.issues;
-  const code = issue?.message === 'TEXT_TOO_LONG' ? 'TEXT_TOO_LONG' : 'EMPTY_MESSAGE';
-  return { ok: false, code };
-}
-
 // Text may be blank when at least one attachment is present (an attachment-only message).
+// Leading/trailing whitespace is trimmed here so the trimmed value is what gets built, stored,
+// and broadcast (VAL-ChatText) — callers use `value`, never the raw input.
 export function validateMessage(input: { text: string; attachmentCount: number }): MessageValidation {
   const { text, attachmentCount } = input;
-  if (text.trim().length === 0 && attachmentCount === 0) {
+  const trimmed = text.trim();
+  if (trimmed.length === 0 && attachmentCount === 0) {
     return { ok: false, code: 'EMPTY_MESSAGE' };
   }
-  if (text.length > MAX_TEXT_LENGTH) {
+  if (trimmed.length > MAX_TEXT_LENGTH) {
     return { ok: false, code: 'TEXT_TOO_LONG' };
   }
-  return { ok: true, value: text };
+  return { ok: true, value: trimmed };
 }
 
 export type ChatService = {
-  validateText(raw: unknown): MessageValidation;
   validateMessage(input: { text: string; attachmentCount: number }): MessageValidation;
   build(input: {
     roomName: string;
@@ -73,7 +62,6 @@ export function createChatService(options: ChatServiceOptions = {}): ChatService
   const histories = new Map<string, ChatMessage[]>();
 
   return {
-    validateText: validateMessageText,
     validateMessage,
     build({ roomName, senderIdentity, senderName, text, attachments }) {
       return {

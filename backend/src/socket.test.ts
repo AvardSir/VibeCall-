@@ -5,6 +5,7 @@ import {
   handleSendMessage,
   handleClaimShare,
   handleReleaseShare,
+  handleDisconnect,
   broadcastShareState,
   createSocketServer,
   emitGraceTick,
@@ -12,7 +13,7 @@ import {
 } from './socket.js';
 import type { ChatGatewayDeps, ChatSocketBinding, ChatSocket, ChatServer } from './socket.js';
 import { createChatService } from './chat.js';
-import type { ShareClaimResult } from './rooms.js';
+import type { Room, RoomStatus, ShareClaimResult } from './rooms.js';
 import { logger } from './logger.js';
 import type { Attachment } from './attachments.js';
 
@@ -75,7 +76,24 @@ function makeDeps(participants: { identity: string; name: string }[], roomId = '
       claimShare: vi.fn((): ShareClaimResult => ({ ok: true })),
       releaseShare: vi.fn(() => true),
       getActiveSharer: vi.fn(() => null),
+      get: vi.fn(() => undefined),
+      clearShare: vi.fn(() => false),
     },
+    getGraceRemaining: vi.fn(() => null),
+    startGrace: vi.fn(),
+    cancelGrace: vi.fn(),
+  };
+}
+
+function makeRoom(overrides: Partial<Room> & { hostIdentity: string; status: RoomStatus }): Room {
+  return {
+    roomId: 'r1',
+    hostToken: 'ht',
+    createdAt: 0,
+    graceEndsAt: null,
+    memberTokens: new Map(),
+    activeSharerId: null,
+    ...overrides,
   };
 }
 
@@ -144,6 +162,27 @@ describe('handleJoinChat', () => {
     expect(emitted).toContainEqual({ event: 'share_state', payload: { activeSharerId: 'p_0' } });
   });
 
+  it('emits the current grace countdown to a socket that joins mid-grace (FR-4)', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.getGraceRemaining as Mock).mockReturnValue(42);
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
+
+    expect(deps.getGraceRemaining).toHaveBeenCalledWith('r1');
+    expect(emitted).toContainEqual({ event: 'grace_tick', payload: { secondsLeft: 42 } });
+  });
+
+  it('does not emit grace_tick when the room is not in grace', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.getGraceRemaining as Mock).mockReturnValue(null);
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'guest' });
+
+    expect(emitted.find((e) => e.event === 'grace_tick')).toBeUndefined();
+  });
+
   it('rejects a non-member: no bind, no join, message_failed NOT_A_MEMBER', async () => {
     const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
     const { socket, emitted, joined } = makeSocket();
@@ -205,6 +244,34 @@ describe('handleSendMessage', () => {
     expect(broadcasts[0]!.event).toBe('chat_message');
     expect(msg).toMatchObject({ senderIdentity: 'p_1', senderName: 'Ann', text: 'hi' });
     expect(deps.chat.history('main')).toHaveLength(1);
+  });
+
+  it('echoes the sender clientId on the broadcast but keeps it out of stored history', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
+    const { io, broadcasts } = makeIo();
+
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, {
+      text: 'hi',
+      clientId: 'c_7',
+    });
+
+    expect(broadcasts[0]!.payload).toMatchObject({ text: 'hi', clientId: 'c_7' });
+    // The persisted copy must not carry the transient, sender-local clientId.
+    expect(deps.chat.history('main')[0]).not.toHaveProperty('clientId');
+  });
+
+  it('echoes the clientId on a send failure so the exact bubble is marked failed', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    const { socket, emitted } = bound(deps, { identity: 'p_1', displayName: 'Ann', roomName: 'main' });
+    const { io } = makeIo();
+
+    handleSendMessage(socket as unknown as ChatSocket, io as unknown as ChatServer, deps, {
+      text: '   ',
+      clientId: 'c_9',
+    });
+
+    expect(emitted).toEqual([{ event: 'message_failed', payload: { code: 'EMPTY_MESSAGE', clientId: 'c_9' } }]);
   });
 
   it('keeps distinct senderIdentity for two participants sharing a display name', () => {
@@ -398,6 +465,95 @@ describe('screen-share arbitration handlers', () => {
     const { io, broadcasts } = makeIo();
     broadcastShareState(io as unknown as ChatServer, 'r1', null);
     expect(broadcasts.at(-1)).toEqual({ room: 'r1', event: 'share_state', payload: { activeSharerId: null } });
+  });
+});
+
+describe('handleDisconnect — host drop starts grace (US-14/FR-4)', () => {
+  it('starts grace when the host socket disconnects while the room is active', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.registry.get as Mock).mockReturnValue(makeRoom({ hostIdentity: 'p_1', status: 'active' }));
+    const { socket } = makeSocket();
+    socket.data.binding = { identity: 'p_1', displayName: 'Ann', roomName: 'r1' };
+    const { io } = makeIo();
+
+    handleDisconnect(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(deps.startGrace).toHaveBeenCalledWith('r1');
+  });
+
+  it('clears an active share and broadcasts it when the host drops', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.registry.get as Mock).mockReturnValue(makeRoom({ hostIdentity: 'p_1', status: 'active' }));
+    (deps.registry.clearShare as Mock).mockReturnValue(true);
+    const { socket } = makeSocket();
+    socket.data.binding = { identity: 'p_1', displayName: 'Ann', roomName: 'r1' };
+    const { io, broadcasts } = makeIo();
+
+    handleDisconnect(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(broadcasts.at(-1)).toEqual({ room: 'r1', event: 'share_state', payload: { activeSharerId: null } });
+    expect(deps.startGrace).toHaveBeenCalledWith('r1');
+  });
+
+  it('does NOT start grace when a guest socket disconnects', () => {
+    const deps = makeDeps([{ identity: 'p_2', name: 'Bob' }]);
+    (deps.registry.get as Mock).mockReturnValue(makeRoom({ hostIdentity: 'p_1', status: 'active' }));
+    const { socket } = makeSocket();
+    socket.data.binding = { identity: 'p_2', displayName: 'Bob', roomName: 'r1' };
+    const { io } = makeIo();
+
+    handleDisconnect(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(deps.startGrace).not.toHaveBeenCalled();
+  });
+
+  it('does NOT start grace on an intentional End call (status !== active)', () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.registry.get as Mock).mockReturnValue(makeRoom({ hostIdentity: 'p_1', status: 'ending' }));
+    const { socket } = makeSocket();
+    socket.data.binding = { identity: 'p_1', displayName: 'Ann', roomName: 'r1' };
+    const { io } = makeIo();
+
+    handleDisconnect(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(deps.startGrace).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op for a socket that never bound (no join_chat)', () => {
+    const deps = makeDeps([]);
+    const { socket } = makeSocket();
+    const { io } = makeIo();
+
+    handleDisconnect(socket as unknown as ChatSocket, io as unknown as ChatServer, deps);
+
+    expect(deps.registry.get).not.toHaveBeenCalled();
+    expect(deps.startGrace).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleJoinChat — host return cancels grace', () => {
+  it('cancels grace when the host rejoins over the socket during grace', async () => {
+    const deps = makeDeps([{ identity: 'p_1', name: 'Ann' }]);
+    (deps.registry.get as Mock).mockReturnValue(makeRoom({ hostIdentity: 'p_1', status: 'grace' }));
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_1', role: 'host' });
+
+    expect(deps.cancelGrace).toHaveBeenCalledWith('r1');
+    // The host should not also be handed a stale grace_tick after cancelling.
+    expect(emitted.find((e) => e.event === 'grace_tick')).toBeUndefined();
+  });
+
+  it('does NOT cancel grace when a guest joins during grace (guest gets the countdown instead)', async () => {
+    const deps = makeDeps([{ identity: 'p_2', name: 'Bob' }]);
+    (deps.registry.get as Mock).mockReturnValue(makeRoom({ hostIdentity: 'p_1', status: 'grace' }));
+    (deps.getGraceRemaining as Mock).mockReturnValue(30);
+    const { socket, emitted } = makeSocket();
+
+    await handleJoinChat(socket as unknown as ChatSocket, deps, { roomId: 'r1', identity: 'p_2', role: 'guest' });
+
+    expect(deps.cancelGrace).not.toHaveBeenCalled();
+    expect(emitted).toContainEqual({ event: 'grace_tick', payload: { secondsLeft: 30 } });
   });
 });
 

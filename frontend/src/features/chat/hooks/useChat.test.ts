@@ -98,10 +98,13 @@ describe('useChat', () => {
       await Promise.resolve();
     });
     expect(useChatStore.getState().messages[0]).toMatchObject({ text: 'hello', status: 'sending' });
-    expect(fake.emitted).toContainEqual({ event: 'send_message', payload: { text: 'hello', attachments: [] } });
+    expect(fake.emitted).toContainEqual({
+      event: 'send_message',
+      payload: { text: 'hello', attachments: [], clientId: 'c_0' },
+    });
   });
 
-  it('message_failed flips the pending item to failed', async () => {
+  it('message_failed without a clientId flips the oldest pending item (fallback)', async () => {
     const { result } = renderHook(() => useChat('guest'));
     await act(async () => {
       result.current.sendMessage('oops', []);
@@ -111,10 +114,23 @@ describe('useChat', () => {
     expect(useChatStore.getState().messages[0]!.status).toBe('failed');
   });
 
-  it('sendMessage uploads staged files then relays metadata and clears staged on success', async () => {
+  it('message_failed with a clientId flips that exact pending item, not the oldest', async () => {
+    const { result } = renderHook(() => useChat('guest'));
+    await act(async () => {
+      result.current.sendMessage('first', []);
+      result.current.sendMessage('second', []);
+      await Promise.resolve();
+    });
+    // 'second' (c_1) fails while 'first' (c_0) is still in flight — only 'second' must flip.
+    act(() => fake.trigger('message_failed', { code: 'TEXT_TOO_LONG', clientId: 'c_1' }));
+    const msgs = useChatStore.getState().messages;
+    expect(msgs.find((m) => m.text === 'first')!.status).toBe('sending');
+    expect(msgs.find((m) => m.text === 'second')!.status).toBe('failed');
+  });
+
+  it('sendMessage uploads the passed files then relays their metadata on success', async () => {
     const uploaded = { fileId: 'f1', name: 'a.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/f1' };
     mockUploadAttachment.mockResolvedValue({ ok: true, data: uploaded });
-    useChatStore.getState().addStaged(new File(['content'], 'a.png', { type: 'image/png' }));
 
     const { result } = renderHook(() => useChat('guest'));
     await act(async () => {
@@ -126,15 +142,12 @@ describe('useChat', () => {
     expect(mockUploadAttachment).toHaveBeenCalledWith('r_test', 'mt', expect.any(File));
     expect(fake.emitted).toContainEqual({
       event: 'send_message',
-      payload: { text: 'with file', attachments: [uploaded] },
+      payload: { text: 'with file', attachments: [uploaded], clientId: 'c_0' },
     });
-    expect(useChatStore.getState().stagedAttachments).toEqual([]);
   });
 
-  it('sendMessage keeps staged files and marks failed when an upload fails', async () => {
+  it('sendMessage marks failed and does not relay when an upload fails', async () => {
     mockUploadAttachment.mockResolvedValue({ ok: false, error: 'FILE_TOO_LARGE' });
-    const file = new File(['content'], 'a.png', { type: 'image/png' });
-    useChatStore.getState().addStaged(file);
 
     const { result } = renderHook(() => useChat('guest'));
     await act(async () => {
@@ -145,6 +158,25 @@ describe('useChat', () => {
 
     expect(fake.emitted.find((e) => e.event === 'send_message')).toBeUndefined();
     expect(useChatStore.getState().messages[0]!.status).toBe('failed');
+  });
+
+  // Staging is owned by the composer (ChatInput), which consumes staged files synchronously at send
+  // time; sendMessage never touches the staged store (so a slow upload can't wipe a newly-staged file).
+  it('sendMessage does not clear the staged store', async () => {
+    mockUploadAttachment.mockResolvedValue({
+      ok: true,
+      data: { fileId: 'f1', name: 'a.png', size: 3, mime: 'image/png', kind: 'image' as const, url: '/attachments/f1' },
+    });
+    const file = new File(['content'], 'a.png', { type: 'image/png' });
+    useChatStore.getState().addStaged(file);
+
+    const { result } = renderHook(() => useChat('guest'));
+    await act(async () => {
+      result.current.sendMessage('with file', [makeStagedFile('a.png')]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     expect(useChatStore.getState().stagedAttachments).toEqual([{ id: expect.any(String), file }]);
   });
 });

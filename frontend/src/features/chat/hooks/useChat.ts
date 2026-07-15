@@ -3,7 +3,7 @@ import { useSocket } from '../../../shared/hooks/useSocket';
 import { useChatStore } from '../../../stores/useChatStore';
 import { useConnectionStore } from '../../../stores/useConnectionStore';
 import { uploadAttachment } from '../../../shared/lib/apiClient';
-import type { ChatMessage, ParticipantRole, Attachment, UploadResult } from '../../../shared/types';
+import type { ChatMessage, ParticipantRole, Attachment, UploadResult, ChatErrorCode } from '../../../shared/types';
 import type { StagedFile } from '../../../stores/useChatStore';
 
 export type UseChatResult = { sendMessage: (text: string, files?: StagedFile[]) => void };
@@ -16,7 +16,6 @@ export function useChat(role: ParticipantRole): UseChatResult {
   const receiveMessage = useChatStore((s) => s.receiveMessage);
   const addOptimistic = useChatStore((s) => s.addOptimistic);
   const markFailed = useChatStore((s) => s.markFailed);
-  const clearStaged = useChatStore((s) => s.clearStaged);
 
   const joinedRef = useRef(false);
   const clientSeq = useRef(0);
@@ -46,7 +45,17 @@ export function useChat(role: ParticipantRole): UseChatResult {
 
     const handleChatMessage = (message: ChatMessage): void => receiveMessage(message, identity);
 
-    const handleMessageFailed = (): void => markFailed();
+    // The server echoes the failing message's client id, so flip that exact optimistic bubble. Fall
+    // back to the oldest still-sending message if the id is absent (e.g. a join-time NOT_A_MEMBER,
+    // which carries no client id).
+    const handleMessageFailed = (e: { code: ChatErrorCode; clientId?: string }): void => {
+      if (e.clientId !== undefined) {
+        markFailed(e.clientId);
+        return;
+      }
+      const oldestSending = useChatStore.getState().messages.find((m) => m.status === 'sending');
+      if (oldestSending) markFailed(oldestSending.key);
+    };
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
@@ -77,12 +86,15 @@ export function useChat(role: ParticipantRole): UseChatResult {
   }, [phase, localParticipant, role, socket]);
 
   const sendMessage = useCallback(
-    // `files` is optional so `sendMessage` stays assignable to ChatInput's `onSend(text)` until
-    // Task 16 wires staged attachments through; text-only sends pass no files.
+    // `files` defaults to empty so text-only sends can call `sendMessage(text)` without attachments.
     (text: string, files: StagedFile[] = []) => {
       if (!localParticipant) return;
       const { roomId, memberToken } = localParticipant;
       const clientId = `c_${clientSeq.current++}`;
+
+      // Trim leading/trailing whitespace so the optimistic bubble matches what the server broadcasts
+      // (the backend trims in validateMessage — VAL-ChatText).
+      const trimmedText = text.trim();
 
       // Blob-URL previews let the optimistic bubble render attachments immediately, before the
       // upload resolves; ChatMessageItem (Task 17) swaps them for tokened URLs once delivered.
@@ -94,24 +106,24 @@ export function useChat(role: ParticipantRole): UseChatResult {
         kind: sf.file.type.startsWith('image/') ? 'image' : 'file',
         url: URL.createObjectURL(sf.file),
       }));
-      addOptimistic(clientId, text, localParticipant, previews);
+      // Retain the staged files on the optimistic item so a failed send can be restored & resent.
+      addOptimistic(clientId, trimmedText, localParticipant, previews, files);
 
       void (async () => {
         try {
           const results = await Promise.all(files.map((sf) => uploadAttachment(roomId, memberToken, sf.file)));
           if (results.every((r) => r.ok)) {
             const uploaded = results.map((r) => (r as Extract<UploadResult, { ok: true }>).data);
-            socket.emit('send_message', { text, attachments: uploaded });
-            clearStaged();
+            socket.emit('send_message', { text: trimmedText, attachments: uploaded, clientId });
           } else {
-            markFailed();
+            markFailed(clientId);
           }
         } catch {
-          markFailed();
+          markFailed(clientId);
         }
       })();
     },
-    [addOptimistic, markFailed, clearStaged, localParticipant, socket],
+    [addOptimistic, markFailed, localParticipant, socket],
   );
 
   return { sendMessage };

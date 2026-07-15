@@ -9,6 +9,8 @@ describe('Button', () => {
     const el = screen.getByRole('button', { name: 'Join' });
     expect(el).toHaveClass('rounded-[10px]', 'px-7', 'py-3', 'text-base', 'font-[452]');
     expect(el).toHaveClass('bg-accent', 'text-white', 'hover:bg-accent-strong');
+    // NFR-2: explicit theme-aware focus-visible ring, not the browser default outline
+    expect(el).toHaveClass('focus-visible:outline-2', 'focus-visible:outline-accent');
     expect(el).toHaveAttribute('type', 'button');
   });
 
@@ -16,6 +18,13 @@ describe('Button', () => {
     render(<Button variant="secondary">Back</Button>);
     const el = screen.getByRole('button', { name: 'Back' });
     expect(el).toHaveClass('bg-slate-800', 'text-white', 'hover:bg-slate-700');
+  });
+
+  it('stretches to full width when fullWidth is set', () => {
+    const { rerender } = render(<Button>Join</Button>);
+    expect(screen.getByRole('button', { name: 'Join' })).not.toHaveClass('w-full');
+    rerender(<Button fullWidth>Join</Button>);
+    expect(screen.getByRole('button', { name: 'Join' })).toHaveClass('w-full');
   });
 
   it('renders the danger variant', () => {

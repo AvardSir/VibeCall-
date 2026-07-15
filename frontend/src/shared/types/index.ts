@@ -52,6 +52,9 @@ export type ChatMessage = {
   sentAt: number;
   text?: string;
   attachments: Attachment[];
+  // Present only on the live broadcast of a just-sent own message: the sender's optimistic-bubble id,
+  // echoed by the server so the sender reconciles the exact bubble. Absent in history.
+  clientId?: string;
 };
 
 export type CallParticipant = {

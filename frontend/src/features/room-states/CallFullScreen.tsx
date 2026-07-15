@@ -11,7 +11,7 @@ export function CallFullScreen({ onBackToHome }: CallFullScreenProps): JSX.Eleme
     <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 text-center">
       <Text tag="h1" size="2xl" weight="semibold">{t('fullTitle')}</Text>
       <Text tag="p" className="text-slate-400">{t('fullBody')}</Text>
-      <Button variant="ghost" onClick={onBackToHome}>{t('backToHome')}</Button>
+      <Button variant="primary" onClick={onBackToHome}>{t('backToHome')}</Button>
     </div>
   );
 }

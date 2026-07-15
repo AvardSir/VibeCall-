@@ -13,6 +13,7 @@
   --color-accent-active: #487cfd; /* Primary/Blue less — pressed/active */
   --color-danger-strong: #c13c3c; /* Secondary/Red more — danger hover */
   --color-text-muted: #9ba6b7;    /* Overlay gray — secondary/placeholder text */
+  --color-warning: #fbbf24;       /* Amber — permission / connection notices */
 
   /* Dark surfaces (Figma "Young Fighter" dark palette) */
   --color-surface: #181b1d;          /* Primary/Black — app background */
@@ -21,6 +22,31 @@
 
   /* Typography — Roboto Flex variable font (Figma primary typeface) */
   --font-sans: 'Roboto Flex Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Layout — single source for the in-call chat panel width (consumed by ChatPanel w-* and
+     CallShell pr-* so the call area and the panel stay aligned) */
+  --spacing-chat-panel: 340px;
+}
+
+/* Hide the scrollbar while keeping the element scrollable — the design shows no visible scrollbar in
+   the chat; wheel / trackpad / keyboard scrolling still work. */
+@utility scrollbar-hide {
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* legacy Edge */
+  &::-webkit-scrollbar { display: none; } /* Chromium / Safari */
+}
+
+@layer base {
+  /* Tailwind v4's Preflight sets `cursor: default` on <button> (unlike v3). This app is button-driven,
+     so restore the pointer for enabled interactive controls. Kept in the base layer so explicit
+     cursor-* utilities (e.g. disabled:cursor-not-allowed) still win; `:not(:disabled)` leaves disabled
+     controls on their not-allowed cursor. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  select:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 html, body, #root { height: 100%; }

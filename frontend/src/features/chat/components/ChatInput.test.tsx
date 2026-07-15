@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../../../shared/i18n';
 import { ChatInput } from './ChatInput';
@@ -53,14 +53,25 @@ describe('ChatInput', () => {
     expect(field).toHaveValue('a\nb');
   });
 
-  it('shows the character counter only from 900 characters', async () => {
+  it('shows the remaining-character counter only from 900 characters', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const field = screen.getByPlaceholderText('Type a message…');
     await userEvent.click(field);
     await userEvent.paste('a'.repeat(899));
-    expect(screen.queryByText(/\/1000$/)).not.toBeInTheDocument();
-    await userEvent.paste('a'); // now 900
-    expect(screen.getByText('900/1000')).toBeInTheDocument();
+    expect(screen.queryByText(/characters left/)).not.toBeInTheDocument();
+    await userEvent.paste('a'); // now 900 → 100 remaining
+    expect(screen.getByText('100 characters left')).toBeInTheDocument();
+  });
+
+  it('restores a pending composer draft (e.g. a retried message) into the field and consumes it', () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const field = screen.getByPlaceholderText('Type a message…');
+    expect(field).toHaveValue('');
+    act(() => {
+      useChatStore.setState({ composerDraft: 'try me again' });
+    });
+    expect(field).toHaveValue('try me again');
+    expect(useChatStore.getState().composerDraft).toBeNull(); // consumed, won't re-apply
   });
 
   it('stages a valid image and shows it as a chip', async () => {
@@ -88,6 +99,20 @@ describe('ChatInput', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled();
   });
 
+  it('sends a staged file only once even when Send is clicked repeatedly', async () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} />);
+    await userEvent.upload(screen.getByTestId('attach-input'), new File(['x'], 'a.png', { type: 'image/png' }));
+    const send = screen.getByRole('button', { name: 'Send' });
+    await userEvent.click(send);
+    await userEvent.click(send);
+    await userEvent.click(send);
+    expect(onSend).toHaveBeenCalledTimes(1);
+    expect(useChatStore.getState().stagedAttachments).toHaveLength(0);
+    // With text and staging both cleared, Send is disabled again — no path to a duplicate.
+    expect(send).toBeDisabled();
+  });
+
   it('shows the tooManyFiles error when a 6th file is attempted', async () => {
     render(<ChatInput onSend={vi.fn()} />);
     const input = screen.getByTestId('attach-input');
@@ -96,6 +121,17 @@ describe('ChatInput', () => {
     }
     await userEvent.upload(input, new File(['x'], 'f5.png', { type: 'image/png' }));
     expect(screen.getByText('You can attach up to 5 files per message.')).toBeInTheDocument();
+  });
+
+  it('clears the tooManyFiles error after the message is sent', async () => {
+    render(<ChatInput onSend={vi.fn()} />);
+    const input = screen.getByTestId('attach-input');
+    for (let i = 0; i < 6; i++) {
+      await userEvent.upload(input, new File(['x'], `f${i}.png`, { type: 'image/png' }));
+    }
+    expect(screen.getByText('You can attach up to 5 files per message.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.queryByText('You can attach up to 5 files per message.')).not.toBeInTheDocument();
   });
 
   it('stages an image pasted from the clipboard (Ctrl+V) as a chip', () => {

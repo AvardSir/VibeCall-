@@ -55,8 +55,15 @@ export function CallShell({
   const isCamOn = useMediaStore((s) => s.isCamOn);
   const graceSecondsLeft = useConnectionStore((s) => s.graceSecondsLeft);
   const activeSharerId = useParticipantsStore((s) => s.activeSharerId);
+  const participants = useParticipantsStore((s) => s.participants);
   const isPanelOpen = useChatStore((s) => s.isPanelOpen);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);
+
+  // X1 (US-13/FR-6): derive the effective target from the live roster. If the targeted guest leaves
+  // before the host confirms, this becomes null — the dialog auto-dismisses and a confirm can never
+  // fire on a stale identity — without mirroring roster state into an effect.
+  const activeRemoveTarget =
+    removeTarget && participants.some((p) => p.identity === removeTarget.identity) ? removeTarget : null;
 
   useRoomLifecycle({ identity, onRoomEnded, onRemoved });
   useShareState(); // the single share_state → store subscription for the room
@@ -82,13 +89,13 @@ export function CallShell({
   );
 
   const handleRemoveConfirm = useCallback(async (): Promise<void> => {
-    if (!removeTarget) return;
+    if (!activeRemoveTarget) return;
     try {
-      await removeParticipant(roomId, hostToken ?? '', removeTarget.identity);
+      await removeParticipant(roomId, hostToken ?? '', activeRemoveTarget.identity);
     } finally {
       setRemoveTarget(null);
     }
-  }, [removeTarget, roomId, hostToken]);
+  }, [activeRemoveTarget, roomId, hostToken]);
 
   return (
     <LiveKitRoom
@@ -104,16 +111,16 @@ export function CallShell({
       // grid and the bottom-right controls (host Copy link + Chat) aren't covered by the panel.
       className={clsx(
         'relative flex h-full flex-col overflow-hidden transition-[padding] duration-200',
-        isPanelOpen && 'pr-[340px]',
+        isPanelOpen && 'pr-chat-panel',
       )}
     >
       {graceSecondsLeft !== null ? <GraceOverlay secondsLeft={graceSecondsLeft} /> : null}
       <CallStage activeSharerId={activeSharerId} onRemoveGuest={onRemoveGuest} />
       <ControlsBar onLeave={onLeave} onEndCall={onEndCall} role={role} participantUrl={participantUrl} />
       <RoomAudioRenderer />
-      {removeTarget ? (
+      {activeRemoveTarget ? (
         <RemoveGuestDialog
-          name={removeTarget.name}
+          name={activeRemoveTarget.name}
           onConfirm={() => void handleRemoveConfirm()}
           onCancel={() => setRemoveTarget(null)}
         />

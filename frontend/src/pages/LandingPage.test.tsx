@@ -19,8 +19,11 @@ beforeEach(() => {
 });
 
 describe('LandingPage', () => {
-  it('renders the tagline and start button', () => {
+  it('renders the KMB logo, tagline and start button', () => {
     render(<MemoryRouter><LandingPage /></MemoryRouter>);
+    // FR-30: app name/logo present as the page heading, in the brand accent colour.
+    const logo = screen.getByRole('heading', { name: 'КМБ' });
+    expect(logo).toHaveClass('text-accent');
     expect(screen.getByText(/no sign-up required/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start a call/i })).toBeInTheDocument();
   });
@@ -29,6 +32,13 @@ describe('LandingPage', () => {
     createRoom.mockResolvedValue({ ok: true, data: { roomId: 'r1', hostToken: 'h1' } });
     render(<MemoryRouter><LandingPage /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /start a call/i }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/r/r1#h=h1'));
+  });
+
+  it('starts the call when Enter is pressed anywhere on the page', async () => {
+    createRoom.mockResolvedValue({ ok: true, data: { roomId: 'r1', hostToken: 'h1' } });
+    render(<MemoryRouter><LandingPage /></MemoryRouter>);
+    fireEvent.keyDown(window, { key: 'Enter' });
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/r/r1#h=h1'));
   });
 

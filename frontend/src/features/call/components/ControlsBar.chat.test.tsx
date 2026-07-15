@@ -8,7 +8,10 @@ import { useChatStore } from '../../../stores/useChatStore';
 // ControlsBar uses the LiveKit local-participant hook; stub it (no room context in this test).
 vi.mock('@livekit/components-react', () => ({
   useLocalParticipant: () => ({
-    localParticipant: { setMicrophoneEnabled: vi.fn(), setCameraEnabled: vi.fn() },
+    localParticipant: {
+      setMicrophoneEnabled: vi.fn().mockResolvedValue(undefined),
+      setCameraEnabled: vi.fn().mockResolvedValue(undefined),
+    },
   }),
 }));
 
@@ -32,12 +35,16 @@ describe('ControlsBar chat button', () => {
     expect(screen.getByRole('button', { name: 'Chat' })).toHaveClass('bg-accent');
   });
 
-  it('shows the unread badge count and clears it on open', async () => {
+  it('shows a presence-only unread dot (no count) while hidden and clears it on open', async () => {
     useChatStore.setState({ unreadCount: 2 });
     render(
       <ControlsBar onLeave={vi.fn()} onEndCall={vi.fn()} role="guest" participantUrl="https://app/r/r1" />,
     );
-    expect(screen.getByTestId('chat-unread')).toHaveTextContent('2');
+    const dot = screen.getByTestId('chat-unread');
+    expect(dot).toBeInTheDocument();
+    // Presence-only: the indicator is a dot, not a numeric badge.
+    expect(dot).toHaveTextContent('');
+    expect(dot).toHaveClass('rounded-full');
 
     await userEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(useChatStore.getState().isPanelOpen).toBe(true);

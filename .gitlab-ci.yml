@@ -72,17 +72,17 @@ backend:
 
 # --------------------------------------------------------------------------------------------------
 # Deploy to demo2 — build + run docker-compose.develop.yml on the kmb-deploy runner (deploys onto the
-# host docker; Traefik routes to the containers via the `traefik` network). Gated `when: manual` so a
-# push to develop does NOT auto-deploy until the remaining prerequisites are in place (see
-# deploy/README.md):
+# host docker; Traefik routes to the containers via the `traefik` network). Runs `when: on_success`
+# on the `develop` branch — a push to develop auto-deploys once the validate stage passes. This
+# requires the following to be in place (see deploy/README.md):
 #   - GitLab CI/CD Variables scoped to the develop env: LIVEKIT_API_KEY/SECRET, LIVEKIT_URL,
 #     CORS_ORIGIN, VITE_API_BASE_URL (schemes depend on the public HTTPS-vs-HTTP answer);
 #   - LiveKit media path (UDP range vs coturn TURN) confirmed with DevOps.
 # Routing/TLS is handled by Traefik labels in the compose file — no nginx vhosts.
-# Flip `when: manual` → `when: on_success` once the first manual deploy is verified.
+# To pause auto-deploy, switch this back to `when: manual`.
 deploy_develop:
   stage: deploy
-  image: registry.s2.git.fora-soft.com/forasoft/dind
+  image: forasoft/dind25
   tags:
     - kmb-deploy
   environment:
@@ -92,6 +92,13 @@ deploy_develop:
     - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
     - docker-compose --compatibility -p kmb-lashin_${CI_COMMIT_REF_NAME}
         -f docker-compose.develop.yml up -d --build --force-recreate
+    # Deploy diagnostics: let containers settle, then surface health + backend/livekit startup logs
+    # in the job output, so a crash-looping container is visible here (not only via `docker logs`).
+    - sleep 8
+    - docker-compose --compatibility -p kmb-lashin_${CI_COMMIT_REF_NAME}
+        -f docker-compose.develop.yml ps
+    - docker-compose --compatibility -p kmb-lashin_${CI_COMMIT_REF_NAME}
+        -f docker-compose.develop.yml logs --tail=120 backend livekit || true
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
-      when: manual
+      when: on_success

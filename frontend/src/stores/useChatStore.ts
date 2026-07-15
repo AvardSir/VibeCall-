@@ -3,6 +3,11 @@ import type { Attachment, ChatMessage } from '../shared/types';
 
 export type ChatItemStatus = 'sending' | 'delivered' | 'failed';
 
+export type StagedFile = {
+  id: string;
+  file: File;
+};
+
 export type ChatItem = {
   key: string; // server id once delivered; client id while sending/failed
   senderIdentity: string;
@@ -11,11 +16,9 @@ export type ChatItem = {
   text: string;
   status: ChatItemStatus;
   attachments: Attachment[];
-};
-
-export type StagedFile = {
-  id: string;
-  file: File;
+  // Retained on own optimistic messages so a failed send can be restored to the composer (FR-24).
+  // Dropped once the message is reconciled to a server-delivered item.
+  stagedFiles?: StagedFile[];
 };
 
 let stagedSeq = 0;
@@ -25,6 +28,9 @@ type ChatState = {
   isPanelOpen: boolean;
   unreadCount: number;
   stagedAttachments: StagedFile[];
+  // Text to restore into the composer (e.g. a failed message being retried). `null` when there is
+  // nothing pending; ChatInput consumes it and clears it.
+  composerDraft: string | null;
   setHistory: (messages: ChatMessage[]) => void;
   receiveMessage: (message: ChatMessage, selfIdentity: string) => void;
   addOptimistic: (
@@ -32,8 +38,11 @@ type ChatState = {
     text: string,
     self: { identity: string; displayName: string },
     attachments?: Attachment[],
+    stagedFiles?: StagedFile[],
   ) => void;
-  markFailed: () => void;
+  markFailed: (clientId: string) => void;
+  retryMessage: (clientId: string) => void;
+  clearComposerDraft: () => void;
   openPanel: () => void;
   closePanel: () => void;
   togglePanel: () => void;
@@ -63,6 +72,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   isPanelOpen: false,
   unreadCount: 0,
   stagedAttachments: [],
+  composerDraft: null,
 
   setHistory: (messages) => set({ messages: messages.map(toDelivered) }),
 
@@ -70,8 +80,14 @@ export const useChatStore = create<ChatState>()((set) => ({
     set((state) => {
       const delivered = toDelivered(message);
       if (message.senderIdentity === selfIdentity) {
-        // Reconcile with the first still-sending own message (FIFO send order).
-        const idx = state.messages.findIndex((m) => m.status === 'sending');
+        // Reconcile the exact optimistic bubble by the echoed client id — matching by id, not "the
+        // first still-sending item", is required because sends resolve out of order (a quick text can
+        // be delivered while an earlier attachment is still uploading). Fall back to the oldest sending
+        // item if the id is absent (defensive; the server echoes it for own sends).
+        const idx =
+          message.clientId !== undefined
+            ? state.messages.findIndex((m) => m.key === message.clientId)
+            : state.messages.findIndex((m) => m.status === 'sending');
         if (idx !== -1) {
           const messages = state.messages.slice();
           messages[idx] = delivered;
@@ -85,7 +101,7 @@ export const useChatStore = create<ChatState>()((set) => ({
       };
     }),
 
-  addOptimistic: (clientId, text, self, attachments = []) =>
+  addOptimistic: (clientId, text, self, attachments = [], stagedFiles = []) =>
     set((state) => ({
       messages: [
         ...state.messages,
@@ -97,18 +113,37 @@ export const useChatStore = create<ChatState>()((set) => ({
           text,
           status: 'sending',
           attachments,
+          stagedFiles,
         },
       ],
     })),
 
-  markFailed: () =>
+  // Flip the specific in-flight message (matched by its client id) to failed. Matching by id — not
+  // "the first still-sending item" — is required because uploads resolve out of send order, so the
+  // failing message is not necessarily the oldest one still sending.
+  markFailed: (clientId) =>
     set((state) => {
-      const idx = state.messages.findIndex((m) => m.status === 'sending');
+      const idx = state.messages.findIndex((m) => m.key === clientId);
       if (idx === -1) return state;
       const messages = state.messages.slice();
       messages[idx] = { ...messages[idx]!, status: 'failed' };
       return { messages };
     }),
+
+  // Restore a failed message's content to the composer so it can be resent (FR-24/US-10): drop the
+  // failed bubble, re-stage its attachments, and hand its text back to ChatInput via composerDraft.
+  retryMessage: (clientId) =>
+    set((state) => {
+      const item = state.messages.find((m) => m.key === clientId);
+      if (!item) return state;
+      return {
+        messages: state.messages.filter((m) => m.key !== clientId),
+        stagedAttachments: item.stagedFiles ?? [],
+        composerDraft: item.text,
+      };
+    }),
+
+  clearComposerDraft: () => set({ composerDraft: null }),
 
   openPanel: () => set({ isPanelOpen: true }),
   closePanel: () => set({ isPanelOpen: false }),
@@ -125,5 +160,6 @@ export const useChatStore = create<ChatState>()((set) => ({
     })),
   clearStaged: () => set({ stagedAttachments: [] }),
 
-  reset: () => set({ messages: [], isPanelOpen: false, unreadCount: 0, stagedAttachments: [] }),
+  reset: () =>
+    set({ messages: [], isPanelOpen: false, unreadCount: 0, stagedAttachments: [], composerDraft: null }),
 }));

@@ -164,7 +164,7 @@ export function RoomPage(): JSX.Element {
   if (view === 'full') return <CallFullScreen onBackToHome={() => navigate('/')} />;
   if (view === 'connect-error') return <ConnectErrorScreen onRetry={recheckCapacity} />;
   if (view === 'ended') return <CallEndedScreen />;
-  if (view === 'left') return <GuestLeftScreen onRejoin={handleRejoin} />;
+  if (view === 'left') return <GuestLeftScreen onRejoin={handleRejoin} onBackToHome={() => navigate('/')} />;
   if (view === 'host-ended') return <HostEndedScreen />;
   if (view === 'grace-expired') return <GraceExpiredScreen />;
   if (view === 'removed') return <RemovedScreen />;

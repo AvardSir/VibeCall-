@@ -12,7 +12,9 @@ export function TopBar(): JSX.Element {
   const setLanguage = useUiStore((s) => s.setLanguage);
 
   return (
-    <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
+    // data-chat-keep-open: these are global app-chrome controls, not the call area — clicking the
+    // theme toggle or language selector must not trigger the chat panel's outside-click-close.
+    <div data-chat-keep-open className="fixed right-4 top-4 z-50 flex items-center gap-2">
       <LanguageSelector
         language={language}
         onChange={setLanguage}

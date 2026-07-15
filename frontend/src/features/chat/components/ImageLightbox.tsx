@@ -33,11 +33,20 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps): JSX.El
       role="dialog"
       aria-modal="true"
       onClick={handleBackdropClick}
-      // Opaque backdrop: the webcam <video> tiles are hardware-composited, and a translucent overlay
-      // over them flickered during browser (Ctrl +/-) zoom re-rasterization. A fully opaque backdrop
-      // leaves no video showing through, so there is nothing to flicker.
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black"
+      // `isolate` gives the overlay its own stacking/compositing context so its children can be
+      // promoted to independent GPU layers below.
+      className="fixed inset-0 z-[60] flex items-center justify-center isolate"
     >
+      {/* Semi-transparent dim so the call stays visible behind the lightbox (PRD US-10/FR-27).
+          The dim is a separate, static, GPU-promoted layer (transform-gpu + will-change) sitting on
+          its own compositor layer — it never re-rasterizes with the hardware-composited webcam
+          <video> tiles underneath, which is what flickered during browser (Ctrl +/-) zoom when the
+          translucent color lived on the same layer as the video. `pointer-events-none` lets
+          backdrop clicks fall through to the dialog container for close-on-outside-click. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-black/70 transform-gpu will-change-transform pointer-events-none"
+      />
       <button
         ref={closeButtonRef}
         type="button"
@@ -51,7 +60,8 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps): JSX.El
         src={src}
         alt={alt}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] max-w-[90vw] object-contain"
+        // Own GPU layer so the image composites independently of the dim and the video below.
+        className="relative max-h-[90vh] max-w-[90vw] object-contain transform-gpu"
       />
     </div>
   );
