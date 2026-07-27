@@ -13,6 +13,8 @@ export type WebhookDeps = {
 
 export function createWebhookHandler(deps: WebhookDeps): RequestHandler {
   return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
+    console.log('[WEBHOOK] received:', req.body);
+
     let event: WebhookEvent;
     try {
       // req.body is a raw string/Buffer (express.raw()); receiver verifies the LiveKit signature.
