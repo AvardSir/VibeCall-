@@ -51,10 +51,11 @@ export function createGraceService(deps: GraceDeps): GraceService {
 
   return {
     startGrace(roomId) {
-      console.log('[GRACE] start for room', roomId, 'ends at', endsAt);
+
 
       if (timers.has(roomId)) return; // idempotent
       const endsAt = now() + deps.graceSeconds * 1000;
+      console.log('[GRACE] start for room', roomId, 'ends at', endsAt);
       endsAtByRoom.set(roomId, endsAt);
       deps.registry.startGraceState(roomId, endsAt);
       deps.onTick(roomId, deps.graceSeconds);

@@ -30,8 +30,8 @@ export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
       await client.createRoom({
         name: roomId,
         maxParticipants: config.maxParticipants,
-        // emptyTimeout: config.emptyTimeoutSeconds,
-        ttl: 300,
+        emptyTimeout: config.emptyTimeoutSeconds,
+        // ttl: 300,
       });
       logger.info({ room: roomId }, 'ensured room exists');
     },
