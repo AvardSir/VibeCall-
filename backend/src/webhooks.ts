@@ -13,8 +13,9 @@ export type WebhookDeps = {
 
 export function createWebhookHandler(deps: WebhookDeps): RequestHandler {
   return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
-    console.log('[WEBHOOK] received:', req.body);
+    // console.log('[WEBHOOK] received:', req.body);
 
+    // console.log('::: ', );
     let event: WebhookEvent;
     try {
       // req.body is a raw string/Buffer (express.raw()); receiver verifies the LiveKit signature.
@@ -33,11 +34,24 @@ export function createWebhookHandler(deps: WebhookDeps): RequestHandler {
           if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId);
         }
         if (identity === room.hostIdentity && room.status === 'active') {
-          if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId); // grace force-clears any active share
+          if (deps.registry.clearShare(room.roomId)) deps.onShareCleared(room.roomId);
           deps.grace.startGrace(room.roomId);
+          logger.info({ room: roomId, identity }, 'participant_left webhook (host left): starting grace');
+        }
+
+      }
+    }
+    else if (event.event === 'room_finished') {
+      const roomId = event.room?.name;
+      if (roomId) {
+        const room = deps.registry.get(roomId);
+        if (room && room.status === 'active') {
+          deps.grace.startGrace(roomId);
+          logger.info({ room: roomId }, 'room_finished webhook: starting grace');
         }
       }
     }
+
     res.sendStatus(200);
   };
 }
