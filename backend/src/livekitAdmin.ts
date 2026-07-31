@@ -26,11 +26,14 @@ export function createLivekitAdmin(config: AppConfig): LivekitAdmin {
 
   return {
     async ensureRoom(roomId) {
+        console.log(`[ADMIN] Creating room with emptyTimeout=${config.emptyTimeoutSeconds}`);
+
       // Idempotent: createRoom on an existing room is a no-op upsert.
       await client.createRoom({
         name: roomId,
         maxParticipants: config.maxParticipants,
         emptyTimeout: config.emptyTimeoutSeconds,
+        departureTimeout: config.emptyTimeoutSeconds,
         // ttl: 300,
       });
       logger.info({ room: roomId }, 'ensured room exists');
