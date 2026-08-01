@@ -50,8 +50,13 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
       registryHasRoom: registry.get(roomId) !== undefined,
     });
 
-    if (typeof roomId !== 'string') throw new AppError('NOT_FOUND');
-    const room = registry.get(roomId);
+    const roomIdParam = req.params.roomId;
+
+    if (typeof roomIdParam !== 'string') {
+      throw new AppError('NOT_FOUND');
+    }
+
+    const roomId = roomIdParam; const room = registry.get(roomId);
     if (!room) throw new AppError('NOT_FOUND');
     if (room.status === 'ended') {
       res.json({ status: 'ended' });
