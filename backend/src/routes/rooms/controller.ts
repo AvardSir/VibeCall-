@@ -45,6 +45,11 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
 
   async function getStatus(req: Request, res: Response): Promise<void> {
     const { roomId } = req.params;
+    console.log('[STATUS]', {
+      roomId,
+      registryHasRoom: registry.get(roomId) !== undefined,
+    });
+
     if (typeof roomId !== 'string') throw new AppError('NOT_FOUND');
     const room = registry.get(roomId);
     if (!room) throw new AppError('NOT_FOUND');
