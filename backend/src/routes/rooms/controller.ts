@@ -44,27 +44,36 @@ export function createRoomsController(deps: RoomsControllerDeps): RoomsControlle
   }
 
   async function getStatus(req: Request, res: Response): Promise<void> {
-    const { roomId } = req.params;
-    console.log('[STATUS]', {
-      roomId,
-      registryHasRoom: registry.get(roomId) !== undefined,
-    });
+  const roomIdParam = req.params.roomId;
 
-    const roomIdParam = req.params.roomId;
-
-    if (typeof roomIdParam !== 'string') {
-      throw new AppError('NOT_FOUND');
-    }
-
-    const roomId = roomIdParam; const room = registry.get(roomId);
-    if (!room) throw new AppError('NOT_FOUND');
-    if (room.status === 'ended') {
-      res.json({ status: 'ended' });
-      return;
-    }
-    const count = await admin.listParticipantCount(roomId);
-    res.json({ status: count >= config.maxParticipants ? 'full' : 'available' });
+  if (typeof roomIdParam !== 'string') {
+    throw new AppError('NOT_FOUND');
   }
+
+  const roomId = roomIdParam;
+
+  console.log('[STATUS]', {
+    roomId,
+    registryHasRoom: registry.get(roomId) !== undefined,
+  });
+
+  const room = registry.get(roomId);
+
+  if (!room) {
+    throw new AppError('NOT_FOUND');
+  }
+
+  if (room.status === 'ended') {
+    res.json({ status: 'ended' });
+    return;
+  }
+
+  const count = await admin.listParticipantCount(roomId);
+
+  res.json({
+    status: count >= config.maxParticipants ? 'full' : 'available',
+  });
+}
 
   async function join(req: Request, res: Response): Promise<void> {
     const { roomId } = req.params;
