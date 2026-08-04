@@ -1,52 +1,55 @@
-🎥 VibeCall- Video Chat
+# 🎥 VibeCall — Видеочат без регистрации
+
 Групповой видеочат без регистрации. Создайте комнату, поделитесь ссылкой – и до 4 участников могут общаться по видео и тексту в реальном времени. Хост управляет комнатой, гости подключаются по ссылке.
 
-Деплой: vibecall-frontend-9m76.onrender.com (фронтенд)
-Backend API: vibecall-backend-5791.onrender.com
+**Деплой:** [vibecall-frontend-9m76.onrender.com](https://vibecall-frontend-9m76.onrender.com) (фронтенд)  
+**Backend API:** [vibecall-backend-5791.onrender.com](https://vibecall-backend-5791.onrender.com)
 
-📦 Стек технологий
-Компонент	Технологии
-Фронтенд	React 18, TypeScript, Vite, React Router, Zustand, Socket.IO-client
-Бэкенд	Node.js 22, TypeScript, Express, Socket.IO, Zod
-Медиасервер	LiveKit Cloud (WebRTC SFU)
-Деплой	Render (Static Site для фронта, Web Service для бэка)
-Сеть	REST API + WebSockets (Socket.IO для чата/присутствия)
-Контейнеризация (локально)	Docker Compose
-✨ Функциональность
-Создание комнаты с уникальной ссылкой (хост – первый участник).
+---
 
-Подключение гостей по ссылке (до 4 участников).
+## 📦 Стек технологий
 
-Видео и аудио в реальном времени через WebRTC (LiveKit).
+| Компонент       | Технологии                                                                 |
+|-----------------|----------------------------------------------------------------------------|
+| **Фронтенд**    | React 18, TypeScript, Vite, React Router, Zustand, Socket.IO-client        |
+| **Бэкенд**      | Node.js 22, TypeScript, Express, Socket.IO, Zod                           |
+| **Медиасервер** | [LiveKit Cloud](https://livekit.io) (WebRTC SFU)                          |
+| **Деплой**      | Render (Static Site для фронта, Web Service для бэка)                     |
+| **Сеть**        | REST API + WebSockets (Socket.IO для чата/присутствия)                    |
+| **Контейнеризация (локально)** | Docker Compose                                                   |
 
-Текстовый чат с прикреплением файлов (до 10 МБ на файл, до 5 файлов за сообщение).
+---
 
-Автоматическое определение роли: хост (по токену в URL) или гость.
+## ✨ Функциональность
 
-Grace-период после ухода хоста (по умолчанию 60 секунд) – участники могут перезагрузить страницу или присоединиться позже.
+- Создание комнаты с уникальной ссылкой (хост – первый участник).
+- Подключение гостей по ссылке (до 4 участников).
+- Видео и аудио в реальном времени через WebRTC (LiveKit).
+- Текстовый чат с прикреплением файлов (до 10 МБ на файл, до 5 файлов за сообщение).
+- Автоматическое определение роли: хост (по токену в URL) или гость.
+- **Grace-период** после ухода хоста (по умолчанию 60 секунд) – участники могут перезагрузить страницу или присоединиться позже.
+- Состояния комнаты: `active`, `ended`, `full`, `not-found`.
 
-Состояния комнаты: active, ended, full, not-found.
+---
 
-🏗 Архитектура
+## 🏗 Архитектура
+
 Проект состоит из трёх основных частей:
 
-Фронтенд – одностраничное приложение (SPA) на React. Отвечает за интерфейс, подключение к LiveKit и Socket.IO, управление состоянием.
+1. **Фронтенд** – одностраничное приложение (SPA) на React. Отвечает за интерфейс, подключение к LiveKit и Socket.IO, управление состоянием.
+2. **Бэкенд** – REST API и WebSocket-сервер (Socket.IO). Управляет комнатами, участниками, grace-периодом, вебхуками от LiveKit, чатом и вложениями.
+3. **LiveKit** – медиасервер, который обрабатывает видео/аудио потоки. Используется облачная версия (LiveKit Cloud).
 
-Бэкенд – REST API и WebSocket-сервер (Socket.IO). Управляет комнатами, участниками, grace-периодом, вебхуками от LiveKit, чатом и вложениями.
+### Схема взаимодействия
 
-LiveKit – медиасервер, который обрабатывает видео/аудио потоки. Используется облачная версия (LiveKit Cloud).
-
-Схема взаимодействия
-
-
-
-
-
-
-
-
-
-
+```mermaid
+graph TD
+    A[Браузер пользователя] -->|HTTPS| B[Фронтенд Static Site]
+    A -->|WebSocket WSS| C[LiveKit Cloud]
+    A -->|REST/WS| D[Бэкенд Web Service]
+    D -->|Admin API| C
+    C -->|Webhook| D
+    D -->|Socket.IO| A
 Фронтенд обращается к бэкенду по REST для создания/присоединения к комнате, получает токен для LiveKit.
 
 Бэкенд создаёт комнату в LiveKit через Admin API, управляет grace-периодом, обрабатывает вебхуки от LiveKit (участник вышел, комната завершена).
@@ -70,7 +73,7 @@ cd kmb-video-chat
 Настройте переменные окружения
 Создайте файл .env в корне (или используйте значения из docker-compose.yml). Для локальной разработки подойдут дефолтные:
 
-text
+env
 LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=secret
 LIVEKIT_URL=ws://localhost:7880
@@ -108,7 +111,7 @@ LIVEKIT_API_SECRET	Секрет из LiveKit Cloud
 LIVEKIT_URL	wss://ваш-проект.livekit.cloud
 LIVEKIT_HOST	https://ваш-проект.livekit.cloud
 CORS_ORIGIN	URL вашего фронтенда на Render (например, https://vibecall-frontend-9m76.onrender.com)
-GRACE_TIMEOUT_SECONDS	Рекомендуется 300 (5 минут) – см. раздел "Особенности"
+GRACE_TIMEOUT_SECONDS	Рекомендуется 300 (5 минут) – см. раздел «Особенности»
 Переменные для фронтенда (Static Site)
 Переменная	Значение
 VITE_API_BASE_URL	URL бэкенда (например, https://vibecall-backend-5791.onrender.com)
@@ -151,7 +154,7 @@ Socket.IO
 
 Интегрирован с HTTP-сервером Express: io.attach(httpServer).
 
-Структура проекта (основные папки)
+📁 Структура проекта (основные папки)
 text
 kmb-video-chat/
 ├── backend/
