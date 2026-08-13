@@ -391,11 +391,3 @@ VibeCall/
 ```
 
 ---
-
-## Author
-
-[Твоё имя] — [ссылка на GitHub / LinkedIn / Telegram]
-
-## License
-
-MIT
