@@ -22,7 +22,7 @@ describe('LandingPage', () => {
   it('renders the KMB logo, tagline and start button', () => {
     render(<MemoryRouter><LandingPage /></MemoryRouter>);
     // FR-30: app name/logo present as the page heading, in the brand accent colour.
-    const logo = screen.getByRole('heading', { name: 'КМБ' });
+    const logo = screen.getByRole('heading', { name: 'VibeCall-' });
     expect(logo).toHaveClass('text-accent');
     expect(screen.getByText(/no sign-up required/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start a call/i })).toBeInTheDocument();
