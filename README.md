@@ -269,11 +269,12 @@ docker compose up --build
 
 Local services:
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:5173 |
-| Backend | http://localhost:3000 |
-| LiveKit | ws://localhost:7880 |
+| Service   | URL |
+|-----------|-----|
+| Frontend  | http://localhost:5173 |
+| Backend   | http://localhost:3000 |
+| LiveKit   | [ws://localhost:7880](http://localhost:7880) |
+
 
 Local development uses a self-hosted LiveKit instance running through Docker Compose.
 
