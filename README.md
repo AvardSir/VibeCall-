@@ -27,12 +27,22 @@ I built VibeCall to understand real-time communication systems — SFU architect
 ## Screenshots
 
 **Landing**
+<img width="1920" height="953" alt="image" src="https://github.com/user-attachments/assets/ffe61fe5-83ee-4611-93a2-6221d8147915" />
+
 
 **Pre-join**
+<img width="960" height="961" alt="image" src="https://github.com/user-attachments/assets/a205308f-db3d-482a-8b49-7ad28effa4ff" />
 
 **Video conference**
+<img width="1280" height="635" alt="image" src="https://github.com/user-attachments/assets/b64bce5a-08d4-48a3-ab0c-0b34a5ab28a5" />
+
 
 **Chat and screen sharing**
+<img width="1280" height="635" alt="image" src="https://github.com/user-attachments/assets/f2b5b689-77f1-4800-a140-b2215ed8608a" />
+
+<img width="1280" height="635" alt="image" src="https://github.com/user-attachments/assets/6a7701d7-1d10-4092-8681-81dd3c2e6849" />
+
+
 
 ---
 
