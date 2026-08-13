@@ -13,7 +13,7 @@ Create a room, share a link, and start a call. The application supports video an
 
 Desktop-first · Up to 4 participants · No registration
 
-🔗 **[Live Demo (VPN for Russian)](https://vibecall-frontend-9m76.onrender.com/)**
+🔗 **[Video chat without registration (with VPN for Russians, 40-second cold start))](https://vibecall-frontend-9m76.onrender.com/)**
 
 
 ---
